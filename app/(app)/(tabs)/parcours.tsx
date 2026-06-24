@@ -7,7 +7,7 @@ import Animated, {
 import { useEffect } from 'react';
 import Svg, { Rect, Path, Circle, Ellipse, Line } from 'react-native-svg';
 import DeviceStatusBar from '../../../components/StatusBar';
-import { KaabaIcon, MosqueIcon } from '../../../components/IslamicIcons';
+import { MosqueIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
 
 // Icônes SVG pros pour les nodes complétés
@@ -134,7 +134,7 @@ function CompletedNode({ align, icon }: { align: 'left' | 'right' | 'center'; ic
     if (icon === 'book') return <IconBook size={52} />;
     if (icon === 'pen')  return <IconPen  size={52} />;
     if (icon === 'mosque') return <MosqueIcon size={78} />;
-    return <KaabaIcon size={78} />;
+    return <Text style={styles.kaabaEmoji}>🕋</Text>;
   };
   return (
     <View style={[styles.nodeRow, alignStyle(align)]}>
@@ -150,7 +150,7 @@ function LockedNode({ align, icon = 'kaaba' }: { align: 'left' | 'right' | 'cent
     if (icon === 'trophy')   return <IconTrophy   size={52} locked />;
     if (icon === 'crescent') return <IconCrescent size={52} locked />;
     if (icon === 'mosque')   return <MosqueIcon   size={72} locked />;
-    return <KaabaIcon size={72} locked />;
+    return <Text style={styles.kaabaEmojiLocked}>🕋</Text>;
   };
   return (
     <View style={[styles.nodeRow, alignStyle(align)]}>
@@ -536,6 +536,8 @@ const styles = StyleSheet.create({
     shadowColor: '#1E7A15', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 0, elevation: 6,
   },
   activeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#2A9E1C', marginTop: 8 },
+  kaabaEmoji: { fontSize: 46 },
+  kaabaEmojiLocked: { fontSize: 44, opacity: 0.45 },
   dashed: {
     height: 30, borderLeftWidth: 3, borderColor: '#C9CDD4',
     borderStyle: 'dashed', width: 0,
