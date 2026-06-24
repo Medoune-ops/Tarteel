@@ -6,12 +6,11 @@ import Otter from '../../../components/Otter';
 import ProgressBar from '../../../components/ProgressBar';
 
 const BADGES = [
-  { icon: 'star' as const, color: '#F6B100', bg: '#FBEFD3', label: 'Al-Fatiha' },
-  { icon: 'type' as const, color: '#6B4DFF', bg: '#DEE6FB', label: 'Alphabet' },
-  { icon: 'zap' as const, color: '#F0820C', bg: '#FFE3E3', label: '7 jours' },
-  { icon: 'music' as const, color: '#8A5CF0', bg: '#EBE3FC', label: 'Tajwid' },
-  { icon: 'book-open' as const, color: '#2A9E1C', bg: '#DEF5E5', label: '10 Sourates' },
-  { icon: 'award' as const, color: '#E0A02C', bg: '#FBEFD3', label: 'Ligue Or' },
+  { emoji: '✍️', bg: '#E8E4FF', border: '#6B4DFF', label: 'Alphabet'    },
+  { emoji: '🔥', bg: '#FFE8E8', border: '#FF4B4B', label: '7 jours'     },
+  { emoji: '🎵', bg: '#F0E8FF', border: '#8A5CF0', label: 'Tajwid'      },
+  { emoji: '📖', bg: '#E2F5E1', border: '#2A9E1C', label: '10 Sourates' },
+  { emoji: '🏆', bg: '#FFF3CD', border: '#E0A02C', label: 'Ligue Or'    },
 ];
 
 const DAYS = Array.from({ length: 21 }, (_, i) => i + 1);
@@ -47,7 +46,7 @@ export default function ProfilScreen() {
             ].map((s, i) => (
               <View key={i} style={styles.statCol}>
                 <View style={styles.statValRow}>
-                  {s.flame && <Feather name="zap" size={20} color="#F0820C" />}
+                  {s.flame && <Text style={{ fontSize: 20 }}>🔥</Text>}
                   <Text style={styles.statVal}>{s.value}</Text>
                 </View>
                 <Text style={styles.statLabel}>{s.label}</Text>
@@ -68,8 +67,8 @@ export default function ProfilScreen() {
           <Text style={styles.sectionTitle}>Badges</Text>
           <View style={styles.badgeGrid}>
             {BADGES.map((b, i) => (
-              <View key={i} style={[styles.badge, { backgroundColor: b.bg }]}>
-                <Feather name={b.icon} size={17} color={b.color} />
+              <View key={i} style={[styles.badge, { backgroundColor: b.bg, borderColor: b.border }]}>
+                <Text style={styles.badgeEmoji}>{b.emoji}</Text>
                 <Text style={styles.badgeLabel}>{b.label}</Text>
               </View>
             ))}
@@ -78,7 +77,7 @@ export default function ProfilScreen() {
           {/* Calendrier */}
           <View style={styles.calTitleRow}>
             <Text style={styles.sectionTitle}>Calendrier — Série active</Text>
-            <Feather name="zap" size={20} color="#F0820C" />
+            <Text style={{ fontSize: 20 }}>🔥</Text>
           </View>
           <View style={styles.calGrid}>
             {DAYS.map((d) => {
@@ -132,10 +131,12 @@ const styles = StyleSheet.create({
   levelText: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#8A8F99' },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   badge: {
-    width: '31.5%', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 8,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    width: '31.5%', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8,
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderBottomWidth: 4, borderWidth: 1.5,
   },
-  badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, color: '#1B2333' },
+  badgeEmoji: { fontSize: 30 },
+  badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: '#1B2333', textAlign: 'center' },
   calTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   calGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   calCell: {

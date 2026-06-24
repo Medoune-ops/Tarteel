@@ -50,7 +50,7 @@ export default function SettingsScreen() {
             <Text style={styles.profileEmail}>smedoune16@gmail.com</Text>
             <View style={styles.chips}>
               <View style={styles.chipOrange}>
-                <Feather name="zap" size={14} color="#C57A0C" />
+                <Text style={{ fontSize: 14 }}>🔥</Text>
                 <Text style={styles.chipOrangeText}>12 j</Text>
               </View>
               <View style={styles.chipPurple}>

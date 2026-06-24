@@ -14,28 +14,26 @@ const LEVEL_TARGET = 0.62; // 62 %
 export default function FinishScreen() {
   const router = useRouter();
 
-  // Loutre : entrée en "pop" puis petite jubilation continue
   const otterScale = useSharedValue(0);
-  const otterRot = useSharedValue(0);
-  // Barre de niveau
+  const otterY     = useSharedValue(0);
   const levelProgress = useSharedValue(0);
 
   useEffect(() => {
     // pop d'apparition
     otterScale.value = withSpring(1, { damping: 8, stiffness: 140, mass: 0.7 });
-    // jubilation : balancement gauche-droite qui se répète
-    otterRot.value = withDelay(
-      350,
+    // sauts enthousiastes répétés (bounce vertical)
+    otterY.value = withDelay(
+      300,
       withRepeat(
         withSequence(
-          withTiming(-0.09, { duration: 320, easing: Easing.inOut(Easing.quad) }),
-          withTiming(0.09, { duration: 320, easing: Easing.inOut(Easing.quad) }),
+          withTiming(-28, { duration: 220, easing: Easing.out(Easing.quad) }),
+          withTiming(  0, { duration: 280, easing: Easing.in(Easing.bounce) }),
+          withTiming(  0, { duration: 180 }), // micro-pause au sol
         ),
         -1,
-        true,
+        false,
       ),
     );
-    // remplissage de la barre
     levelProgress.value = withDelay(
       600,
       withTiming(LEVEL_TARGET, { duration: 900, easing: Easing.out(Easing.cubic) }),
@@ -45,7 +43,7 @@ export default function FinishScreen() {
   const otterStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: otterScale.value },
-      { rotate: `${otterRot.value}rad` },
+      { translateY: otterY.value },
     ],
   }));
 
@@ -89,7 +87,7 @@ export default function FinishScreen() {
 
       {/* Streak */}
       <Animated.View entering={FadeInDown.delay(650).springify()} style={styles.streakBadge}>
-        <Feather name="zap" size={20} color="#FFD27A" />
+        <Text style={{ fontSize: 20 }}>🔥</Text>
         <Text style={styles.streakText}>Série de 15 jours consécutifs !</Text>
       </Animated.View>
 

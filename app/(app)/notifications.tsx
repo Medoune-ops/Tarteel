@@ -6,7 +6,7 @@ import Toggle from '../../components/Toggle';
 
 const ITEMS = [
   { id: 'reminder', iconBg: '#FF4B4B', icon: 'bell' as const, title: 'Rappel quotidien', sub: 'Tous les jours à 20:30', default: true },
-  { id: 'streak', iconBg: '#F0820C', icon: 'zap' as const, title: 'Alerte de série', sub: 'Avant de perdre ton streak', default: true },
+  { id: 'streak', iconBg: '#F0820C', icon: null as unknown as 'zap', title: 'Alerte de série', sub: 'Avant de perdre ton streak', default: true },
   { id: 'ligues', iconBg: '#E07A0C', icon: 'award' as const, title: 'Mises à jour des ligues', sub: 'Changements de classement', default: false },
   { id: 'verset', iconBg: '#6B4DFF', icon: 'book-open' as const, title: 'Verset du jour', sub: 'Chaque matin à 07:00', default: true },
 ];
@@ -32,7 +32,7 @@ export default function NotificationsScreen() {
           {ITEMS.map((item, i) => (
             <View key={item.id} style={[styles.row, i > 0 && styles.divider]}>
               <View style={[styles.rowIcon, { backgroundColor: item.iconBg }]}>
-                <Feather name={item.icon} size={22} color="#fff" />
+                {item.icon ? <Feather name={item.icon} size={22} color="#fff" /> : <Text style={{ fontSize: 22 }}>🔥</Text>}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{item.title}</Text>

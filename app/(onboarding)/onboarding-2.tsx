@@ -12,7 +12,7 @@ export default function Onboarding2() {
         <Pressable style={styles.skip} onPress={() => router.replace('/(onboarding)/signup')}>
           <Text style={[styles.skipText, { color: '#C4B69B' }]}>Passer</Text>
         </Pressable>
-        <Feather name="zap" size={50} color="#F0820C" style={{ marginBottom: 12 }} />
+        <Text style={{ fontSize: 50, marginBottom: 12 }}>🔥</Text>
         <Otter size={150} />
       </View>
 

@@ -85,7 +85,7 @@ export default function PlanScreen() {
         <Animated.View style={[styles.emptyBar, barStyle]} />
         <Text style={styles.cardSub}>0 / 12 leçons complétées</Text>
         <View style={styles.streakRow}>
-          <Feather name="zap" size={19} color="#F0820C" />
+          <Text style={{ fontSize: 19 }}>🔥</Text>
           <Text style={styles.streakText}>Streak quotidien activé</Text>
         </View>
         <Text style={styles.cardSubSmall}>Notification à 20h00 chaque jour</Text>

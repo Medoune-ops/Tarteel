@@ -11,10 +11,10 @@ const OPTIONS: {
   id: number; icon: keyof typeof Feather.glyphMap; iconColor: string; iconBg: string;
   title: string; subtitle: string;
 }[] = [
-  { id: 5, icon: 'zap', iconColor: '#E0A800', iconBg: '#FBF0CF', title: '5 min — Casual', subtitle: '1 leçon courte par jour' },
-  { id: 10, icon: 'zap', iconColor: '#F0820C', iconBg: '#FBE3D2', title: '10 min — Régulier', subtitle: '2 leçons par jour' },
-  { id: 20, icon: 'trending-up', iconColor: '#2A9E1C', iconBg: '#E2F0E7', title: '20 min — Sérieux', subtitle: '3–4 leçons par jour' },
-  { id: 30, icon: 'award', iconColor: '#E0A02C', iconBg: '#FBEFD0', title: '30 min+ — Intensif', subtitle: '5–6 leçons + révisions SRS' },
+  { id: 5,  icon: 'zap',         iconColor: '#E0A800', iconBg: '#FBF0CF', title: '5 min — Casual',     subtitle: '1 leçon courte par jour' },
+  { id: 10, icon: 'zap',         iconColor: '#F0820C', iconBg: '#FBE3D2', title: '10 min — Régulier',  subtitle: '2 leçons par jour' },
+  { id: 20, icon: 'trending-up', iconColor: '#2A9E1C', iconBg: '#E2F0E7', title: '20 min — Sérieux',   subtitle: '3–4 leçons par jour' },
+  { id: 30, icon: 'award',       iconColor: '#E0A02C', iconBg: '#FBEFD0', title: '30 min+ — Intensif', subtitle: '5–6 leçons + révisions SRS' },
 ];
 
 export default function TempsScreen() {
