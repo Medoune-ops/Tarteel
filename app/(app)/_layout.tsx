@@ -9,6 +9,7 @@ export default function AppLayout() {
       <Stack.Screen name="privacy" />
       <Stack.Screen name="subscription" />
       <Stack.Screen name="revision" />
+      <Stack.Screen name="docs" />
       <Stack.Screen name="lesson" />
     </Stack>
   );
