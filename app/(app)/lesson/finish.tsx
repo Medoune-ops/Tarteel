@@ -1,21 +1,75 @@
+import { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay,
+  withRepeat, withSequence, Easing, FadeInDown,
+} from 'react-native-reanimated';
 import Otter from '../../../components/Otter';
+import Confetti from '../../../components/Confetti';
+
+const LEVEL_TARGET = 0.62; // 62 %
 
 export default function FinishScreen() {
   const router = useRouter();
 
+  // Loutre : entrée en "pop" puis petite jubilation continue
+  const otterScale = useSharedValue(0);
+  const otterRot = useSharedValue(0);
+  // Barre de niveau
+  const levelProgress = useSharedValue(0);
+
+  useEffect(() => {
+    // pop d'apparition
+    otterScale.value = withSpring(1, { damping: 8, stiffness: 140, mass: 0.7 });
+    // jubilation : balancement gauche-droite qui se répète
+    otterRot.value = withDelay(
+      350,
+      withRepeat(
+        withSequence(
+          withTiming(-0.09, { duration: 320, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0.09, { duration: 320, easing: Easing.inOut(Easing.quad) }),
+        ),
+        -1,
+        true,
+      ),
+    );
+    // remplissage de la barre
+    levelProgress.value = withDelay(
+      600,
+      withTiming(LEVEL_TARGET, { duration: 900, easing: Easing.out(Easing.cubic) }),
+    );
+  }, []);
+
+  const otterStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: otterScale.value },
+      { rotate: `${otterRot.value}rad` },
+    ],
+  }));
+
+  const levelStyle = useAnimatedStyle(() => ({
+    width: `${levelProgress.value * 100}%`,
+  }));
+
   return (
     <View style={styles.screen}>
+      {/* Explosion de paillettes */}
+      <Confetti count={48} />
+
       <View style={{ height: 90 }} />
-      <View style={styles.otterWrap}>
+
+      <Animated.View style={[styles.otterWrap, otterStyle]}>
         <Otter size={124} />
-      </View>
-      <Text style={styles.title}>Leçon terminée !</Text>
+      </Animated.View>
+
+      <Animated.Text entering={FadeInDown.delay(250).springify()} style={styles.title}>
+        Leçon terminée !
+      </Animated.Text>
 
       {/* Stats */}
-      <View style={styles.statsCard}>
+      <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.statsCard}>
         <View style={styles.statCol}>
           <Feather name="zap" size={28} color="#E0A800" />
           <Text style={styles.statVal}>+30 XP</Text>
@@ -31,24 +85,26 @@ export default function FinishScreen() {
           <Text style={styles.statVal}>4:18</Text>
           <Text style={styles.statLabel}>Durée</Text>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Streak */}
-      <View style={styles.streakBadge}>
+      <Animated.View entering={FadeInDown.delay(650).springify()} style={styles.streakBadge}>
         <Feather name="zap" size={20} color="#FFD27A" />
         <Text style={styles.streakText}>Série de 15 jours consécutifs !</Text>
-      </View>
+      </Animated.View>
 
       {/* Niveau */}
-      <View style={styles.levelTrack}>
-        <View style={styles.levelFill} />
-      </View>
+      <Animated.View entering={FadeInDown.delay(800)} style={styles.levelTrack}>
+        <Animated.View style={[styles.levelFill, levelStyle]} />
+      </Animated.View>
 
       <View style={{ flex: 1 }} />
 
-      <Pressable style={styles.cta} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
-        <Text style={styles.ctaLabel}>Continuer</Text>
-      </Pressable>
+      <Animated.View entering={FadeInDown.delay(950).springify()} style={{ width: '100%' }}>
+        <Pressable style={styles.cta} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
+          <Text style={styles.ctaLabel}>Continuer</Text>
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -70,7 +126,7 @@ const styles = StyleSheet.create({
   },
   streakText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 18, color: '#fff' },
   levelTrack: { width: '100%', height: 14, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden', marginTop: 24 },
-  levelFill: { width: '62%', height: '100%', backgroundColor: '#fff' },
+  levelFill: { height: '100%', backgroundColor: '#fff', borderRadius: 8 },
   cta: {
     width: '100%', height: 62, borderRadius: 18, backgroundColor: '#fff',
     alignItems: 'center', justifyContent: 'center', marginBottom: 38,
