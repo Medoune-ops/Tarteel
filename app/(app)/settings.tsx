@@ -70,17 +70,55 @@ export default function SettingsScreen() {
           <Row iconBg="#E0387E" icon="mic" title="Voix & enregistrements" right={<Text style={styles.rightText}>Activé ›</Text>} />
         </View>
 
-        {/* Rappel quotidien */}
-        <Pressable style={[styles.card, styles.singleRow]} onPress={() => router.push('/(app)/notifications')}>
-          <View style={[styles.rowIcon, { backgroundColor: '#FF4B4B' }]}>
-            <Feather name="bell" size={22} color="#fff" />
+        {/* NOTIFICATIONS */}
+        <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
+        <View style={styles.card}>
+          {/* Toggle rapide rappel quotidien */}
+          <View style={styles.row}>
+            <View style={[styles.rowIcon, { backgroundColor: '#FF4B4B' }]}>
+              <Feather name="bell" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>Rappel quotidien</Text>
+              <Text style={styles.rowSub}>Tous les jours à 20:30</Text>
+            </View>
+            <Toggle value={reminder} onChange={setReminder} />
+          </View>
+          <View style={styles.divider} />
+          {/* Accès page complète */}
+          <Row
+            iconBg="#6B4DFF"
+            icon="sliders"
+            title="Gérer les notifications"
+            subtitle="Série, ligues, verset du jour…"
+            onPress={() => router.push('/(app)/notifications')}
+          />
+        </View>
+
+        {/* ABONNEMENT */}
+        <Text style={styles.sectionLabel}>ABONNEMENT</Text>
+        <Pressable style={styles.premiumCard} onPress={() => router.push('/(app)/subscription')}>
+          <View style={styles.premiumIcon}>
+            <Feather name="star" size={24} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>Rappel quotidien</Text>
-            <Text style={styles.rowSub}>Tous les jours à 20:30</Text>
+            <Text style={styles.premiumTitle}>Passe à Tarteel Premium</Text>
+            <Text style={styles.premiumSub}>Sans pub · Vies illimitées · Stats avancées</Text>
           </View>
-          <Toggle value={reminder} onChange={setReminder} />
+          <Feather name="chevron-right" size={22} color="#fff" />
         </Pressable>
+
+        {/* CONFIDENTIALITÉ */}
+        <Text style={styles.sectionLabel}>CONFIDENTIALITÉ</Text>
+        <View style={styles.card}>
+          <Row
+            iconBg="#2A9E1C"
+            icon="shield"
+            title="Confidentialité & données"
+            subtitle="Partage, profil, compte"
+            onPress={() => router.push('/(app)/privacy')}
+          />
+        </View>
 
         {/* APPARENCE */}
         <Text style={styles.sectionLabel}>APPARENCE</Text>
@@ -150,4 +188,16 @@ const styles = StyleSheet.create({
   rightText: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#8A8F99' },
   themeSwatches: { flexDirection: 'row', gap: 6 },
   swatch: { width: 26, height: 26, borderRadius: 7 },
+  premiumCard: {
+    backgroundColor: '#F0820C', borderRadius: 18, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderBottomWidth: 4, borderBottomColor: '#C56400',
+    shadowColor: '#F0820C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 4,
+  },
+  premiumIcon: {
+    width: 46, height: 46, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  premiumTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#fff' },
+  premiumSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
 });

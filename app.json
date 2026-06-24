@@ -12,7 +12,12 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.tarteel.app"
+      "bundleIdentifier": "com.tarteel.app",
+      "icon": {
+        "light": "./assets/icon-light.png",
+        "dark": "./assets/icon-dark.png",
+        "tinted": "./assets/icon-tinted.png"
+      }
     },
     "android": {
       "adaptiveIcon": {
