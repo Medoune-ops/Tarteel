@@ -1,9 +1,10 @@
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../../components/Otter';
 import ProgressBar from '../../../components/ProgressBar';
+import { useUserStore } from '../../../store/userStore';
 
 const BADGES = [
   { emoji: '✍️', bg: '#E8E4FF', border: '#6B4DFF', label: 'Alphabet'    },
@@ -17,6 +18,25 @@ const DAYS = Array.from({ length: 21 }, (_, i) => i + 1);
 
 export default function ProfilScreen() {
   const router = useRouter();
+  const logout = useUserStore((s) => s.logout);
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Se déconnecter',
+      'Es-tu sûr de vouloir te déconnecter ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Déconnexion',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/(onboarding)/signup');
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -99,6 +119,13 @@ export default function ProfilScreen() {
               );
             })}
           </View>
+
+          {/* Déconnexion */}
+          <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+            <Feather name="log-out" size={20} color="#FF4B4B" />
+            <Text style={styles.logoutText}>Se déconnecter</Text>
+          </Pressable>
+
           <View style={{ height: 14 }} />
         </View>
       </ScrollView>
@@ -149,4 +176,12 @@ const styles = StyleSheet.create({
   calNum: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14 },
   calNumDone: { color: '#2A9E1C' },
   calNumFuture: { color: '#B7BCC4', fontFamily: 'Nunito_700Bold' },
+  logoutBtn: {
+    marginTop: 28,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: '#fff', borderRadius: 16, paddingVertical: 16,
+    borderWidth: 1.5, borderColor: '#FFD9D9',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+  },
+  logoutText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#FF4B4B' },
 });

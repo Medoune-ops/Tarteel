@@ -1,14 +1,21 @@
 import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
+  FadeInDown,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Rect, Path, Circle, Ellipse, Line } from 'react-native-svg';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { MosqueIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
+import {
+  PARCOURS_SECTIONS,
+  type ParcoursNode,
+  type ParcoursSection,
+} from '../../../constants/parcours';
 
 // Icônes SVG pros pour les nodes complétés
 function IconStar({ size = 48 }: { size?: number }) {
@@ -159,7 +166,7 @@ function LockedNode({ align, icon = 'kaaba' }: { align: 'left' | 'right' | 'cent
   );
 }
 
-function ActiveNode({ onPress }: { onPress: () => void }) {
+function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?: string }) {
   const scale = useSharedValue(1);
   useEffect(() => {
     scale.value = withRepeat(
@@ -180,7 +187,7 @@ function ActiveNode({ onPress }: { onPress: () => void }) {
             <MosqueIcon size={76} />
           </View>
         </Animated.View>
-        <Text style={styles.activeLabel}>Leçon 4</Text>
+        <Text style={styles.activeLabel}>{label}</Text>
       </View>
     </Pressable>
   );
@@ -434,10 +441,97 @@ function alignStyle(align: 'left' | 'right' | 'center') {
   return {};
 }
 
+/** Dispatcher : rend le bon nœud selon son état (completed / active / locked). */
+function RenderNode({ node, onPress }: { node: ParcoursNode; onPress: () => void }) {
+  if (node.state === 'active') return <ActiveNode label={node.label} onPress={onPress} />;
+  if (node.state === 'completed') {
+    return <CompletedNode align={node.align} icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'} />;
+  }
+  return <LockedNode align={node.align} icon={node.icon as 'note' | 'moon' | 'trophy' | 'kaaba' | 'crescent' | 'mosque'} />;
+}
+
+/** Carte de titre d'une section + ses nœuds reliés par des pointillés. */
+function SectionBlock({
+  section,
+  index,
+  onLessonPress,
+}: {
+  section: ParcoursSection;
+  index: number;
+  onLessonPress: (n: ParcoursNode) => void;
+}) {
+  const done = section.nodes.filter((n) => n.state === 'completed').length;
+  const total = section.nodes.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <View style={styles.sectionWrap}>
+      <Animated.View
+        entering={FadeInDown.delay(index * 130)
+          .duration(550)
+          .springify()
+          .damping(14)}
+      >
+        <LinearGradient
+          colors={section.degrade}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.sectionCard}
+        >
+        {/* Pastille d'icône */}
+        <View style={styles.sectionIcon}>
+          <Feather name={section.headerIcon as any} size={24} color="#fff" />
+        </View>
+
+        {/* Textes */}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionKicker}>{section.kicker}</Text>
+          <Text style={styles.sectionTitre}>{section.titre}</Text>
+          {!!section.sousTitre && (
+            <Text style={styles.sectionSousTitre} numberOfLines={1}>{section.sousTitre}</Text>
+          )}
+
+          {/* Barre de progression */}
+          <View style={styles.sectionProgressTrack}>
+            <View style={[styles.sectionProgressFill, { width: `${pct}%` }]} />
+          </View>
+          <Text style={styles.sectionProgressLabel}>{done}/{total} leçons</Text>
+        </View>
+        </LinearGradient>
+      </Animated.View>
+
+      <View style={styles.path}>
+        {section.nodes.map((node, i) => (
+          <View key={node.id} style={{ alignItems: 'center' }}>
+            <RenderNode node={node} onPress={() => onLessonPress(node)} />
+            {i < section.nodes.length - 1 && <Dashed />}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export default function ParcoursScreen() {
   const router = useRouter();
-  const { streak, xp, hearts } = useUserStore();
+  const { streak, xp, hearts, isPremium, syncHearts } = useUserStore();
   const { width, height } = useWindowDimensions();
+
+  // Régénère les cœurs à chaque fois qu'on revient sur le parcours.
+  useFocusEffect(
+    useCallback(() => {
+      syncHearts();
+    }, [syncHearts]),
+  );
+
+  const openLesson = (node: ParcoursNode) => {
+    if (node.state === 'locked') return;            // leçon verrouillée
+    if (!isPremium && hearts <= 0) {                // plus de cœurs → blocage
+      router.push('/(app)/lesson/out-of-hearts');
+      return;
+    }
+    router.push('/(app)/lesson/play');
+  };
 
   return (
     <View style={styles.screen}>
@@ -459,36 +553,20 @@ export default function ParcoursScreen() {
         </View>
         <View style={styles.stat}>
           <Feather name="heart" size={22} color="#FF4B4B" />
-          <Text style={[styles.statText, { color: '#FF4B4B' }]}>{hearts}</Text>
+          <Text style={[styles.statText, { color: '#FF4B4B' }]}>{isPremium ? '∞' : hearts}</Text>
         </View>
       </View>
 
-      {/* Section header */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionText}>Section 1 · Alphabet Arabe</Text>
-        <Feather name="type" size={20} color="#fff" />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.path} showsVerticalScrollIndicator={false}>
-        <CompletedNode align="left"   icon="star" />
-        <Dashed />
-        <CompletedNode align="right"  icon="book" />
-        <Dashed />
-        <CompletedNode align="left"   icon="pen" />
-        <Dashed />
-        <ActiveNode onPress={() => router.push('/(app)/lesson/listen')} />
-        <Dashed />
-        <LockedNode align="left"   icon="note"   />
-        <Dashed />
-        <LockedNode align="right"  icon="moon"   />
-        <Dashed />
-        <LockedNode align="center" icon="trophy" />
-        <Dashed />
-        <LockedNode align="left"   icon="kaaba"  />
-        <Dashed />
-        <LockedNode align="right"  icon="mosque" />
-        <Dashed />
-        <LockedNode align="center" icon="crescent" />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {PARCOURS_SECTIONS.map((section, index) => (
+          <SectionBlock
+            key={section.id}
+            section={section}
+            index={index}
+            onLessonPress={openLesson}
+          />
+        ))}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -503,12 +581,39 @@ const styles = StyleSheet.create({
   },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 21 },
-  sectionHeader: {
-    backgroundColor: '#34C724', flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 26, paddingVertical: 18,
+  scroll: { alignItems: 'center' },
+  sectionWrap: { width: '100%' },
+  sectionCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 16,
+    marginHorizontal: 18, marginTop: 22,
+    paddingHorizontal: 18, paddingVertical: 18, borderRadius: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18, shadowRadius: 18, elevation: 6,
   },
-  sectionText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 19, color: '#fff' },
-  path: { alignItems: 'center', paddingVertical: 46 },
+  sectionIcon: {
+    width: 56, height: 56, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sectionKicker: {
+    fontFamily: 'Nunito_800ExtraBold', fontSize: 12, letterSpacing: 1.2,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  sectionTitre: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 1 },
+  sectionSousTitre: {
+    fontFamily: 'Nunito_600SemiBold', fontSize: 13,
+    color: 'rgba(255,255,255,0.9)', marginTop: 2,
+  },
+  sectionProgressTrack: {
+    height: 7, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.18)',
+    marginTop: 12, overflow: 'hidden',
+  },
+  sectionProgressFill: { height: '100%', borderRadius: 4, backgroundColor: '#fff' },
+  sectionProgressLabel: {
+    fontFamily: 'Nunito_700Bold', fontSize: 11,
+    color: 'rgba(255,255,255,0.95)', marginTop: 5,
+  },
+  path: { alignItems: 'center', paddingVertical: 40, width: '100%' },
   nodeRow: { alignItems: 'center' },
   completed: {
     width: 96, height: 96, borderRadius: 48, backgroundColor: '#34C724',

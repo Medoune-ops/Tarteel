@@ -12,7 +12,7 @@ export default function ListenScreen() {
 
   return (
     <View style={styles.screen}>
-      <LessonHeader progress={0.42} hearts={5} />
+      <LessonHeader progress={0.42} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Verset */}

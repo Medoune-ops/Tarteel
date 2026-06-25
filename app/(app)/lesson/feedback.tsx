@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
+import { useUserStore } from '../../../store/userStore';
 
 const WORDS_OK = ['بِسْمِ', 'اللَّهِ', 'الرَّحْمَٰنِ', 'الرَّحِيمِ'];
 
@@ -58,6 +60,27 @@ function FeedbackOk({ router }: { router: ReturnType<typeof useRouter> }) {
 }
 
 function FeedbackBad({ router }: { router: ReturnType<typeof useRouter> }) {
+  const loseHeart = useUserStore((s) => s.loseHeart);
+  const isPremium = useUserStore((s) => s.isPremium);
+  const [heartsLeft, setHeartsLeft] = useState<number | null>(null);
+  const applied = useRef(false);
+
+  // On retire 1 cœur une seule fois, au montage de l'écran d'erreur.
+  useEffect(() => {
+    if (applied.current) return;
+    applied.current = true;
+    setHeartsLeft(loseHeart());
+  }, []);
+
+  // Le bouton continuer : si plus de cœurs (et pas premium) → écran de blocage.
+  const onContinue = () => {
+    if (!isPremium && heartsLeft === 0) {
+      router.replace('/(app)/lesson/out-of-hearts');
+    } else {
+      router.replace('/(app)/lesson/finish');
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <LessonHeader progress={0.55} progressColor="#FF4B4B" />
@@ -91,15 +114,19 @@ function FeedbackBad({ router }: { router: ReturnType<typeof useRouter> }) {
             <Feather name="volume-2" size={19} color="#E03434" />
             <Text style={styles.replayLabel}>Réécouter</Text>
           </Pressable>
-          <Pressable style={styles.continueBad} onPress={() => router.replace('/(app)/lesson/finish')}>
+          <Pressable style={styles.continueBad} onPress={onContinue}>
             <Text style={styles.continueBadLabel}>Continuer →</Text>
           </Pressable>
         </View>
-        <View style={styles.lostHeartRow}>
-          <Text style={styles.lostHeartText}>Tu as perdu </Text>
-          <Feather name="heart" size={14} color="#E03434" />
-          <Text style={styles.lostHeartText}> · Il te reste 4</Text>
-        </View>
+        {!isPremium && (
+          <View style={styles.lostHeartRow}>
+            <Text style={styles.lostHeartText}>Tu as perdu </Text>
+            <Feather name="heart" size={14} color="#E03434" />
+            <Text style={styles.lostHeartText}>
+              {heartsLeft === 0 ? ' · Plus de cœurs !' : ` · Il te reste ${heartsLeft ?? ''}`}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
