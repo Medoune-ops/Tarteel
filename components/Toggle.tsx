@@ -1,4 +1,5 @@
 import { Pressable, View, StyleSheet } from 'react-native';
+import { useTheme } from '../utils/useTheme';
 
 interface ToggleProps {
   value: boolean;
@@ -6,10 +7,11 @@ interface ToggleProps {
 }
 
 export default function Toggle({ value, onChange }: ToggleProps) {
+  const T = useTheme();
   return (
     <Pressable
       onPress={() => onChange?.(!value)}
-      style={[styles.track, { backgroundColor: value ? '#6B4DFF' : '#D4D7DD' }]}
+      style={[styles.track, { backgroundColor: value ? '#6B4DFF' : (T.isDark ? '#3A3950' : '#D4D7DD') }]}
     >
       <View style={[styles.knob, value ? styles.knobOn : styles.knobOff]} />
     </Pressable>

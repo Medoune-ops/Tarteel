@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import { useState, useMemo } from 'react';
 import DeviceStatusBar from '../../../components/StatusBar';
+import { useTheme } from '../../../utils/useTheme';
 
 // ── Données mock sourates terminées ────────────────────────────────────────
 const SOURATES = [
@@ -46,13 +47,13 @@ const STATS = [
   { label: 'À revoir', value: '3', icon: 'alert-circle' as const, color: '#F0820C' },
 ];
 
-function ScoreRing({ score, color }: { score: number; color: string }) {
+function ScoreRing({ score, color, trackColor }: { score: number; color: string; trackColor: string }) {
   const r = 18;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
   return (
     <Svg width={44} height={44} viewBox="0 0 44 44">
-      <Circle cx={22} cy={22} r={r} stroke="#E6E8ED" strokeWidth={4} fill="none" />
+      <Circle cx={22} cy={22} r={r} stroke={trackColor} strokeWidth={4} fill="none" />
       <Circle
         cx={22} cy={22} r={r}
         stroke={color} strokeWidth={4} fill="none"
@@ -80,6 +81,7 @@ function EtatBadge({ etat }: { etat: string }) {
 
 export default function RevisionsScreen() {
   const router = useRouter();
+  const T = useTheme();
   const [query, setQuery] = useState('');
   const urgentes = SOURATES.filter(s => s.prochaineRevision === "Aujourd'hui");
 
@@ -96,7 +98,7 @@ export default function RevisionsScreen() {
   const enRecherche = query.trim().length > 0;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
       <ScrollView showsVerticalScrollIndicator={false}>
 
@@ -118,10 +120,10 @@ export default function RevisionsScreen() {
         <View style={styles.body}>
 
           {/* Barre de recherche */}
-          <View style={styles.searchBar}>
+          <View style={[styles.searchBar, { backgroundColor: T.cardBg }]}>
             <Feather name="search" size={18} color="#A0A5AE" />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: T.text }]}
               placeholder="Rechercher une sourate…"
               placeholderTextColor="#A0A5AE"
               value={query}
@@ -139,15 +141,15 @@ export default function RevisionsScreen() {
           {!enRecherche && urgentes.length > 0 && (
             <>
               <View style={styles.sectionRow}>
-                <Text style={styles.sectionTitle}>À réviser aujourd'hui</Text>
+                <Text style={[styles.sectionTitle, { color: T.text }]}>À réviser aujourd'hui</Text>
                 <View style={styles.urgentPill}>
                   <Text style={styles.urgentPillText}>{urgentes.length} sourate{urgentes.length > 1 ? 's' : ''}</Text>
                 </View>
               </View>
-              <View style={styles.urgentBanner}>
+              <View style={[styles.urgentBanner, { backgroundColor: T.cardBg }]}>
                 <Text style={styles.urgentIcon}>🔔</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.urgentBannerTitle}>C'est l'heure de réviser !</Text>
+                  <Text style={[styles.urgentBannerTitle, { color: T.text }]}>C'est l'heure de réviser !</Text>
                   <Text style={styles.urgentBannerSub}>
                     {urgentes.map(s => s.nom).join(' · ')} t'attendent
                   </Text>
@@ -166,20 +168,20 @@ export default function RevisionsScreen() {
           )}
 
           {/* Liste toutes sourates */}
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: T.text }]}>
             {enRecherche ? `Résultats (${resultats.length})` : 'Mes sourates'}
           </Text>
 
           {resultats.length === 0 ? (
             <View style={styles.empty}>
               <Text style={styles.emptyEmoji}>🔍</Text>
-              <Text style={styles.emptyTitle}>Aucune sourate trouvée</Text>
+              <Text style={[styles.emptyTitle, { color: T.text }]}>Aucune sourate trouvée</Text>
               <Text style={styles.emptySub}>Essaie un autre nom ou numéro</Text>
             </View>
           ) : resultats.map((s) => (
             <Pressable
               key={s.id}
-              style={styles.card}
+              style={[styles.card, { backgroundColor: T.cardBg }]}
               onPress={() => router.push({
                 pathname: '/(app)/revision/flashcard',
                 params: { sourateId: s.id },
@@ -193,7 +195,7 @@ export default function RevisionsScreen() {
               {/* Infos */}
               <View style={styles.cardBody}>
                 <View style={styles.cardTop}>
-                  <Text style={styles.cardNom} numberOfLines={1}>{s.nom}</Text>
+                  <Text style={[styles.cardNom, { color: T.text }]} numberOfLines={1}>{s.nom}</Text>
                   <Text style={styles.cardArabe}>{s.arabe}</Text>
                 </View>
                 <View style={styles.cardMeta}>
@@ -208,7 +210,7 @@ export default function RevisionsScreen() {
               {/* Score ring */}
               <View style={styles.cardRight}>
                 <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
-                  <ScoreRing score={s.score} color={s.couleur} />
+                  <ScoreRing score={s.score} color={s.couleur} trackColor={T.isDark ? '#2E2D3F' : '#E6E8ED'} />
                   <Text style={[styles.scoreText, { color: s.couleur }]}>{s.score}%</Text>
                 </View>
                 <Feather name="chevron-right" size={18} color="#C9CDD4" style={{ marginTop: 4 }} />
@@ -224,7 +226,7 @@ export default function RevisionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  screen: { flex: 1 },
   header: { paddingTop: 16, paddingBottom: 28, paddingHorizontal: 24 },
   headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#fff' },
   headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginBottom: 20 },
@@ -238,30 +240,30 @@ const styles = StyleSheet.create({
   body: { padding: 18 },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 14, height: 50,
+    borderRadius: 16, paddingHorizontal: 14, height: 50,
     marginTop: 4, marginBottom: 18,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   searchInput: {
-    flex: 1, fontFamily: 'Nunito_600SemiBold', fontSize: 15, color: '#1B2333',
+    flex: 1, fontFamily: 'Nunito_600SemiBold', fontSize: 15,
     padding: 0,
   },
   empty: { alignItems: 'center', paddingVertical: 50, gap: 8 },
   emptyEmoji: { fontSize: 44 },
-  emptyTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17, color: '#1B2333' },
+  emptyTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17 },
   emptySub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99' },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, color: '#1B2333', marginTop: 6, marginBottom: 10 },
+  sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 6, marginBottom: 10 },
   urgentPill: { backgroundColor: '#FF4B4B', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   urgentPillText: { fontFamily: 'Nunito_700Bold', fontSize: 12, color: '#fff' },
   urgentBanner: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 16,
+    borderRadius: 18, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 12,
     marginBottom: 24,
     shadowColor: '#6B4DFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 3,
   },
   urgentIcon: { fontSize: 30 },
-  urgentBannerTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#1B2333' },
+  urgentBannerTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
   urgentBannerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#8A8F99', marginTop: 2 },
   urgentBtn: {
     backgroundColor: '#6B4DFF', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
@@ -269,7 +271,7 @@ const styles = StyleSheet.create({
   },
   urgentBtnText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, color: '#fff' },
   card: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 16,
+    borderRadius: 18, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
@@ -280,7 +282,7 @@ const styles = StyleSheet.create({
   numText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16 },
   cardBody: { flex: 1, gap: 4 },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  cardNom: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#1B2333', flexShrink: 1 },
+  cardNom: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, flexShrink: 1 },
   cardArabe: { fontFamily: 'Nunito_700Bold', fontSize: 18, color: '#6B4DFF' },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   etatBadge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },

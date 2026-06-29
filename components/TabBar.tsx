@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
+import { useTheme } from '../utils/useTheme';
 
 const META: Record<string, { label: string; icon: keyof typeof Feather.glyphMap; activeColor: string }> = {
   parcours: { label: 'Apprendre', icon: 'home', activeColor: '#2A9E1C' },
@@ -13,8 +14,9 @@ const META: Record<string, { label: string; icon: keyof typeof Feather.glyphMap;
 const ORDER = ['parcours', 'revisions', 'ligues', 'coran', 'profil'];
 
 export default function TabBar({ state, navigation }: BottomTabBarProps) {
+  const T = useTheme();
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, { backgroundColor: T.tabBarBg, borderTopColor: T.tabBarBorder }]}>
       {ORDER.map((name) => {
         const route = state.routes.find((r: { name: string }) => r.name === name);
         if (!route) return null;
@@ -30,15 +32,16 @@ export default function TabBar({ state, navigation }: BottomTabBarProps) {
             <Feather
               name={meta.icon}
               size={23}
-              color={isActive ? meta.activeColor : '#44505F'}
-              style={!isActive && { opacity: 0.55 }}
+              color={isActive ? meta.activeColor : (T.isDark ? '#8E8CB0' : '#44505F')}
+              style={!isActive && { opacity: T.isDark ? 0.8 : 0.55 }}
             />
             <Text
               style={[
                 styles.label,
+                { color: T.textSecondary },
                 isActive
                   ? { color: meta.activeColor, fontFamily: 'Nunito_800ExtraBold' }
-                  : { opacity: 0.55 },
+                  : { opacity: T.isDark ? 0.85 : 0.55 },
               ]}
             >
               {meta.label}
@@ -55,8 +58,6 @@ const styles = StyleSheet.create({
     height: 76,
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#E6E8EC',
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 4,
     paddingBottom: 16,
     paddingTop: 8,

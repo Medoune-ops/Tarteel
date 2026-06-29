@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../../components/StatusBar';
+import { useTheme } from '../../../utils/useTheme';
 
 type Theme = {
   id: string;
@@ -30,9 +31,10 @@ const FAITS = [
 
 export default function CoranScreen() {
   const router = useRouter();
+  const T = useTheme();
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
       <ScrollView showsVerticalScrollIndicator={false}>
 
@@ -51,18 +53,18 @@ export default function CoranScreen() {
         </LinearGradient>
 
         <View style={styles.body}>
-          <Text style={styles.sectionTitle}>Explore les thèmes</Text>
+          <Text style={[styles.sectionTitle, { color: T.text }]}>Explore les thèmes</Text>
           {THEMES.map((t) => (
             <Pressable
               key={t.id}
-              style={styles.card}
+              style={[styles.card, { backgroundColor: T.cardBg }]}
               onPress={() => router.push(t.route as never)}
             >
               <LinearGradient colors={[t.c1, t.c2]} style={styles.cardIcon}>
                 <Text style={styles.cardEmoji}>{t.emoji}</Text>
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitre}>{t.titre}</Text>
+                <Text style={[styles.cardTitre, { color: T.text }]}>{t.titre}</Text>
                 <Text style={styles.cardSous}>{t.sous}</Text>
               </View>
               <Feather name="chevron-right" size={22} color="#C9CDD4" />
@@ -77,7 +79,7 @@ export default function CoranScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  screen: { flex: 1 },
   header: { paddingTop: 16, paddingBottom: 26, paddingHorizontal: 24 },
   headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#fff' },
   headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2, marginBottom: 20 },
@@ -89,14 +91,14 @@ const styles = StyleSheet.create({
   faitVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff' },
   faitLbl: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.8)' },
   body: { padding: 18 },
-  sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, color: '#1B2333', marginTop: 6, marginBottom: 14 },
+  sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 6, marginBottom: 14 },
   card: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 14,
+    borderRadius: 18, padding: 14,
     flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   cardIcon: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   cardEmoji: { fontSize: 28 },
-  cardTitre: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17, color: '#1B2333' },
+  cardTitre: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17 },
   cardSous: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99', marginTop: 2 },
 });

@@ -15,8 +15,23 @@ import {
   ScheherazadeNew_400Regular, ScheherazadeNew_700Bold,
 } from '@expo-google-fonts/scheherazade-new';
 import { preloadSounds } from '../constants/sounds';
+import { useTheme } from '../utils/useTheme';
 
 SplashScreen.preventAutoHideAsync();
+
+function ThemedApp() {
+  const { statusBar } = useTheme();
+  return (
+    <>
+      <StatusBar style={statusBar} />
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Screen name="(onboarding)" />
+        <Stack.Screen name="(setup)" />
+        <Stack.Screen name="(app)" />
+      </Stack>
+    </>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -31,7 +46,6 @@ export default function RootLayout() {
     ScheherazadeNew_700Bold,
   });
 
-  // Précharge les effets sonores dès le lancement → lecture instantanée ensuite.
   useEffect(() => {
     preloadSounds();
   }, []);
@@ -44,12 +58,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-        <Stack.Screen name="(onboarding)" />
-        <Stack.Screen name="(setup)" />
-        <Stack.Screen name="(app)" />
-      </Stack>
+      <ThemedApp />
     </SafeAreaProvider>
   );
 }

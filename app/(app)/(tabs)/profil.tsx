@@ -5,8 +5,9 @@ import { Feather } from '@expo/vector-icons';
 import Otter from '../../../components/Otter';
 import ProgressBar from '../../../components/ProgressBar';
 import { useUserStore } from '../../../store/userStore';
+import { useTheme } from '../../../utils/useTheme';
 
-type Badge = { emoji: string; bg: string; border: string; label: string; route?: Href };
+type Badge = { emoji: string; bg: string; bgDark: string; border: string; label: string; route?: Href };
 
 // Libellé du badge d'objectif de série.
 function streakGoalLabel(streak: number, goal: number | null): string {
@@ -17,20 +18,23 @@ function streakGoalLabel(streak: number, goal: number | null): string {
 
 function buildBadges(streak: number, streakGoal: number | null): Badge[] {
   return [
-    { emoji: '✍️', bg: '#E8E4FF', border: '#6B4DFF', label: 'Alphabet'    },
-    { emoji: '🔥', bg: '#FFE8E8', border: '#FF4B4B', label: streakGoalLabel(streak, streakGoal), route: '/(app)/streak-goal' },
-    { emoji: '🎵', bg: '#F0E8FF', border: '#8A5CF0', label: 'Tajwid'      },
-    { emoji: '📖', bg: '#E2F5E1', border: '#2A9E1C', label: '12 Sourates', route: '/(app)/sourates' },
-    { emoji: '🏆', bg: '#FFF3CD', border: '#E0A02C', label: 'Ligue Or', route: '/(app)/podiums' },
+    { emoji: '✍️', bg: '#E8E4FF', bgDark: '#241F3D', border: '#6B4DFF', label: 'Alphabet'    },
+    { emoji: '🔥', bg: '#FFE8E8', bgDark: '#3A1F26', border: '#FF4B4B', label: streakGoalLabel(streak, streakGoal), route: '/(app)/streak-goal' },
+    { emoji: '🎵', bg: '#F0E8FF', bgDark: '#2A2140', border: '#8A5CF0', label: 'Tajwid'      },
+    { emoji: '📖', bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: '12 Sourates', route: '/(app)/sourates' },
+    { emoji: '🏆', bg: '#FFF3CD', bgDark: '#332A14', border: '#E0A02C', label: 'Ligue Or', route: '/(app)/podiums' },
   ];
 }
 
 export default function ProfilScreen() {
   const router = useRouter();
+  const T = useTheme();
   const logout = useUserStore((s) => s.logout);
   const streak = useUserStore((s) => s.streak);
   const xp = useUserStore((s) => s.xp);
   const streakGoal = useUserStore((s) => s.streakGoal);
+  const sourates = useUserStore((s) => s.sourates);
+  const precision = useUserStore((s) => s.precision);
 
   const badges = buildBadges(streak, streakGoal);
   // Calendrier : 3 semaines centrées autour de la série en cours.
@@ -58,7 +62,7 @@ export default function ProfilScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header gradient */}
         <LinearGradient colors={['#8467FF', '#6B4DFF']} style={styles.header}>
@@ -76,19 +80,19 @@ export default function ProfilScreen() {
 
         <View style={styles.body}>
           {/* Stats bar */}
-          <View style={styles.statsCard}>
+          <View style={[styles.statsCard, { backgroundColor: T.cardBg }]}>
             {[
               { value: xp.toLocaleString('fr-FR'), label: 'XP Total' },
               { value: String(streak), label: 'Jours streak', flame: true },
-              { value: '12', label: 'Sourates' },
-              { value: '94%', label: 'Précision' },
+              { value: String(sourates), label: 'Sourates' },
+              { value: precision > 0 ? `${precision}%` : '—', label: 'Précision' },
             ].map((s, i) => (
               <View key={i} style={styles.statCol}>
                 <View style={styles.statValRow}>
                   {s.flame && <Text style={{ fontSize: 20 }}>🔥</Text>}
-                  <Text style={styles.statVal}>{s.value}</Text>
+                  <Text style={[styles.statVal, { color: T.text }]}>{s.value}</Text>
                 </View>
-                <Text style={styles.statLabel}>{s.label}</Text>
+                <Text style={[styles.statLabel, { color: T.textSecondary }]}>{s.label}</Text>
               </View>
             ))}
           </View>
@@ -100,12 +104,12 @@ export default function ProfilScreen() {
             const inLevel = xp % PER_LEVEL;
             return (
               <>
-                <Text style={styles.sectionTitle}>Progression Niveau {level}</Text>
+                <Text style={[styles.sectionTitle, { color: T.text }]}>Progression Niveau {level}</Text>
                 <View style={styles.levelRow}>
                   <View style={{ flex: 1 }}>
-                    <ProgressBar progress={inLevel / PER_LEVEL} />
+                    <ProgressBar progress={inLevel / PER_LEVEL} bgColor={T.isDark ? '#2A2940' : '#E2E4E9'} />
                   </View>
-                  <Text style={styles.levelText}>
+                  <Text style={[styles.levelText, { color: T.textSecondary }]}>
                     {inLevel.toLocaleString('fr-FR')} / {PER_LEVEL.toLocaleString('fr-FR')} XP
                   </Text>
                 </View>
@@ -114,20 +118,20 @@ export default function ProfilScreen() {
           })()}
 
           {/* Badges */}
-          <Text style={styles.sectionTitle}>Badges</Text>
+          <Text style={[styles.sectionTitle, { color: T.text }]}>Badges</Text>
           <View style={styles.badgeGrid}>
             {badges.map((b, i) => (
               <Pressable
                 key={i}
                 style={({ pressed }) => [
                   styles.badge,
-                  { backgroundColor: b.bg, borderColor: b.border },
+                  { backgroundColor: T.isDark ? b.bgDark : b.bg, borderColor: b.border },
                   b.route && pressed && { opacity: 0.7 },
                 ]}
                 onPress={b.route ? () => router.push(b.route!) : undefined}
               >
                 <Text style={styles.badgeEmoji}>{b.emoji}</Text>
-                <Text style={styles.badgeLabel}>{b.label}</Text>
+                <Text style={[styles.badgeLabel, { color: T.isDark ? b.border : T.text }]}>{b.label}</Text>
                 {b.route && (
                   <View style={styles.badgeArrow}>
                     <Feather name="chevron-right" size={12} color={b.border} />
@@ -139,7 +143,7 @@ export default function ProfilScreen() {
 
           {/* Calendrier */}
           <View style={styles.calTitleRow}>
-            <Text style={styles.sectionTitle}>Calendrier — Série active</Text>
+            <Text style={[styles.sectionTitle, { color: T.text }]}>Calendrier — Série active</Text>
             <Text style={{ fontSize: 20 }}>🔥</Text>
           </View>
           <View style={styles.calGrid}>
@@ -152,19 +156,19 @@ export default function ProfilScreen() {
                   key={d}
                   style={[
                     styles.calCell,
-                    done && styles.calDone,
-                    current && styles.calCurrent,
-                    future && styles.calFuture,
+                    done && [styles.calDone, T.isDark && { backgroundColor: '#173322' }],
+                    current && [styles.calCurrent, T.isDark && { backgroundColor: '#173322' }],
+                    future && [styles.calFuture, { backgroundColor: T.selectorBg }],
                   ]}
                 >
-                  <Text style={[styles.calNum, future ? styles.calNumFuture : styles.calNumDone]}>{d}</Text>
+                  <Text style={[styles.calNum, future ? [styles.calNumFuture, { color: T.textTertiary }] : [styles.calNumDone, T.isDark && { color: '#4ED83A' }]]}>{d}</Text>
                 </View>
               );
             })}
           </View>
 
           {/* Déconnexion */}
-          <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+          <Pressable style={[styles.logoutBtn, { backgroundColor: T.cardBg, borderColor: T.isDark ? '#4A2330' : '#FFD9D9' }]} onPress={handleLogout}>
             <Feather name="log-out" size={20} color="#FF4B4B" />
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
@@ -177,7 +181,7 @@ export default function ProfilScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  screen: { flex: 1 },
   header: { paddingTop: 46, paddingBottom: 30, alignItems: 'center' },
   settingsBtn: { position: 'absolute', top: 54, right: 24 },
   avatar: {
@@ -188,17 +192,17 @@ const styles = StyleSheet.create({
   stars: { flexDirection: 'row', gap: 3, marginTop: 5 },
   body: { padding: 22 },
   statsCard: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 20,
+    borderRadius: 18, padding: 20,
     flexDirection: 'row', justifyContent: 'space-between',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 14, elevation: 2,
   },
   statCol: { alignItems: 'center' },
   statValRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#1B2333' },
-  statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#8A8F99' },
-  sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, color: '#1B2333', marginTop: 24, marginBottom: 10 },
+  statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22 },
+  statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 12 },
+  sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 24, marginBottom: 10 },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  levelText: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#8A8F99' },
+  levelText: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   badge: {
     width: '31.5%', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8,
@@ -206,7 +210,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 4, borderWidth: 1.5,
   },
   badgeEmoji: { fontSize: 30 },
-  badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: '#1B2333', textAlign: 'center' },
+  badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, textAlign: 'center' },
   badgeArrow: { position: 'absolute', top: 6, right: 6 },
   calTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   calGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -216,14 +220,14 @@ const styles = StyleSheet.create({
   },
   calDone: { backgroundColor: '#DEF5E5', borderWidth: 2, borderColor: '#34C724' },
   calCurrent: { backgroundColor: '#DEF5E5', borderWidth: 3, borderColor: '#2A9E1C' },
-  calFuture: { backgroundColor: '#E6E8ED' },
+  calFuture: {},
   calNum: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14 },
   calNumDone: { color: '#2A9E1C' },
-  calNumFuture: { color: '#B7BCC4', fontFamily: 'Nunito_700Bold' },
+  calNumFuture: { fontFamily: 'Nunito_700Bold' },
   logoutBtn: {
     marginTop: 28,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: '#fff', borderRadius: 16, paddingVertical: 16,
+    borderRadius: 16, paddingVertical: 16,
     borderWidth: 1.5, borderColor: '#FFD9D9',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
   },

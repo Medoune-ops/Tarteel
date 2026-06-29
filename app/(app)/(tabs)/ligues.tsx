@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Animated, Easing } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import DeviceStatusBar from '../../../components/StatusBar';
+import { useTheme } from '../../../utils/useTheme';
 
 const TOP3 = [
   { rank: 2, initials: 'SB', name: 'Sarah B.',   xp: 1480, height: 86,  size: 62, colors: ['#C4CCD8', '#9AA4B2'] as const, block: ['#EEF0F4', '#E1E5EC'] as const, accent: '#7A8595', ring: 0.78 },
@@ -48,6 +49,7 @@ function Ring({ size, ratio, color }: { size: number; ratio: number; color: stri
 }
 
 export default function LiguesScreen() {
+  const T = useTheme();
   // Animation d'entrée des lignes du classement (cascade).
   const rows = useRef(PARTICIPANTS.map(() => new Animated.Value(0))).current;
   const podium = useRef(TOP3.map(() => new Animated.Value(0))).current;
@@ -68,13 +70,13 @@ export default function LiguesScreen() {
   }, []);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Ligues</Text>
-          <View style={styles.infoBtn}>
+          <Text style={[styles.title, { color: T.text }]}>Ligues</Text>
+          <View style={[styles.infoBtn, { backgroundColor: T.cardBg }]}>
             <Feather name="help-circle" size={20} color="#7A828F" />
           </View>
         </View>
@@ -163,16 +165,16 @@ export default function LiguesScreen() {
 
         {/* Bandeau promotion */}
         <View style={styles.zoneTag}>
-          <View style={styles.zoneLine} />
-          <View style={[styles.zonePill, { backgroundColor: '#E3F7E6' }]}>
+          <View style={[styles.zoneLine, T.isDark && { backgroundColor: '#1E4026' }]} />
+          <View style={[styles.zonePill, { backgroundColor: T.isDark ? '#173322' : '#E3F7E6' }]}>
             <Feather name="chevrons-up" size={13} color="#2A9E1C" />
-            <Text style={[styles.zoneText, { color: '#2A9E1C' }]}>ZONE DE PROMOTION</Text>
+            <Text style={[styles.zoneText, { color: T.isDark ? '#4ED83A' : '#2A9E1C' }]}>ZONE DE PROMOTION</Text>
           </View>
-          <View style={styles.zoneLine} />
+          <View style={[styles.zoneLine, T.isDark && { backgroundColor: '#1E4026' }]} />
         </View>
 
         {/* Liste participants (animée) */}
-        <View style={styles.list}>
+        <View style={[styles.list, { backgroundColor: T.cardBg }]}>
           {PARTICIPANTS.map((p, i) => (
             <Animated.View
               key={p.rank}
@@ -181,25 +183,25 @@ export default function LiguesScreen() {
                 transform: [{ translateX: rows[i].interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
               }}
             >
-              <View style={[styles.listRow, p.me && styles.listRowMe, i > 0 && !p.me && !PARTICIPANTS[i - 1].me && styles.listBorder]}>
+              <View style={[styles.listRow, p.me && [styles.listRowMe, T.isDark && { backgroundColor: '#241F3D' }], i > 0 && !p.me && !PARTICIPANTS[i - 1].me && [styles.listBorder, { borderTopColor: T.divider }]]}>
                 <Text style={[styles.rankNum, p.me && { color: '#6B4DFF' }, p.releg && { color: '#FF4B4B' }]}>{p.rank}</Text>
                 <View style={[styles.avatar, { backgroundColor: p.me ? '#6B4DFF' : '#C9C3B4' }]}>
                   <Text style={styles.avatarText}>{p.initials}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.name, p.me && { color: '#1B2333', fontFamily: 'Nunito_800ExtraBold' }]}>{p.name}</Text>
+                  <Text style={[styles.name, { color: T.text }, p.me && { color: T.text, fontFamily: 'Nunito_800ExtraBold' }]}>{p.name}</Text>
                   {p.releg && <Text style={styles.relegText}>Zone de relégation</Text>}
                 </View>
-                <View style={[styles.xpRow, p.me && styles.xpRowMe]}>
+                <View style={[styles.xpRow, p.me && [styles.xpRowMe, T.isDark && { backgroundColor: '#15131F' }]]}>
                   <Feather name="zap" size={15} color={p.me ? '#6B4DFF' : '#9AA0AA'} />
                   <Text style={[styles.xpText, { color: p.me ? '#6B4DFF' : '#6B7280' }]}>{p.xp}</Text>
                 </View>
               </View>
 
               {PARTICIPANTS[i + 1]?.releg && (
-                <View style={styles.zoneTagInline}>
-                  <View style={[styles.zoneLine, { backgroundColor: '#FBD5D5' }]} />
-                  <View style={[styles.zonePill, { backgroundColor: '#FDE8E8' }]}>
+                <View style={[styles.zoneTagInline, { backgroundColor: T.cardBg }]}>
+                  <View style={[styles.zoneLine, { backgroundColor: T.isDark ? '#4A2330' : '#FBD5D5' }]} />
+                  <View style={[styles.zonePill, { backgroundColor: T.isDark ? '#3A1F26' : '#FDE8E8' }]}>
                     <Feather name="chevrons-down" size={13} color="#FF4B4B" />
                     <Text style={[styles.zoneText, { color: '#FF4B4B' }]}>ZONE DE RELÉGATION</Text>
                   </View>
@@ -233,12 +235,12 @@ export default function LiguesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  screen: { flex: 1 },
   content: { paddingHorizontal: 22, paddingTop: 10 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#1B2333' },
+  title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30 },
   infoBtn: {
-    width: 42, height: 42, borderRadius: 21, backgroundColor: '#fff',
+    width: 42, height: 42, borderRadius: 21,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
@@ -289,14 +291,14 @@ const styles = StyleSheet.create({
   zoneText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, letterSpacing: 0.5 },
 
   // Liste
-  list: { backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 4 },
+  list: { borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 4 },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
   listRowMe: { backgroundColor: '#EFEBFF', borderLeftWidth: 4, borderLeftColor: '#6B4DFF' },
-  listBorder: { borderTopWidth: 1, borderTopColor: '#F0F1F4' },
+  listBorder: { borderTopWidth: 1 },
   rankNum: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#9AA0AA', width: 20, textAlign: 'center' },
   avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
-  name: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#1B2333' },
+  name: { fontFamily: 'Nunito_700Bold', fontSize: 15 },
   relegText: { fontFamily: 'Nunito_700Bold', fontSize: 12, color: '#FF4B4B', marginTop: 1 },
   xpRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   xpRowMe: { backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 },

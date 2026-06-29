@@ -4,11 +4,10 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 const AVANTAGES = [
-  { icon: 'slash' as const,    titre: 'Sans publicité',        desc: 'Apprends sans interruption' },
-  { icon: 'heart' as const,    titre: 'Vies illimitées',       desc: 'Ne sois plus jamais bloqué' },
+  { icon: 'slash' as const,       titre: 'Sans publicité',        desc: 'Apprends sans interruption' },
+  { icon: 'heart' as const,       titre: 'Vies illimitées',       desc: 'Ne sois plus jamais bloqué' },
   { icon: 'bar-chart-2' as const, titre: 'Statistiques avancées', desc: 'Suis ta progression en détail' },
-  { icon: 'download' as const, titre: 'Mode hors-ligne',        desc: 'Révise même sans connexion' },
-  { icon: 'zap' as const,      titre: 'XP doublés',            desc: 'Progresse deux fois plus vite' },
+  { icon: 'zap' as const,         titre: 'XP doublés',            desc: 'Progresse deux fois plus vite' },
 ];
 
 export const PLANS = [

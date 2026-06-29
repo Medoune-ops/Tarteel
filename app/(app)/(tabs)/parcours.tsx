@@ -11,6 +11,8 @@ import Svg, { Rect, Path, Circle, Ellipse, Line } from 'react-native-svg';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { MosqueIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
+import { useTheme } from '../../../utils/useTheme';
+import type { ThemeColors } from '../../../constants/colors';
 import {
   PARCOURS_SECTIONS,
   type ParcoursNode,
@@ -64,8 +66,8 @@ function IconPen({ size = 48 }: { size?: number }) {
   );
 }
 
-function IconNote({ size = 48, locked = false }: { size?: number; locked?: boolean }) {
-  const col = locked ? '#9AA0AA' : '#fff';
+function IconNote({ size = 48, locked = false, lockedColor = '#9AA0AA' }: { size?: number; locked?: boolean; lockedColor?: string }) {
+  const col = locked ? lockedColor : '#fff';
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
       {/* hampe */}
@@ -82,8 +84,8 @@ function IconNote({ size = 48, locked = false }: { size?: number; locked?: boole
   );
 }
 
-function IconCrescent({ size = 48, locked = false }: { size?: number; locked?: boolean }) {
-  const col = locked ? '#9AA0AA' : '#fff';
+function IconCrescent({ size = 48, locked = false, lockedColor = '#9AA0AA' }: { size?: number; locked?: boolean; lockedColor?: string }) {
+  const col = locked ? lockedColor : '#fff';
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
       {/* grand croissant bien visible */}
@@ -96,8 +98,8 @@ function IconCrescent({ size = 48, locked = false }: { size?: number; locked?: b
   );
 }
 
-function IconMoon({ size = 48, locked = false }: { size?: number; locked?: boolean }) {
-  const col = locked ? '#9AA0AA' : '#fff';
+function IconMoon({ size = 48, locked = false, lockedColor = '#9AA0AA' }: { size?: number; locked?: boolean; lockedColor?: string }) {
+  const col = locked ? lockedColor : '#fff';
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
       {/* croissant */}
@@ -110,8 +112,8 @@ function IconMoon({ size = 48, locked = false }: { size?: number; locked?: boole
   );
 }
 
-function IconTrophy({ size = 48, locked = false }: { size?: number; locked?: boolean }) {
-  const col = locked ? '#9AA0AA' : '#fff';
+function IconTrophy({ size = 48, locked = false, lockedColor = '#9AA0AA' }: { size?: number; locked?: boolean; lockedColor?: string }) {
+  const col = locked ? lockedColor : '#fff';
   const shine = locked ? '#B0B8C4' : '#ffffffcc';
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
@@ -132,8 +134,8 @@ function IconTrophy({ size = 48, locked = false }: { size?: number; locked?: boo
   );
 }
 
-function Dashed() {
-  return <View style={styles.dashed} />;
+function Dashed({ color }: { color: string }) {
+  return <View style={[styles.dashed, { borderColor: color }]} />;
 }
 
 function CompletedNode({ align, icon }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen' }) {
@@ -151,18 +153,23 @@ function CompletedNode({ align, icon }: { align: 'left' | 'right' | 'center'; ic
   );
 }
 
-function LockedNode({ align, icon = 'kaaba' }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'note' | 'moon' | 'trophy' | 'crescent' }) {
+function LockedNode({ align, icon = 'kaaba', theme }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'note' | 'moon' | 'trophy' | 'crescent'; theme: ThemeColors }) {
+  const lc = theme.lockedIcon;
   const renderIcon = () => {
-    if (icon === 'note')     return <IconNote     size={52} locked />;
-    if (icon === 'moon')     return <IconMoon     size={52} locked />;
-    if (icon === 'trophy')   return <IconTrophy   size={52} locked />;
-    if (icon === 'crescent') return <IconCrescent size={52} locked />;
+    if (icon === 'note')     return <IconNote     size={52} locked lockedColor={lc} />;
+    if (icon === 'moon')     return <IconMoon     size={52} locked lockedColor={lc} />;
+    if (icon === 'trophy')   return <IconTrophy   size={52} locked lockedColor={lc} />;
+    if (icon === 'crescent') return <IconCrescent size={52} locked lockedColor={lc} />;
     if (icon === 'mosque')   return <MosqueIcon   size={72} locked />;
     return <Text style={styles.kaabaEmojiLocked}>🕋</Text>;
   };
   return (
     <View style={[styles.nodeRow, alignStyle(align)]}>
-      <View style={styles.locked}>{renderIcon()}</View>
+      <View style={[styles.locked, {
+        backgroundColor: theme.lockedBg,
+        borderColor: theme.lockedBorder,
+        borderBottomColor: theme.lockedBorderDark,
+      }]}>{renderIcon()}</View>
     </View>
   );
 }
@@ -195,9 +202,9 @@ function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?
 }
 
 // ─── Panorama de La Mecque en arrière-plan ────────────────────────────────────
-function MeccaSkyline({ width, height }: { width: number; height: number }) {
-  const c = '#B0B8C4';   // couleur des traits — gris doux
-  const op = 0.22;       // opacité globale très légère
+function MeccaSkyline({ width, height, color, shadowColor, opacity }: { width: number; height: number; color: string; shadowColor: string; opacity: number }) {
+  const c = color;       // couleur des traits
+  const op = opacity;    // opacité globale
 
   // viewBox 400×700 — on étire sur toute la surface
   return (
@@ -218,7 +225,7 @@ function MeccaSkyline({ width, height }: { width: number; height: number }) {
       {/* disque principal */}
       <Circle cx={340} cy={90} r={44} fill={c} opacity={0.72} />
       {/* ombre (cratère lunaire simulé — disque décalé pour effet croissant partiel) */}
-      <Circle cx={354} cy={82} r={38} fill="#EDEDF2" opacity={0.85} />
+      <Circle cx={354} cy={82} r={38} fill={shadowColor} opacity={0.85} />
       {/* cratères légers */}
       <Circle cx={318} cy={70}  r={5}   fill={c} opacity={0.25} />
       <Circle cx={326} cy={100} r={3.5} fill={c} opacity={0.20} />
@@ -443,12 +450,12 @@ function alignStyle(align: 'left' | 'right' | 'center') {
 }
 
 /** Dispatcher : rend le bon nœud selon son état (completed / active / locked). */
-function RenderNode({ node, onPress }: { node: ParcoursNode; onPress: () => void }) {
+function RenderNode({ node, onPress, theme }: { node: ParcoursNode; onPress: () => void; theme: ThemeColors }) {
   if (node.state === 'active') return <ActiveNode label={node.label} onPress={onPress} />;
   if (node.state === 'completed') {
     return <CompletedNode align={node.align} icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'} />;
   }
-  return <LockedNode align={node.align} icon={node.icon as 'note' | 'moon' | 'trophy' | 'kaaba' | 'crescent' | 'mosque'} />;
+  return <LockedNode align={node.align} icon={node.icon as 'note' | 'moon' | 'trophy' | 'kaaba' | 'crescent' | 'mosque'} theme={theme} />;
 }
 
 /** Carte de titre d'une section + ses nœuds reliés par des pointillés. */
@@ -456,10 +463,12 @@ function SectionBlock({
   section,
   index,
   onLessonPress,
+  theme,
 }: {
   section: ParcoursSection;
   index: number;
   onLessonPress: (n: ParcoursNode) => void;
+  theme: ThemeColors;
 }) {
   const done = section.nodes.filter((n) => n.state === 'completed').length;
   const total = section.nodes.length;
@@ -504,8 +513,8 @@ function SectionBlock({
       <View style={styles.path}>
         {section.nodes.map((node, i) => (
           <View key={node.id} style={{ alignItems: 'center' }}>
-            <RenderNode node={node} onPress={() => onLessonPress(node)} />
-            {i < section.nodes.length - 1 && <Dashed />}
+            <RenderNode node={node} onPress={() => onLessonPress(node)} theme={theme} />
+            {i < section.nodes.length - 1 && <Dashed color={theme.dashedLine} />}
           </View>
         ))}
       </View>
@@ -564,6 +573,7 @@ const chestStyles = StyleSheet.create({
 
 export default function ParcoursScreen() {
   const router = useRouter();
+  const T = useTheme();
   const { streak, xp, hearts, isPremium, syncHearts } = useUserStore();
   const { width, height } = useWindowDimensions();
 
@@ -584,15 +594,21 @@ export default function ParcoursScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       {/* Panorama La Mecque en fond semi-transparent */}
-      <MeccaSkyline width={width} height={height} />
-      <View style={styles.statusWrap}>
+      <MeccaSkyline
+        width={width}
+        height={height}
+        color={T.skyline}
+        shadowColor={T.skylineShadow}
+        opacity={T.isDark ? 0.3 : 0.22}
+      />
+      <View style={[styles.statusWrap, { backgroundColor: T.cardBg }]}>
         <DeviceStatusBar />
       </View>
 
       {/* Stats bar */}
-      <View style={styles.statsBar}>
+      <View style={[styles.statsBar, { backgroundColor: T.cardBg }]}>
         <View style={styles.stat}>
           <Text style={{ fontSize: 22 }}>🔥</Text>
           <Text style={[styles.statText, { color: '#F0820C' }]}>{streak}</Text>
@@ -615,6 +631,7 @@ export default function ParcoursScreen() {
             section={section}
             index={index}
             onLessonPress={openLesson}
+            theme={T}
           />
         ))}
         <View style={{ height: 40 }} />
@@ -624,11 +641,11 @@ export default function ParcoursScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EDEDF2' },
-  statusWrap: { backgroundColor: '#fff' },
+  screen: { flex: 1 },
+  statusWrap: {},
   statsBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 26, paddingVertical: 14, backgroundColor: '#fff',
+    paddingHorizontal: 26, paddingVertical: 14,
   },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 21 },

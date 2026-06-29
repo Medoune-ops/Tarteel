@@ -15,6 +15,8 @@ interface UserState {
   streak: number;
   xp: number;
   hearts: number;
+  sourates: number;
+  precision: number;
   /** Timestamp (ms) de la dernière perte de cœur — base de la régénération. null si plein. */
   lastHeartLossAt: number | null;
   isPremium: boolean;
@@ -22,6 +24,8 @@ interface UserState {
   objectif: 'lire' | 'hifz' | 'tafsir' | 'complet';
   /** Langue de l'interface (code ISO). */
   language: 'fr' | 'en' | 'ar';
+  /** Thème visuel. */
+  theme: 'light' | 'dark' | 'system';
   /** Objectif de série fixé par l'utilisateur (null = aucun objectif en cours). */
   streakGoal: number | null;
   /** Date (YYYY-MM-DD) du dernier coffre quotidien réclamé (null = jamais). */
@@ -35,6 +39,7 @@ interface UserState {
   setLevel: (v: UserState['level']) => void;
   setObjectif: (v: UserState['objectif']) => void;
   setLanguage: (v: UserState['language']) => void;
+  setTheme: (v: UserState['theme']) => void;
   /** Fixe (ou remplace) l'objectif de série. */
   setStreakGoal: (days: number) => void;
   /**
@@ -85,24 +90,29 @@ interface UserState {
     isPremium: boolean;
     currentLesson: number;
     lastHeartLossAt: number | null;
+    sourates?: number;
+    precision?: number;
   }) => void;
   logout: () => void;
 }
 
 const initialState = {
-  streak: 15,
-  xp: 1240,
+  streak: 0,
+  xp: 0,
   hearts: MAX_HEARTS,
+  sourates: 0,
+  precision: 0,
   lastHeartLossAt: null as number | null,
   isPremium: false,
   level: 'debutant' as const,
   objectif: 'hifz' as const,
   language: 'fr' as const,
-  streakGoal: 30 as number | null,
+  theme: 'system' as const,
+  streakGoal: null as number | null,
   lastChestDay: null as string | null,
   claimedPodiums: [] as string[],
   dailyMinutes: 10,
-  currentLesson: 4,
+  currentLesson: 1,
   onboardingDone: false,
 };
 
@@ -133,6 +143,7 @@ export const useUserStore = create<UserState>()(
       setLevel: (level) => set({ level }),
       setObjectif: (objectif) => set({ objectif }),
       setLanguage: (language) => set({ language }),
+      setTheme: (theme) => set({ theme }),
 
       setStreakGoal: (days) => set({ streakGoal: days }),
 
@@ -236,6 +247,8 @@ export const useUserStore = create<UserState>()(
           lastHeartLossAt: next.lastHeartLossAt,
           isPremium: data.isPremium,
           currentLesson: data.currentLesson,
+          ...(data.sourates  != null && { sourates:  data.sourates  }),
+          ...(data.precision != null && { precision: data.precision }),
         });
         syncWidgetData({
           streak: data.streak,

@@ -157,7 +157,7 @@ export default function SignupScreen() {
               </Pressable>
             </>
           ) : (
-            <Pressable style={styles.forgot} hitSlop={6}>
+            <Pressable style={styles.forgot} hitSlop={6} onPress={() => router.push('/(onboarding)/forgot-password')}>
               <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
             </Pressable>
           )}
