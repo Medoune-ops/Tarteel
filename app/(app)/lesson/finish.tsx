@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Otter from '../../../components/Otter';
 import Confetti from '../../../components/Confetti';
+import { playSound } from '../../../constants/sounds';
 
 const LEVEL_TARGET = 0.62; // 62 %
 
@@ -38,6 +39,11 @@ export default function FinishScreen() {
       600,
       withTiming(LEVEL_TARGET, { duration: 900, easing: Easing.out(Easing.cubic) }),
     );
+
+    // Fanfare de fin à l'apparition + petit "tick" quand la barre de niveau démarre.
+    playSound('finish');
+    const tick = setTimeout(() => playSound('progress'), 620);
+    return () => clearTimeout(tick);
   }, []);
 
   const otterStyle = useAnimatedStyle(() => ({

@@ -6,6 +6,7 @@ import DeviceStatusBar from '../../components/StatusBar';
 import SegmentProgress from '../../components/SegmentProgress';
 import OptionTile from '../../components/OptionTile';
 import { useUserStore } from '../../store/userStore';
+import { playSound } from '../../constants/sounds';
 
 const OPTIONS: {
   id: number; icon: keyof typeof Feather.glyphMap; iconColor: string; iconBg: string;
@@ -49,7 +50,7 @@ export default function TempsScreen() {
       <View style={styles.footer}>
         <Pressable
           style={styles.cta}
-          onPress={() => { setDailyMinutes(selected); router.push('/(setup)/plan'); }}
+          onPress={() => { playSound('start'); setDailyMinutes(selected); router.push('/(setup)/plan'); }}
         >
           <Text style={styles.ctaLabel}>C'est parti ! 🚀</Text>
         </Pressable>

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import Animated, { SlideInRight, SlideOutLeft, Easing } from 'react-native-reanimated';
 import LessonHeader from '../../../components/LessonHeader';
 import { useUserStore } from '../../../store/userStore';
 import {
@@ -71,25 +72,33 @@ export default function LessonPlayScreen() {
     <View style={styles.screen}>
       <LessonHeader progress={progress} progressColor={phase === 'wrong' ? '#FF4B4B' : '#34C724'} />
 
-      {step.type === 'discovery' && (
-        <DiscoveryView step={step} onContinue={goNext} />
-      )}
-      {step.type === 'written' && (
-        <WrittenView
-          step={step}
-          phase={phase}
-          onValidate={onTestResult}
-          onContinue={onContinueAfterFeedback}
-        />
-      )}
-      {step.type === 'voice' && (
-        <VoiceView
-          step={step}
-          phase={phase}
-          onValidate={onTestResult}
-          onContinue={onContinueAfterFeedback}
-        />
-      )}
+      {/* La key={index} force le re-montage à chaque étape → déclenche le glissement. */}
+      <Animated.View
+        key={index}
+        style={styles.stepWrap}
+        entering={SlideInRight.duration(280).easing(Easing.out(Easing.cubic))}
+        exiting={SlideOutLeft.duration(220).easing(Easing.in(Easing.cubic))}
+      >
+        {step.type === 'discovery' && (
+          <DiscoveryView step={step} onContinue={goNext} />
+        )}
+        {step.type === 'written' && (
+          <WrittenView
+            step={step}
+            phase={phase}
+            onValidate={onTestResult}
+            onContinue={onContinueAfterFeedback}
+          />
+        )}
+        {step.type === 'voice' && (
+          <VoiceView
+            step={step}
+            phase={phase}
+            onValidate={onTestResult}
+            onContinue={onContinueAfterFeedback}
+          />
+        )}
+      </Animated.View>
     </View>
   );
 }
@@ -275,6 +284,7 @@ function Footer({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  stepWrap: { flex: 1 },
   body: { flex: 1 },
   content: { paddingHorizontal: 24, paddingTop: 12, alignItems: 'center' },
 

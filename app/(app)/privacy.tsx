@@ -81,8 +81,6 @@ export default function PrivacyScreen() {
         {/* Actions sur le compte */}
         <Text style={styles.sectionLabel}>MON COMPTE</Text>
         <View style={styles.card}>
-          <Row iconBg="#6B4DFF" icon="download" title="Télécharger mes données" subtitle="Recevoir une copie par email" onPress={() => {}} />
-          <View style={styles.divider} />
           <Row iconBg="#FF4B4B" icon="trash-2" title="Supprimer mon compte" subtitle="Effacer définitivement mes données" onPress={supprimerCompte} danger />
         </View>
 

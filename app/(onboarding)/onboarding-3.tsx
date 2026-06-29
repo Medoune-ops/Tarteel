@@ -1,6 +1,5 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 
 export default function Onboarding3() {
@@ -12,7 +11,7 @@ export default function Onboarding3() {
         <Pressable style={styles.skip} onPress={() => router.replace('/(onboarding)/signup')}>
           <Text style={[styles.skipText, { color: '#A7C4B2' }]}>Passer</Text>
         </Pressable>
-        <Feather name="award" size={50} color="#E0A02C" style={{ marginBottom: 12 }} />
+        <Text style={{ fontSize: 50, marginBottom: 12 }}>🚀</Text>
         <Otter size={150} />
       </View>
 

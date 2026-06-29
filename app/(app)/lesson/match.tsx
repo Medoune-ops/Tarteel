@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
+import { correctFeedback, wrongFeedback } from '../../../constants/sounds';
 
 const LEFT = [
   { id: 'allah', text: 'اللَّهِ', ring: '#34C724' },
@@ -32,7 +33,13 @@ export default function MatchScreen() {
   const pickRight = (id: string) => {
     if (matched.has(id)) return;
     if (selectedLeft && selectedLeft === id) {
+      // bon appariement → son de succès
+      correctFeedback();
       setMatched((m) => new Set(m).add(id));
+      setSelectedLeft(null);
+    } else if (selectedLeft) {
+      // mauvais appariement → son + petit vibrement
+      wrongFeedback();
       setSelectedLeft(null);
     } else {
       setSelectedLeft(null);

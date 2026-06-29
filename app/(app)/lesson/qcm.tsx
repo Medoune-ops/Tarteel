@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
+import { correctFeedback, wrongFeedback } from '../../../constants/sounds';
 
 const OPTIONS = [
   { id: 'A', text: "Le Créateur de l'univers" },
@@ -11,9 +12,17 @@ const OPTIONS = [
   { id: 'D', text: 'Le Guide vers la vérité' },
 ];
 
+const CORRECT_ID = 'C';
+
 export default function QcmScreen() {
   const router = useRouter();
   const [answer, setAnswer] = useState<string>('C');
+
+  const choose = (id: string) => {
+    setAnswer(id);
+    if (id === CORRECT_ID) correctFeedback();
+    else wrongFeedback();
+  };
 
   return (
     <View style={styles.screen}>
@@ -38,7 +47,7 @@ export default function QcmScreen() {
                 styles.option,
                 active ? styles.optionActive : styles.optionInactive,
               ]}
-              onPress={() => setAnswer(o.id)}
+              onPress={() => choose(o.id)}
             >
               <View style={[styles.badge, { backgroundColor: active ? '#34C724' : '#D7DBE0' }]}>
                 <Text style={styles.badgeText}>{o.id}</Text>

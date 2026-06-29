@@ -16,12 +16,15 @@ interface UserState {
   isPremium: boolean;
   level: 'debutant' | 'alphabet' | 'lent' | 'fluent';
   objectif: 'lire' | 'hifz' | 'tafsir' | 'complet';
+  /** Langue de l'interface (code ISO). */
+  language: 'fr' | 'en' | 'ar';
   dailyMinutes: number;
   currentLesson: number;
   onboardingDone: boolean;
 
   setLevel: (v: UserState['level']) => void;
   setObjectif: (v: UserState['objectif']) => void;
+  setLanguage: (v: UserState['language']) => void;
   setDailyMinutes: (v: number) => void;
   completeOnboarding: () => void;
   /** Ajoute des XP (×2 si premium). */
@@ -46,6 +49,7 @@ const initialState = {
   isPremium: false,
   level: 'debutant' as const,
   objectif: 'hifz' as const,
+  language: 'fr' as const,
   dailyMinutes: 10,
   currentLesson: 4,
   onboardingDone: false,
@@ -77,6 +81,7 @@ export const useUserStore = create<UserState>()(
 
       setLevel: (level) => set({ level }),
       setObjectif: (objectif) => set({ objectif }),
+      setLanguage: (language) => set({ language }),
       setDailyMinutes: (dailyMinutes) => set({ dailyMinutes }),
       completeOnboarding: () => set({ onboardingDone: true }),
 

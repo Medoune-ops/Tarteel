@@ -3,8 +3,6 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useUserStore } from '../../store/userStore';
-
 const AVANTAGES = [
   { icon: 'slash' as const,    titre: 'Sans publicité',        desc: 'Apprends sans interruption' },
   { icon: 'heart' as const,    titre: 'Vies illimitées',       desc: 'Ne sois plus jamais bloqué' },
@@ -13,7 +11,7 @@ const AVANTAGES = [
   { icon: 'zap' as const,      titre: 'XP doublés',            desc: 'Progresse deux fois plus vite' },
 ];
 
-const PLANS = [
+export const PLANS = [
   { id: 'annuel',  titre: 'Annuel',  prix: '15,24 €', detail: '1,27 €/mois', badge: 'ÉCONOMISE 17%', best: true },
   { id: 'mensuel', titre: 'Mensuel', prix: '1,52 €',  detail: 'par mois',    badge: null,            best: false },
 ];
@@ -21,12 +19,10 @@ const PLANS = [
 export default function SubscriptionScreen() {
   const router = useRouter();
   const [plan, setPlan] = useState('annuel');
-  const setPremium = useUserStore((s) => s.setPremium);
 
-  // Pour l'instant (pas de paiement réel), l'essai active directement le premium.
-  const startPremium = () => {
-    setPremium(true);
-    router.replace('/(app)/(tabs)/parcours');
+  // On passe l'offre choisie à l'écran de paiement.
+  const goToPayment = () => {
+    router.push({ pathname: '/(app)/payment-method', params: { plan } });
   };
 
   return (
@@ -87,7 +83,7 @@ export default function SubscriptionScreen() {
           })}
 
           {/* CTA */}
-          <Pressable style={styles.cta} onPress={startPremium}>
+          <Pressable style={styles.cta} onPress={goToPayment}>
             <Text style={styles.ctaText}>Commencer l'essai gratuit de 7 jours</Text>
           </Pressable>
           <Text style={styles.ctaNote}>

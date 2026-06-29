@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import LessonHeader from '../../../components/LessonHeader';
+import { playSound } from '../../../constants/sounds';
 
 // Mots disponibles (couleurs pastel selon le design)
 const WORDS = [
@@ -44,7 +45,7 @@ export default function ArrangeScreen() {
             <Pressable
               key={w.id}
               style={[styles.wordTile, { backgroundColor: w.bg, borderColor: w.ring }]}
-              onPress={() => setPlaced((p) => [...p, w.id])}
+              onPress={() => { playSound('progress'); setPlaced((p) => [...p, w.id]); }}
             >
               <Text style={styles.wordText}>{w.text}</Text>
             </Pressable>
@@ -55,7 +56,7 @@ export default function ArrangeScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={() => router.push('/(app)/lesson/match')}>
+        <Pressable style={styles.cta} onPress={() => { playSound('correct'); router.push('/(app)/lesson/match'); }}>
           <Text style={styles.ctaLabel}>Vérifier</Text>
         </Pressable>
       </View>

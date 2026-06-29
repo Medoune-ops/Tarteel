@@ -14,6 +14,7 @@ import {
 import {
   ScheherazadeNew_400Regular, ScheherazadeNew_700Bold,
 } from '@expo-google-fonts/scheherazade-new';
+import { preloadSounds } from '../constants/sounds';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +30,11 @@ export default function RootLayout() {
     ScheherazadeNew_400Regular,
     ScheherazadeNew_700Bold,
   });
+
+  // Précharge les effets sonores dès le lancement → lecture instantanée ensuite.
+  useEffect(() => {
+    preloadSounds();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync();

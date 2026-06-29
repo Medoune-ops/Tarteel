@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
 import { useUserStore } from '../../../store/userStore';
+import { correctFeedback, wrongFeedback } from '../../../constants/sounds';
 
 const WORDS_OK = ['بِسْمِ', 'اللَّهِ', 'الرَّحْمَٰنِ', 'الرَّحِيمِ'];
 
@@ -16,6 +17,9 @@ export default function FeedbackScreen() {
 }
 
 function FeedbackOk({ router }: { router: ReturnType<typeof useRouter> }) {
+  // Carillon + vibration de réussite à l'apparition de l'écran.
+  useEffect(() => { correctFeedback(); }, []);
+
   return (
     <View style={styles.screen}>
       <LessonHeader progress={1} />
@@ -69,6 +73,7 @@ function FeedbackBad({ router }: { router: ReturnType<typeof useRouter> }) {
   useEffect(() => {
     if (applied.current) return;
     applied.current = true;
+    wrongFeedback();
     setHeartsLeft(loseHeart());
   }, []);
 

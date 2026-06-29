@@ -4,6 +4,13 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import Toggle from '../../components/Toggle';
+import { useUserStore } from '../../store/userStore';
+
+const LANGUES = {
+  fr: { drapeau: '🇫🇷', nom: 'Français' },
+  en: { drapeau: '🇬🇧', nom: 'Anglais' },
+  ar: { drapeau: '🇸🇦', nom: 'Arabe' },
+} as const;
 
 function Row({
   iconBg, icon, title, subtitle, right, onPress,
@@ -28,6 +35,8 @@ function Row({
 export default function SettingsScreen() {
   const router = useRouter();
   const [reminder, setReminder] = useState(true);
+  const language = useUserStore((s) => s.language);
+  const langue = LANGUES[language];
 
   return (
     <View style={styles.screen}>
@@ -120,6 +129,19 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* LANGUE */}
+        <Text style={styles.sectionLabel}>LANGUE</Text>
+        <View style={styles.card}>
+          <Row
+            iconBg="#2C9CE0"
+            icon="globe"
+            title="Langue de l'application"
+            subtitle="Interface et menus"
+            right={<Text style={styles.langueValue}>{langue.drapeau}  {langue.nom} ›</Text>}
+            onPress={() => router.push('/(app)/langue')}
+          />
+        </View>
+
         {/* APPARENCE */}
         <Text style={styles.sectionLabel}>APPARENCE</Text>
         <View style={[styles.card, styles.singleRow]}>
@@ -186,6 +208,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#F0F1F4' },
   chevron: { fontSize: 20, color: '#C2C6CE' },
   rightText: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#8A8F99' },
+  langueValue: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#6B4DFF' },
   themeSwatches: { flexDirection: 'row', gap: 6 },
   swatch: { width: 26, height: 26, borderRadius: 7 },
   premiumCard: {
