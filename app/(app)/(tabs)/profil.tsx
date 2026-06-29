@@ -1,24 +1,43 @@
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../../components/Otter';
 import ProgressBar from '../../../components/ProgressBar';
 import { useUserStore } from '../../../store/userStore';
 
-const BADGES = [
-  { emoji: '✍️', bg: '#E8E4FF', border: '#6B4DFF', label: 'Alphabet'    },
-  { emoji: '🔥', bg: '#FFE8E8', border: '#FF4B4B', label: '7 jours'     },
-  { emoji: '🎵', bg: '#F0E8FF', border: '#8A5CF0', label: 'Tajwid'      },
-  { emoji: '📖', bg: '#E2F5E1', border: '#2A9E1C', label: '10 Sourates' },
-  { emoji: '🏆', bg: '#FFF3CD', border: '#E0A02C', label: 'Ligue Or'    },
-];
+type Badge = { emoji: string; bg: string; border: string; label: string; route?: Href };
 
-const DAYS = Array.from({ length: 21 }, (_, i) => i + 1);
+// Libellé du badge d'objectif de série.
+function streakGoalLabel(streak: number, goal: number | null): string {
+  if (goal == null) return 'Fixer un défi';
+  if (streak >= goal) return '🎯 Atteint !';
+  return `${streak}/${goal} j`;
+}
+
+function buildBadges(streak: number, streakGoal: number | null): Badge[] {
+  return [
+    { emoji: '✍️', bg: '#E8E4FF', border: '#6B4DFF', label: 'Alphabet'    },
+    { emoji: '🔥', bg: '#FFE8E8', border: '#FF4B4B', label: streakGoalLabel(streak, streakGoal), route: '/(app)/streak-goal' },
+    { emoji: '🎵', bg: '#F0E8FF', border: '#8A5CF0', label: 'Tajwid'      },
+    { emoji: '📖', bg: '#E2F5E1', border: '#2A9E1C', label: '12 Sourates', route: '/(app)/sourates' },
+    { emoji: '🏆', bg: '#FFF3CD', border: '#E0A02C', label: 'Ligue Or', route: '/(app)/podiums' },
+  ];
+}
 
 export default function ProfilScreen() {
   const router = useRouter();
   const logout = useUserStore((s) => s.logout);
+  const streak = useUserStore((s) => s.streak);
+  const xp = useUserStore((s) => s.xp);
+  const streakGoal = useUserStore((s) => s.streakGoal);
+
+  const badges = buildBadges(streak, streakGoal);
+  // Calendrier : 3 semaines centrées autour de la série en cours.
+  const CAL_DAYS = 21;
+  const calDays = Array.from({ length: CAL_DAYS }, (_, i) => i + 1);
+  // Le jour "courant" = position de la série dans la grille (max = CAL_DAYS).
+  const todayIndex = Math.min(streak, CAL_DAYS);
 
   const handleLogout = () => {
     Alert.alert(
@@ -59,8 +78,8 @@ export default function ProfilScreen() {
           {/* Stats bar */}
           <View style={styles.statsCard}>
             {[
-              { value: '1 240', label: 'XP Total' },
-              { value: '15', label: 'Jours streak', flame: true },
+              { value: xp.toLocaleString('fr-FR'), label: 'XP Total' },
+              { value: String(streak), label: 'Jours streak', flame: true },
               { value: '12', label: 'Sourates' },
               { value: '94%', label: 'Précision' },
             ].map((s, i) => (
@@ -74,23 +93,47 @@ export default function ProfilScreen() {
             ))}
           </View>
 
-          {/* Niveau */}
-          <Text style={styles.sectionTitle}>Progression Niveau 4</Text>
-          <View style={styles.levelRow}>
-            <View style={{ flex: 1 }}>
-              <ProgressBar progress={0.62} />
-            </View>
-            <Text style={styles.levelText}>1 240 / 2 000 XP</Text>
-          </View>
+          {/* Niveau — 2000 XP par niveau */}
+          {(() => {
+            const PER_LEVEL = 2000;
+            const level = Math.floor(xp / PER_LEVEL) + 1;
+            const inLevel = xp % PER_LEVEL;
+            return (
+              <>
+                <Text style={styles.sectionTitle}>Progression Niveau {level}</Text>
+                <View style={styles.levelRow}>
+                  <View style={{ flex: 1 }}>
+                    <ProgressBar progress={inLevel / PER_LEVEL} />
+                  </View>
+                  <Text style={styles.levelText}>
+                    {inLevel.toLocaleString('fr-FR')} / {PER_LEVEL.toLocaleString('fr-FR')} XP
+                  </Text>
+                </View>
+              </>
+            );
+          })()}
 
           {/* Badges */}
           <Text style={styles.sectionTitle}>Badges</Text>
           <View style={styles.badgeGrid}>
-            {BADGES.map((b, i) => (
-              <View key={i} style={[styles.badge, { backgroundColor: b.bg, borderColor: b.border }]}>
+            {badges.map((b, i) => (
+              <Pressable
+                key={i}
+                style={({ pressed }) => [
+                  styles.badge,
+                  { backgroundColor: b.bg, borderColor: b.border },
+                  b.route && pressed && { opacity: 0.7 },
+                ]}
+                onPress={b.route ? () => router.push(b.route!) : undefined}
+              >
                 <Text style={styles.badgeEmoji}>{b.emoji}</Text>
                 <Text style={styles.badgeLabel}>{b.label}</Text>
-              </View>
+                {b.route && (
+                  <View style={styles.badgeArrow}>
+                    <Feather name="chevron-right" size={12} color={b.border} />
+                  </View>
+                )}
+              </Pressable>
             ))}
           </View>
 
@@ -100,10 +143,10 @@ export default function ProfilScreen() {
             <Text style={{ fontSize: 20 }}>🔥</Text>
           </View>
           <View style={styles.calGrid}>
-            {DAYS.map((d) => {
-              const done = d <= 15;
-              const current = d === 15;
-              const future = d > 15;
+            {calDays.map((d) => {
+              const done = d <= todayIndex;
+              const current = d === todayIndex;
+              const future = d > todayIndex;
               return (
                 <View
                   key={d}
@@ -164,6 +207,7 @@ const styles = StyleSheet.create({
   },
   badgeEmoji: { fontSize: 30 },
   badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: '#1B2333', textAlign: 'center' },
+  badgeArrow: { position: 'absolute', top: 6, right: 6 },
   calTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   calGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   calCell: {

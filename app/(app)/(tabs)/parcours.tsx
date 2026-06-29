@@ -1,11 +1,11 @@
-import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
   FadeInDown,
 } from 'react-native-reanimated';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Rect, Path, Circle, Ellipse, Line } from 'react-native-svg';
 import DeviceStatusBar from '../../../components/StatusBar';
@@ -16,6 +16,7 @@ import {
   type ParcoursNode,
   type ParcoursSection,
 } from '../../../constants/parcours';
+import { playSound } from '../../../constants/sounds';
 
 // Icônes SVG pros pour les nodes complétés
 function IconStar({ size = 48 }: { size?: number }) {
@@ -512,6 +513,55 @@ function SectionBlock({
   );
 }
 
+/** Carte « coffre quotidien » — affichée une fois par jour, en haut du parcours. */
+function DailyChest() {
+  const canClaim = useUserStore((s) => s.canClaimDailyChest);
+  const claim = useUserStore((s) => s.claimDailyChest);
+  const [available, setAvailable] = useState(canClaim());
+
+  if (!available) return null;
+
+  const open = () => {
+    const reward = claim();
+    setAvailable(false);
+    if (!reward) return;
+    playSound('finish');
+    const msg = reward.type === 'xp'
+      ? `+${reward.amount} XP ajoutés à ton compte !`
+      : `+${reward.amount} cœur${reward.amount > 1 ? 's' : ''} ❤️ rechargé${reward.amount > 1 ? 's' : ''} !`;
+    Alert.alert('🎁 Coffre quotidien', msg);
+  };
+
+  return (
+    <Pressable onPress={open} style={{ width: '100%', alignItems: 'center' }}>
+      <LinearGradient
+        colors={['#FFC247', '#F0A41E']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={chestStyles.card}
+      >
+        <Text style={chestStyles.emoji}>🎁</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={chestStyles.title}>Coffre quotidien</Text>
+          <Text style={chestStyles.sub}>Récupère ta récompense du jour</Text>
+        </View>
+        <Feather name="chevron-right" size={22} color="#fff" />
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+const chestStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    marginHorizontal: 18, marginTop: 16, paddingHorizontal: 18, paddingVertical: 16, borderRadius: 20,
+    width: '100%', maxWidth: 520, alignSelf: 'center',
+    shadowColor: '#E07A0C', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 6,
+  },
+  emoji: { fontSize: 34 },
+  title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 18, color: '#fff' },
+  sub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 1 },
+});
+
 export default function ParcoursScreen() {
   const router = useRouter();
   const { streak, xp, hearts, isPremium, syncHearts } = useUserStore();
@@ -558,6 +608,7 @@ export default function ParcoursScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <DailyChest />
         {PARCOURS_SECTIONS.map((section, index) => (
           <SectionBlock
             key={section.id}

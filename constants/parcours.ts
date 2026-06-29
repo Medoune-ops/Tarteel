@@ -212,3 +212,19 @@ export const PARCOURS_SECTIONS: ParcoursSection[] = [
   SECTION_ALPHABET,
   ...HIZB_SECTIONS,
 ];
+
+/**
+ * Toutes les sourates dans l'ordre du parcours (sections successives).
+ * Sert de base aux écrans "sourates apprises".
+ */
+export const SOURATES_PARCOURS: ParcoursSourate[] = PARCOURS_SECTIONS.flatMap(
+  (s) => s.sourates,
+);
+
+/**
+ * Renvoie les `count` premières sourates du parcours (= déjà apprises).
+ * Quand l'API sera branchée, remplacer par la liste réelle de l'utilisateur.
+ */
+export function getSouratesApprises(count: number): ParcoursSourate[] {
+  return SOURATES_PARCOURS.slice(0, count);
+}

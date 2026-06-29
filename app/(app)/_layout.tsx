@@ -8,6 +8,9 @@ export default function AppLayout() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="langue" />
+      <Stack.Screen name="sourates" />
+      <Stack.Screen name="streak-goal" />
+      <Stack.Screen name="podiums" />
       <Stack.Screen name="subscription" />
       <Stack.Screen name="payment-method" />
       <Stack.Screen name="payment-card" />

@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  streakReward, PODIUM_REWARD, rollDailyChest, type DailyChestReward,
+} from '../constants/rewards';
 
 // ─── Constantes du système de cœurs ─────────────────────────────────────────
 export const MAX_HEARTS = 5;
@@ -18,6 +21,12 @@ interface UserState {
   objectif: 'lire' | 'hifz' | 'tafsir' | 'complet';
   /** Langue de l'interface (code ISO). */
   language: 'fr' | 'en' | 'ar';
+  /** Objectif de série fixé par l'utilisateur (null = aucun objectif en cours). */
+  streakGoal: number | null;
+  /** Date (YYYY-MM-DD) du dernier coffre quotidien réclamé (null = jamais). */
+  lastChestDay: string | null;
+  /** Ids des podiums dont la récompense a déjà été réclamée. */
+  claimedPodiums: string[];
   dailyMinutes: number;
   currentLesson: number;
   onboardingDone: boolean;
@@ -25,6 +34,28 @@ interface UserState {
   setLevel: (v: UserState['level']) => void;
   setObjectif: (v: UserState['objectif']) => void;
   setLanguage: (v: UserState['language']) => void;
+  /** Fixe (ou remplace) l'objectif de série. */
+  setStreakGoal: (days: number) => void;
+  /**
+   * Réclame le cadeau quand l'objectif est atteint : crédite des XP bonus
+   * et efface l'objectif (l'utilisateur pourra en fixer un nouveau).
+   * Renvoie le nb d'XP offerts (0 si objectif non atteint / inexistant).
+   */
+  claimStreakReward: () => number;
+  /**
+   * Crédite la récompense d'un podium (1er/2e/3e d'une ligue), une seule fois.
+   * Renvoie le nb d'XP offerts (0 si déjà réclamé).
+   */
+  claimPodiumReward: (id: string, rang: 1 | 2 | 3) => number;
+  /** true si la récompense de ce podium n'a pas encore été réclamée. */
+  isPodiumClaimed: (id: string) => boolean;
+  /** true si le coffre quotidien n'a pas encore été réclamé aujourd'hui. */
+  canClaimDailyChest: () => boolean;
+  /**
+   * Réclame le coffre quotidien (1×/jour). Applique la récompense (XP ou cœurs)
+   * et renvoie ce qui a été gagné, ou null si déjà réclamé aujourd'hui.
+   */
+  claimDailyChest: () => DailyChestReward | null;
   setDailyMinutes: (v: number) => void;
   completeOnboarding: () => void;
   /** Ajoute des XP (×2 si premium). */
@@ -50,6 +81,9 @@ const initialState = {
   level: 'debutant' as const,
   objectif: 'hifz' as const,
   language: 'fr' as const,
+  streakGoal: 30 as number | null,
+  lastChestDay: null as string | null,
+  claimedPodiums: [] as string[],
   dailyMinutes: 10,
   currentLesson: 4,
   onboardingDone: false,
@@ -82,6 +116,46 @@ export const useUserStore = create<UserState>()(
       setLevel: (level) => set({ level }),
       setObjectif: (objectif) => set({ objectif }),
       setLanguage: (language) => set({ language }),
+
+      setStreakGoal: (days) => set({ streakGoal: days }),
+
+      claimStreakReward: () => {
+        const s = get();
+        // Objectif atteint ? (objectif défini ET série >= objectif)
+        if (s.streakGoal == null || s.streak < s.streakGoal) return 0;
+        // Cadeau selon le barème non-linéaire (×2 si premium, via addXP).
+        const reward = streakReward(s.streakGoal);
+        get().addXP(reward);
+        // On efface l'objectif : l'utilisateur pourra en fixer un nouveau (non forcé).
+        set({ streakGoal: null });
+        return s.isPremium ? reward * 2 : reward;
+      },
+
+      claimPodiumReward: (id, rang) => {
+        if (get().claimedPodiums.includes(id)) return 0; // déjà réclamé
+        const reward = PODIUM_REWARD[rang];
+        get().addXP(reward);
+        set((s) => ({ claimedPodiums: [...s.claimedPodiums, id] }));
+        return get().isPremium ? reward * 2 : reward;
+      },
+
+      isPodiumClaimed: (id) => get().claimedPodiums.includes(id),
+
+      canClaimDailyChest: () => {
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        return get().lastChestDay !== today;
+      },
+
+      claimDailyChest: () => {
+        const today = new Date().toISOString().slice(0, 10);
+        if (get().lastChestDay === today) return null; // déjà réclamé aujourd'hui
+        const reward = rollDailyChest();
+        if (reward.type === 'xp') get().addXP(reward.amount);
+        else set((s) => ({ hearts: Math.min(MAX_HEARTS, s.hearts + reward.amount) }));
+        set({ lastChestDay: today });
+        return reward;
+      },
+
       setDailyMinutes: (dailyMinutes) => set({ dailyMinutes }),
       completeOnboarding: () => set({ onboardingDone: true }),
 
