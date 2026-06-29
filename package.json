@@ -20,6 +20,8 @@
     "expo-router": "~6.0.0",
     "expo-splash-screen": "~31.0.10",
     "expo-status-bar": "~3.0.8",
+    "expo-widget": "^3.0.3",
+    "fs-extra": "^11.3.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",

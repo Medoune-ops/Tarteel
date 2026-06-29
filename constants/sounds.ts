@@ -1,4 +1,4 @@
-import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 
 /**
@@ -18,15 +18,17 @@ export type SoundName = keyof typeof SOUND_SOURCES;
 let preloaded = false;
 let muted = false;
 
+// Cache des players préchargés — un player par son, prêt à jouer immédiatement.
+const playerCache: Partial<Record<SoundName, AudioPlayer>> = {};
+
 export function setSoundMuted(value: boolean) {
   muted = value;
 }
 
 /**
  * À appeler une fois au lancement de l'app (layout racine) : configure le mode
- * audio (lecture même en silencieux iOS). On ne garde PAS de players partagés
- * car, sur Expo Go, rejouer un player partagé via seekTo est peu fiable —
- * on crée un player frais à chaque effet (cf. playSound).
+ * audio et crée tous les players en avance. Le premier appui est alors
+ * instantané car le fichier est déjà chargé en mémoire.
  */
 export async function preloadSounds() {
   if (preloaded) return;
@@ -36,14 +38,35 @@ export async function preloadSounds() {
   } catch (e) {
     console.log('[sounds] setAudioModeAsync failed', e);
   }
+  // Crée un player par son et le met en cache.
+  for (const name of Object.keys(SOUND_SOURCES) as SoundName[]) {
+    try {
+      playerCache[name] = createAudioPlayer(SOUND_SOURCES[name]);
+    } catch (e) {
+      console.log('[sounds] preload failed', name, e);
+    }
+  }
 }
 
 /**
- * Joue un effet sonore. Crée un player éphémère, le lance, puis le libère à la
- * fin de la lecture. Robuste pour des effets courts répétés.
+ * Joue un effet sonore instantanément grâce au player préchargé.
+ * Si le cache n'est pas prêt (rare), crée un player éphémère en fallback.
  */
 export function playSound(name: SoundName) {
   if (muted) return;
+  const cached = playerCache[name];
+  if (cached) {
+    try {
+      // Remet à zéro puis joue — évite d'attendre la fin si on rappelle vite.
+      cached.seekTo(0);
+      cached.play();
+      console.log('[sounds] play', name);
+      return;
+    } catch (e) {
+      console.log('[sounds] cached play failed, fallback', name, e);
+    }
+  }
+  // Fallback : player éphémère (premier lancement avant preload ou erreur cache).
   try {
     const player = createAudioPlayer(SOUND_SOURCES[name]);
     const sub = player.addListener('playbackStatusUpdate', (status) => {
@@ -53,7 +76,6 @@ export function playSound(name: SoundName) {
       }
     });
     player.play();
-    console.log('[sounds] play', name);
   } catch (e) {
     console.log('[sounds] play failed', name, e);
   }

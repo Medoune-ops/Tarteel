@@ -10,7 +10,6 @@ import {
   type LessonStep,
   type DiscoveryStep,
   type WrittenStep,
-  type VoiceStep,
 } from '../../../constants/lessonEngine';
 
 type Phase = 'answering' | 'correct' | 'wrong';
@@ -80,18 +79,14 @@ export default function LessonPlayScreen() {
         exiting={SlideOutLeft.duration(220).easing(Easing.in(Easing.cubic))}
       >
         {step.type === 'discovery' && (
-          <DiscoveryView step={step} onContinue={goNext} />
+          <DiscoveryView
+            step={step}
+            onContinue={goNext}
+            isFullVerse={step.id.startsWith('disc-full')}
+          />
         )}
         {step.type === 'written' && (
           <WrittenView
-            step={step}
-            phase={phase}
-            onValidate={onTestResult}
-            onContinue={onContinueAfterFeedback}
-          />
-        )}
-        {step.type === 'voice' && (
-          <VoiceView
             step={step}
             phase={phase}
             onValidate={onTestResult}
@@ -104,14 +99,26 @@ export default function LessonPlayScreen() {
 }
 
 // ─── Étape DÉCOUVERTE (aucun cœur) ───────────────────────────────────────────
-function DiscoveryView({ step, onContinue }: { step: DiscoveryStep; onContinue: () => void }) {
+function DiscoveryView({
+  step, onContinue, isFullVerse,
+}: {
+  step: DiscoveryStep;
+  onContinue: () => void;
+  isFullVerse?: boolean;
+}) {
   return (
     <View style={styles.body}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.tag}>
-          <Feather name="book-open" size={15} color="#6B4DFF" />
-          <Text style={styles.tagText}>Découverte</Text>
+        <View style={[styles.tag, isFullVerse && { backgroundColor: '#FFF3E0' }]}>
+          <Feather name={isFullVerse ? 'volume-2' : 'book-open'} size={15} color={isFullVerse ? '#E07A0C' : '#6B4DFF'} />
+          <Text style={[styles.tagText, isFullVerse && { color: '#E07A0C' }]}>
+            {isFullVerse ? 'Verset complet' : 'Découverte'}
+          </Text>
         </View>
+
+        {isFullVerse && (
+          <Text style={styles.consigne}>Écoute et répète à voix basse</Text>
+        )}
 
         <View style={styles.verseCard}>
           <Text style={styles.arabic}>{step.arabe}</Text>
@@ -122,10 +129,24 @@ function DiscoveryView({ step, onContinue }: { step: DiscoveryStep; onContinue: 
         <Pressable style={styles.playBtn}>
           <Feather name="volume-2" size={40} color="#2A9E1C" />
         </Pressable>
-        <Text style={styles.hint}>Écoute et répète à voix basse</Text>
+        <Text style={styles.hint}>
+          {isFullVerse ? 'Appuie pour écouter, puis répète à voix basse' : 'Écoute et répète à voix basse'}
+        </Text>
+
+        {isFullVerse && (
+          <View style={styles.tipRow}>
+            <Feather name="info" size={15} color="#6B4DFF" />
+            <Text style={styles.tipText}>Pas d'évaluation — concentre-toi sur la prononciation</Text>
+          </View>
+        )}
       </ScrollView>
 
-      <Footer label="J'ai compris" color="#34C724" colorDark="#2A9E1C" onPress={onContinue} />
+      <Footer
+        label={isFullVerse ? "J'ai répété" : "J'ai compris"}
+        color="#34C724"
+        colorDark="#2A9E1C"
+        onPress={onContinue}
+      />
     </View>
   );
 }
@@ -200,49 +221,6 @@ function WrittenView({
   );
 }
 
-// ─── Étape TEST VOCAL (indulgent) ────────────────────────────────────────────
-function VoiceView({
-  step, phase, onValidate, onContinue,
-}: {
-  step: VoiceStep;
-  phase: Phase;
-  onValidate: (success: boolean) => void;
-  onContinue: () => void;
-}) {
-  const answered = phase !== 'answering';
-
-  // Simulation : pas d'audio réel encore → on valide en "réussite" la plupart
-  // du temps (évaluation indulgente). À remplacer par Whisper + seuilReussite.
-  const recordAndEvaluate = () => {
-    const fakeScore = 60 + Math.floor(Math.random() * 40); // 60–99
-    onValidate(fakeScore >= step.seuilReussite);
-  };
-
-  return (
-    <View style={styles.body}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.tag, { backgroundColor: '#EDE8FF' }]}>
-          <Feather name="mic" size={15} color="#6B4DFF" />
-          <Text style={[styles.tagText, { color: '#6B4DFF' }]}>Test vocal</Text>
-        </View>
-
-        <View style={styles.verseCard}>
-          <Text style={styles.arabic}>{step.arabe}</Text>
-          <Text style={styles.traduction}>{step.traduction}</Text>
-        </View>
-        <Text style={styles.hint}>Récite ce verset à voix haute</Text>
-
-        <Pressable style={styles.micBtn} disabled={answered} onPress={recordAndEvaluate}>
-          <Feather name="mic" size={40} color="#fff" />
-        </Pressable>
-        <Text style={styles.hintSmall}>Évaluation tolérante · vise la justesse, pas la perfection</Text>
-      </ScrollView>
-
-      {answered && <FeedbackBar correct={phase === 'correct'} onContinue={onContinue} />}
-    </View>
-  );
-}
-
 // ─── Barre de feedback (correct / faux) ──────────────────────────────────────
 function FeedbackBar({ correct, onContinue }: { correct: boolean; onContinue: () => void }) {
   return (
@@ -312,7 +290,8 @@ const styles = StyleSheet.create({
   badgeText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
   optionText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 16, color: '#1B2333' },
 
-  micBtn: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#6B4DFF', alignItems: 'center', justifyContent: 'center', marginTop: 30, borderBottomWidth: 6, borderBottomColor: '#5438CC' },
+  tipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, paddingHorizontal: 4 },
+  tipText: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#6B4DFF', flex: 1 },
 
   footer: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 30 },
   footerBtn: { height: 58, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 5 },

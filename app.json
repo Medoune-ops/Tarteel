@@ -17,6 +17,9 @@
         "light": "./assets/icon-light.png",
         "dark": "./assets/icon-dark.png",
         "tinted": "./assets/icon-tinted.png"
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.tarteel.app"]
       }
     },
     "android": {
@@ -37,6 +40,16 @@
     "plugins": [
       "expo-router",
       "expo-audio"
+    ],
+    "_widgetPlugin_activateForEASBuild": [
+      "expo-widget",
+      {
+        "ios": {
+          "src": "./widgets/ios/TarteelWidgets",
+          "appGroupIdentifier": "group.com.tarteel.app",
+          "devTeam": "XXXXXXXXXX"
+        }
+      }
     ],
     "experiments": {
       "typedRoutes": true

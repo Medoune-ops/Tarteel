@@ -10,15 +10,16 @@
  * Une leçon = une suite d'étapes (max 25) qui ALTERNENT librement entre :
  *   - 'discovery'  : Découverte — on montre le verset (AUCUN cœur en jeu)
  *   - 'written'    : Test écrit — QCM / association (1 faute = −1 cœur)
- *   - 'voice'      : Test vocal — réciter (peut coûter 1 cœur, évaluation indulgente)
  *
- * L'ordre est décidé par le contenu : on peut avoir plusieurs découvertes
- * successives, ou plusieurs tests successifs.
+ * ⚠️ Le type 'voice' est RETIRÉ jusqu'au branchement de Whisper côté backend.
+ * La dernière étape est une 'discovery' du verset intégral (écoute + répétition
+ * à voix basse). Quand Whisper sera prêt, réintroduire VoiceStep ici et dans
+ * buildSampleLesson(), et ajouter VoiceView dans play.tsx.
  */
 
 export const MAX_LESSON_STEPS = 25;
 
-export type StepType = 'discovery' | 'written' | 'voice';
+export type StepType = 'discovery' | 'written';
 
 /** Étape Découverte : présenter un verset/mot, sans évaluation. */
 export interface DiscoveryStep {
@@ -41,19 +42,7 @@ export interface WrittenStep {
   bonneReponse: string;    // id de la bonne option
 }
 
-/** Étape Test vocal : réciter le verset. Évaluation indulgente. */
-export interface VoiceStep {
-  type: 'voice';
-  id: string;
-  arabe: string;
-  translitteration: string;
-  traduction: string;
-  audioUrl?: string | null;
-  /** Score minimal (0–100) pour valider sans perdre de cœur. Tolérant. */
-  seuilReussite: number;
-}
-
-export type LessonStep = DiscoveryStep | WrittenStep | VoiceStep;
+export type LessonStep = DiscoveryStep | WrittenStep;
 
 /** Une leçon complète telle que renvoyée par l'API. */
 export interface Lesson {
@@ -111,21 +100,23 @@ function writtenFor(mot: typeof DEMO.mots[number]): WrittenStep {
   };
 }
 
-function voiceFull(): VoiceStep {
+/** Découverte du verset intégral — écoute et répète à voix basse. */
+function discoveryFull(): DiscoveryStep {
   return {
-    type: 'voice',
-    id: uid('voice'),
+    type: 'discovery',
+    id: uid('disc-full'),
     arabe: DEMO.versetArabe,
     translitteration: DEMO.versetTranslit,
     traduction: DEMO.versetTrad,
     audioUrl: null,
-    seuilReussite: 70, // tolérant
+    // ⚠️ Quand Whisper sera prêt : remplacer cette étape par VoiceStep.
   };
 }
 
 /**
  * Construit une leçon d'exemple : pour chaque mot, Découverte → Test écrit,
- * puis un Test vocal du verset complet à la fin. Plafonné à MAX_LESSON_STEPS.
+ * puis une Découverte du verset complet (écoute + répétition à voix basse).
+ * Plafonné à MAX_LESSON_STEPS.
  */
 export function buildSampleLesson(): Lesson {
   _uid = 0;
@@ -134,7 +125,7 @@ export function buildSampleLesson(): Lesson {
     steps.push(discoveryFor(mot));
     steps.push(writtenFor(mot));
   }
-  steps.push(voiceFull());
+  steps.push(discoveryFull());
   return {
     id: 'demo-lesson',
     titre: 'Al-Fatiha · Basmala',

@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   streakReward, PODIUM_REWARD, rollDailyChest, type DailyChestReward,
 } from '../constants/rewards';
+import { syncWidgetData } from '../utils/widgetData';
 
 // ─── Constantes du système de cœurs ─────────────────────────────────────────
 export const MAX_HEARTS = 5;
@@ -69,6 +70,22 @@ interface UserState {
   /** Recharge tous les cœurs (achat, pub récompensée, premium…). */
   refillHearts: () => void;
   setPremium: (v: boolean) => void;
+  /** Met à jour la série (appelé par le backend après validation d'une leçon). */
+  setStreak: (streak: number) => void;
+  /** Met à jour la leçon courante (appelé par le backend). */
+  setCurrentLesson: (lesson: number) => void;
+  /**
+   * Hydrate l'état complet depuis la réponse du backend (GET /me ou POST /lesson/complete).
+   * À appeler après chaque fetch réussi — remplace les valeurs locales par la source de vérité serveur.
+   */
+  hydrateFromBackend: (data: {
+    streak: number;
+    xp: number;
+    hearts: number;
+    isPremium: boolean;
+    currentLesson: number;
+    lastHeartLossAt: number | null;
+  }) => void;
   logout: () => void;
 }
 
@@ -160,7 +177,11 @@ export const useUserStore = create<UserState>()(
       completeOnboarding: () => set({ onboardingDone: true }),
 
       addXP: (amount) =>
-        set((s) => ({ xp: s.xp + (s.isPremium ? amount * 2 : amount) })),
+        set((s) => {
+          const xp = s.xp + (s.isPremium ? amount * 2 : amount);
+          syncWidgetData({ streak: s.streak, xp, currentLesson: s.currentLesson });
+          return { xp };
+        }),
 
       loseHeart: () => {
         const s = get();
@@ -179,6 +200,7 @@ export const useUserStore = create<UserState>()(
         if (next.hearts !== s.hearts || next.lastHeartLossAt !== s.lastHeartLossAt) {
           set(next);
         }
+        syncWidgetData({ streak: s.streak, xp: s.xp, currentLesson: s.currentLesson });
       },
 
       msUntilNextHeart: () => {
@@ -192,6 +214,35 @@ export const useUserStore = create<UserState>()(
 
       setPremium: (v) =>
         set(v ? { isPremium: true, hearts: MAX_HEARTS, lastHeartLossAt: null } : { isPremium: false }),
+
+      setStreak: (streak) => {
+        const s = get();
+        set({ streak });
+        syncWidgetData({ streak, xp: s.xp, currentLesson: s.currentLesson });
+      },
+
+      setCurrentLesson: (currentLesson) => {
+        const s = get();
+        set({ currentLesson });
+        syncWidgetData({ streak: s.streak, xp: s.xp, currentLesson });
+      },
+
+      hydrateFromBackend: (data) => {
+        const next = computeHearts(data.hearts, data.lastHeartLossAt, data.isPremium);
+        set({
+          streak: data.streak,
+          xp: data.xp,
+          hearts: next.hearts,
+          lastHeartLossAt: next.lastHeartLossAt,
+          isPremium: data.isPremium,
+          currentLesson: data.currentLesson,
+        });
+        syncWidgetData({
+          streak: data.streak,
+          xp: data.xp,
+          currentLesson: data.currentLesson,
+        });
+      },
 
       logout: () => set({ ...initialState }),
     }),
