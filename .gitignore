@@ -36,6 +36,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# README (gardé en local, non publié sur GitHub)
+/README.md
+
 # generated native folders
 /ios
 /android
