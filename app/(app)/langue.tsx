@@ -2,6 +2,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useUserStore } from '../../store/userStore';
+import { updateSettings } from '../../lib/api';
 
 const LANGUES = [
   { id: 'fr' as const, drapeau: '🇫🇷', nom: 'Français',  natif: 'Français' },
@@ -13,6 +14,13 @@ export default function LangueScreen() {
   const router = useRouter();
   const language = useUserStore((s) => s.language);
   const setLanguage = useUserStore((s) => s.setLanguage);
+
+  // Change la langue immédiatement (optimistic) puis persiste côté serveur.
+  // Hors-ligne / non connecté : on garde le choix local sans bloquer l'UI.
+  const chooseLanguage = (id: 'fr' | 'en' | 'ar') => {
+    setLanguage(id);
+    updateSettings({ language: id }).catch(() => { /* resync au prochain /me */ });
+  };
 
   return (
     <View style={styles.screen}>
@@ -34,7 +42,7 @@ export default function LangueScreen() {
               <Pressable
                 key={l.id}
                 style={[styles.row, i > 0 && styles.divider]}
-                onPress={() => setLanguage(l.id)}
+                onPress={() => chooseLanguage(l.id)}
               >
                 <Text style={styles.drapeau}>{l.drapeau}</Text>
                 <View style={{ flex: 1 }}>

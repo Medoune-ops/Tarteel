@@ -1,15 +1,26 @@
 import { useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import {
+  GoogleSignin, statusCodes,
+} from '@react-native-google-signin/google-signin';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
+import { login, register, loginWithGoogle, ApiError } from '../../lib/api';
 
 type Mode = 'login' | 'signup';
+
+// Configuration Google Sign-In (une seule fois au chargement du module).
+// `webClientId` = client OAuth « Web » de la console Google Cloud, exposé via
+// une variable EXPO_PUBLIC_ pour rester côté client.
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 /** Champ de saisie réutilisable (icône + TextInput + œil pour les mots de passe). */
 function Field({
@@ -63,16 +74,84 @@ export default function SignupScreen() {
   const [acceptCgu, setAcceptCgu] = useState(false);
 
   const isSignup = mode === 'signup';
-  const onboardingDone = useUserStore((s) => s.onboardingDone);
 
-  const submit = () => {
-    // Auth réelle à brancher plus tard (JWT).
-    // Inscription → toujours la config sur mesure (niveau → objectif → temps → plan).
-    // Connexion → la config seulement si le profil n'a pas encore été configuré.
-    if (isSignup || !onboardingDone) {
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Navigation post-auth commune (email ou Google) : inscription ou profil non
+  // configuré → setup ; sinon → parcours.
+  const routeAfterAuth = (forceSetup = false) => {
+    if (forceSetup || !useUserStore.getState().onboardingDone) {
       router.replace('/(setup)/niveau');
     } else {
       router.replace('/(app)/(tabs)/parcours');
+    }
+  };
+
+  const googleSubmit = async () => {
+    if (googleLoading || loading) return;
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      // idToken : présent dans response.data (nouvelle API) ou à la racine (ancienne).
+      const idToken =
+        (response as { data?: { idToken?: string | null } }).data?.idToken ??
+        (response as { idToken?: string | null }).idToken ??
+        null;
+      if (!idToken) {
+        setError('Connexion Google impossible (jeton manquant).');
+        return;
+      }
+      await loginWithGoogle(idToken);
+      routeAfterAuth();
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      // L'utilisateur a fermé la popup ou une connexion est déjà en cours : silencieux.
+      if (code === statusCodes.SIGN_IN_CANCELLED || code === statusCodes.IN_PROGRESS) return;
+      setError(e instanceof ApiError ? e.message : 'Connexion Google impossible. Réessaie.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const submit = async () => {
+    if (loading) return;
+    setError(null);
+
+    // Validations minimales côté client (le backend revalide de toute façon).
+    if (!email.trim() || !password) {
+      setError('Renseigne ton email et ton mot de passe.');
+      return;
+    }
+    if (isSignup) {
+      if (!fullName.trim()) {
+        setError('Renseigne ton nom complet.');
+        return;
+      }
+      if (password !== confirm) {
+        setError('Les mots de passe ne correspondent pas.');
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      if (isSignup) {
+        await register({ email: email.trim(), password, displayName: fullName.trim() });
+      } else {
+        await login({ email: email.trim(), password });
+      }
+
+      // Inscription → toujours la config sur mesure (niveau → objectif → temps → plan).
+      // Connexion → la config seulement si le profil n'a pas encore été configuré.
+      routeAfterAuth(isSignup);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessaie.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,9 +185,19 @@ export default function SignupScreen() {
           </View>
 
           {/* Boutons sociaux */}
-          <Pressable style={styles.googleBtn}>
-            <Text style={styles.googleG}>G</Text>
-            <Text style={styles.socialLabel}>Continuer avec Google</Text>
+          <Pressable
+            style={[styles.googleBtn, (googleLoading || loading) && styles.socialDisabled]}
+            onPress={googleSubmit}
+            disabled={googleLoading || loading}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color="#4285F4" />
+            ) : (
+              <>
+                <Text style={styles.googleG}>G</Text>
+                <Text style={styles.socialLabel}>Continuer avec Google</Text>
+              </>
+            )}
           </Pressable>
           <Pressable style={styles.appleBtn}>
             <FontAwesome name="apple" size={22} color="#fff" />
@@ -162,13 +251,20 @@ export default function SignupScreen() {
             </Pressable>
           )}
 
+          {/* Message d'erreur */}
+          {error && <Text style={styles.errorText}>{error}</Text>}
+
           {/* CTA */}
           <Pressable
-            style={[styles.cta, isSignup && !acceptCgu && styles.ctaDisabled]}
+            style={[styles.cta, ((isSignup && !acceptCgu) || loading) && styles.ctaDisabled]}
             onPress={submit}
-            disabled={isSignup && !acceptCgu}
+            disabled={(isSignup && !acceptCgu) || loading}
           >
-            <Text style={styles.ctaLabel}>{isSignup ? 'Créer mon compte' : 'Se connecter'}</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.ctaLabel}>{isSignup ? 'Créer mon compte' : 'Se connecter'}</Text>
+            )}
           </Pressable>
 
           {/* Bascule */}
@@ -211,6 +307,7 @@ const styles = StyleSheet.create({
     width: '100%', height: 56, borderRadius: 16, borderWidth: 1.5, borderColor: '#E2E4EA',
     backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 18,
   },
+  socialDisabled: { opacity: 0.5 },
   googleG: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, color: '#4285F4' },
   socialLabel: { fontFamily: 'Nunito_700Bold', fontSize: 16, color: '#2B3240' },
   appleBtn: {
@@ -248,6 +345,10 @@ const styles = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.45 },
   ctaLabel: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 19, color: '#fff' },
+  errorText: {
+    fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#E5484D',
+    textAlign: 'center', marginTop: 16, width: '100%',
+  },
   switchLink: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#7A828F', marginTop: 18, textAlign: 'center' },
   switchStrong: { fontFamily: 'Nunito_800ExtraBold', color: '#6B4DFF' },
 });

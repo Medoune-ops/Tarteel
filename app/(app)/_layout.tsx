@@ -5,6 +5,8 @@ export default function AppLayout() {
     <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="edit-profile" />
+      <Stack.Screen name="change-password" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="langue" />

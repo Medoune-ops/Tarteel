@@ -1,66 +1,127 @@
-import { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, { SlideInRight, SlideOutLeft, Easing } from 'react-native-reanimated';
 import LessonHeader from '../../../components/LessonHeader';
 import { useUserStore } from '../../../store/userStore';
 import {
-  buildSampleLesson,
-  type LessonStep,
+  type Lesson,
   type DiscoveryStep,
   type WrittenStep,
 } from '../../../constants/lessonEngine';
+import { fetchLesson, answerStep, ApiError } from '../../../lib/api';
 
 type Phase = 'answering' | 'correct' | 'wrong';
 
 export default function LessonPlayScreen() {
   const router = useRouter();
-  const loseHeart = useUserStore((s) => s.loseHeart);
+  const { lessonId } = useLocalSearchParams<{ lessonId?: string }>();
   const isPremium = useUserStore((s) => s.isPremium);
-  const addXP = useUserStore((s) => s.addXP);
 
-  // ⚠️ Plus tard : remplacer par le fetch GET /lessons/:id.
-  const lesson = useMemo(() => buildSampleLesson(), []);
+  // Leçon chargée depuis l'API (GET /lessons/:id). Les vrais cuid des steps
+  // sont nécessaires pour le judging serveur.
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    if (!lessonId) { setLoadError(true); return; }
+    let cancelled = false;
+    fetchLesson(lessonId)
+      .then((l) => { if (!cancelled) setLesson(l); })
+      .catch(() => { if (!cancelled) setLoadError(true); });
+    return () => { cancelled = true; };
+  }, [lessonId]);
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('answering');
   const [correctCount, setCorrectCount] = useState(0);
+  // true pendant l'appel de judging (désactive le bouton Valider).
+  const [judging, setJudging] = useState(false);
+  // Bonne réponse révélée par le serveur APRÈS la réponse (pour surligner).
+  const [revealed, setRevealed] = useState<string | null>(null);
+
+  // Horodatage de début pour mesurer la durée de la leçon (envoyée au backend).
+  const startedAt = useRef(Date.now());
+
+  if (loadError) {
+    return (
+      <View style={[styles.screen, styles.centerState]}>
+        <Feather name="wifi-off" size={34} color="#9AA0AA" />
+        <Text style={styles.stateText}>Impossible de charger la leçon.</Text>
+        <Pressable style={styles.retryBtn} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
+          <Text style={styles.retryLabel}>Retour au parcours</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (!lesson) {
+    return (
+      <View style={[styles.screen, styles.centerState]}>
+        <ActivityIndicator size="large" color="#6B4DFF" />
+        <Text style={styles.stateText}>Chargement de la leçon…</Text>
+      </View>
+    );
+  }
 
   const step = lesson.steps[index];
   const total = lesson.steps.length;
   const progress = index / total;
+  // Nombre d'étapes notées (test écrit) — base du score correct/total côté serveur.
+  const scoredTotal = lesson.steps.filter((s) => s.type === 'written').length;
 
-  // Passe à l'étape suivante, ou termine la leçon.
+  // Passe à l'étape suivante, ou termine la leçon → écran de fin.
+  // L'XP/streak/cœurs sont désormais crédités par le backend (POST /lesson/complete),
+  // déclenché dans finish.tsx à partir des params ci-dessous.
   const goNext = () => {
+    setRevealed(null);
     if (index + 1 >= total) {
-      addXP(15 + correctCount * 2);
-      router.replace('/(app)/lesson/finish');
+      router.replace({
+        pathname: '/(app)/lesson/finish',
+        params: {
+          lessonId: lesson.id, // vrai cuid → finish appelle /lesson/complete
+          correct: String(correctCount),
+          total: String(scoredTotal),
+          durationMs: String(Date.now() - startedAt.current),
+        },
+      });
       return;
     }
     setIndex((i) => i + 1);
     setPhase('answering');
   };
 
-  // Résultat d'une étape de test (written / voice).
-  const onTestResult = (success: boolean) => {
-    if (success) {
-      setCorrectCount((c) => c + 1);
-      setPhase('correct');
-      return;
-    }
-    // Échec → on perd un cœur (sauf premium).
-    const left = loseHeart();
-    setPhase('wrong');
-    if (!isPremium && left === 0) {
-      // On laisse l'utilisateur voir le feedback, puis blocage au "Continuer".
+  // Soumet une réponse écrite au JUDGING SERVEUR (autoritaire). Le serveur
+  // décide correct/faux et gère la perte de cœur ; on reflète son verdict.
+  const onSubmitWritten = async (st: WrittenStep, optionId: string) => {
+    if (judging) return;
+    setJudging(true);
+    try {
+      const res = await answerStep(lesson.id, st.id, { optionId });
+      setRevealed(res.bonneReponse ?? null);
+      if (res.correct) {
+        setCorrectCount((c) => c + 1);
+        setPhase('correct');
+      } else {
+        setPhase('wrong');
+      }
+    } catch (e) {
+      // OUT_OF_HEARTS (403) ou réseau : on bascule au blocage si plus de cœurs.
+      if (e instanceof ApiError && e.status === 403) {
+        router.replace('/(app)/lesson/out-of-hearts');
+      } else {
+        setLoadError(true);
+      }
+    } finally {
+      setJudging(false);
     }
   };
 
   // "Continuer" après un feedback : si plus de cœurs → écran de blocage.
   const onContinueAfterFeedback = () => {
     const hearts = useUserStore.getState().hearts;
-    if (!isPremium && hearts === 0) {
+    if (!isPremium && hearts <= 0) {
       router.replace('/(app)/lesson/out-of-hearts');
       return;
     }
@@ -89,7 +150,9 @@ export default function LessonPlayScreen() {
           <WrittenView
             step={step}
             phase={phase}
-            onValidate={onTestResult}
+            judging={judging}
+            revealed={revealed}
+            onValidate={(optionId) => onSubmitWritten(step, optionId)}
             onContinue={onContinueAfterFeedback}
           />
         )}
@@ -152,12 +215,16 @@ function DiscoveryView({
 }
 
 // ─── Étape TEST ÉCRIT (QCM) ──────────────────────────────────────────────────
+// Le judging est SERVEUR : on n'a pas la bonne réponse en local. `revealed` est
+// l'id de la bonne option renvoyé par le serveur APRÈS la réponse (surlignage).
 function WrittenView({
-  step, phase, onValidate, onContinue,
+  step, phase, judging, revealed, onValidate, onContinue,
 }: {
   step: WrittenStep;
   phase: Phase;
-  onValidate: (success: boolean) => void;
+  judging: boolean;
+  revealed: string | null;
+  onValidate: (optionId: string) => void;
   onContinue: () => void;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
@@ -165,7 +232,7 @@ function WrittenView({
 
   const validate = () => {
     if (picked == null) return;
-    onValidate(picked === step.bonneReponse);
+    onValidate(picked);
   };
 
   return (
@@ -184,19 +251,20 @@ function WrittenView({
 
         {step.options.map((o) => {
           const isPicked = picked === o.id;
-          const isRight = o.id === step.bonneReponse;
+          // La bonne option n'est connue qu'après réponse (revealed du serveur).
+          const isRight = answered && revealed === o.id;
           let tint = styles.optionInactive;
-          if (answered && isRight) tint = styles.optionRight;
+          if (isRight) tint = styles.optionRight;
           else if (answered && isPicked && !isRight) tint = styles.optionWrong;
           else if (isPicked) tint = styles.optionActive;
           return (
             <Pressable
               key={o.id}
-              disabled={answered}
+              disabled={answered || judging}
               style={[styles.option, tint]}
               onPress={() => setPicked(o.id)}
             >
-              <View style={[styles.badge, { backgroundColor: isPicked || (answered && isRight) ? '#34C724' : '#D7DBE0' }]}>
+              <View style={[styles.badge, { backgroundColor: isPicked || isRight ? '#34C724' : '#D7DBE0' }]}>
                 <Text style={styles.badgeText}>{o.id}</Text>
               </View>
               <Text style={styles.optionText}>{o.text}</Text>
@@ -208,10 +276,10 @@ function WrittenView({
 
       {!answered ? (
         <Footer
-          label="Valider"
-          color={picked ? '#34C724' : '#C9CDD4'}
-          colorDark={picked ? '#2A9E1C' : '#B0B5BE'}
-          disabled={!picked}
+          label={judging ? 'Validation…' : 'Valider'}
+          color={picked && !judging ? '#34C724' : '#C9CDD4'}
+          colorDark={picked && !judging ? '#2A9E1C' : '#B0B5BE'}
+          disabled={!picked || judging}
           onPress={validate}
         />
       ) : (
@@ -262,6 +330,10 @@ function Footer({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  centerState: { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 32 },
+  stateText: { fontFamily: 'Nunito_700Bold', fontSize: 16, color: '#7A828F', textAlign: 'center' },
+  retryBtn: { marginTop: 6, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, backgroundColor: '#6B4DFF' },
+  retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
   stepWrap: { flex: 1 },
   body: { flex: 1 },
   content: { paddingHorizontal: 24, paddingTop: 12, alignItems: 'center' },

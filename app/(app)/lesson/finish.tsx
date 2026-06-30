@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay,
@@ -9,11 +9,58 @@ import Animated, {
 import Otter from '../../../components/Otter';
 import Confetti from '../../../components/Confetti';
 import { playSound } from '../../../constants/sounds';
+import { useUserStore } from '../../../store/userStore';
+import { completeLesson } from '../../../lib/api';
 
 const LEVEL_TARGET = 0.62; // 62 %
 
+/** Formate une durée en ms vers "m:ss" (ex: 258000 → "4:18"). */
+function formatDuration(ms: number): string {
+  const total = Math.round(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 export default function FinishScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    lessonId?: string;
+    correct?: string;
+    total?: string;
+    durationMs?: string;
+  }>();
+
+  // Valeurs affichées : par défaut, l'état courant du store (déjà hydraté).
+  const xp = useUserStore((s) => s.xp);
+  const streak = useUserStore((s) => s.streak);
+  const precision = useUserStore((s) => s.precision);
+
+  const total = Number(params.total) || 0;
+  const correct = Number(params.correct) || 0;
+  const durationMs = Number(params.durationMs) || 0;
+  // Précision de CETTE leçon si on a les compteurs, sinon précision globale du store.
+  const accuracy = total > 0 ? Math.round((correct / total) * 100) : precision;
+
+  // XP gagnés sur cette leçon : delta avant/après l'appel /lesson/complete.
+  const [xpGained, setXpGained] = useState<number | null>(null);
+  // Évite un double appel (StrictMode / re-render).
+  const completedRef = useRef(false);
+
+  useEffect(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    if (!params.lessonId) return; // maquette / pas de leçon réelle : rien à enregistrer
+    const xpBefore = useUserStore.getState().xp;
+    completeLesson({
+      lessonId: params.lessonId,
+      correctAnswers: correct,
+      totalAnswers: total,
+      durationMs: durationMs || undefined,
+    })
+      .then(() => setXpGained(useUserStore.getState().xp - xpBefore))
+      .catch(() => { /* hors-ligne : la progression reste locale, resync au prochain /me */ });
+  }, []);
 
   const otterScale = useSharedValue(0);
   const otterY     = useSharedValue(0);
@@ -76,17 +123,17 @@ export default function FinishScreen() {
       <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.statsCard}>
         <View style={styles.statCol}>
           <Feather name="zap" size={28} color="#E0A800" />
-          <Text style={styles.statVal}>+30 XP</Text>
+          <Text style={styles.statVal}>{xpGained != null ? `+${xpGained}` : '+0'} XP</Text>
           <Text style={styles.statLabel}>Points gagnés</Text>
         </View>
         <View style={styles.statCol}>
           <Feather name="target" size={28} color="#E0584F" />
-          <Text style={styles.statVal}>87%</Text>
+          <Text style={styles.statVal}>{accuracy}%</Text>
           <Text style={styles.statLabel}>Précision</Text>
         </View>
         <View style={styles.statCol}>
           <Feather name="clock" size={28} color="#6B7280" />
-          <Text style={styles.statVal}>4:18</Text>
+          <Text style={styles.statVal}>{durationMs > 0 ? formatDuration(durationMs) : '—'}</Text>
           <Text style={styles.statLabel}>Durée</Text>
         </View>
       </Animated.View>
@@ -94,7 +141,9 @@ export default function FinishScreen() {
       {/* Streak */}
       <Animated.View entering={FadeInDown.delay(650).springify()} style={styles.streakBadge}>
         <Text style={{ fontSize: 20 }}>🔥</Text>
-        <Text style={styles.streakText}>Série de 15 jours consécutifs !</Text>
+        <Text style={styles.streakText}>
+          {streak > 0 ? `Série de ${streak} jour${streak > 1 ? 's' : ''} consécutif${streak > 1 ? 's' : ''} !` : 'Commence ta série !'}
+        </Text>
       </Animated.View>
 
       {/* Niveau */}

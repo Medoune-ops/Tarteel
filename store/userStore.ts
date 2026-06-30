@@ -12,6 +12,12 @@ export const MAX_HEARTS = 5;
 export const HEART_REGEN_MS = 4 * 60 * 60 * 1000;
 
 interface UserState {
+  /** Nom affiché de l'utilisateur. */
+  name: string;
+  /** Email du compte (lecture seule côté client). */
+  email: string;
+  /** URL de l'avatar (null = initiales par défaut). */
+  avatar: string | null;
   streak: number;
   xp: number;
   hearts: number;
@@ -36,6 +42,8 @@ interface UserState {
   currentLesson: number;
   onboardingDone: boolean;
 
+  /** Met à jour le profil local (nom/avatar) — ex: après PATCH /me. */
+  setProfile: (p: { name?: string; avatar?: string | null }) => void;
   setLevel: (v: UserState['level']) => void;
   setObjectif: (v: UserState['objectif']) => void;
   setLanguage: (v: UserState['language']) => void;
@@ -92,11 +100,17 @@ interface UserState {
     lastHeartLossAt: number | null;
     sourates?: number;
     precision?: number;
+    name?: string;
+    email?: string;
+    avatar?: string | null;
   }) => void;
   logout: () => void;
 }
 
 const initialState = {
+  name: '',
+  email: '',
+  avatar: null as string | null,
   streak: 0,
   xp: 0,
   hearts: MAX_HEARTS,
@@ -140,6 +154,11 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       ...initialState,
 
+      setProfile: ({ name, avatar }) =>
+        set((s) => ({
+          name: name ?? s.name,
+          avatar: avatar !== undefined ? avatar : s.avatar,
+        })),
       setLevel: (level) => set({ level }),
       setObjectif: (objectif) => set({ objectif }),
       setLanguage: (language) => set({ language }),
@@ -249,6 +268,9 @@ export const useUserStore = create<UserState>()(
           currentLesson: data.currentLesson,
           ...(data.sourates  != null && { sourates:  data.sourates  }),
           ...(data.precision != null && { precision: data.precision }),
+          ...(data.name   != null && { name:   data.name   }),
+          ...(data.email  != null && { email:  data.email  }),
+          ...(data.avatar !== undefined && { avatar: data.avatar }),
         });
         syncWidgetData({
           streak: data.streak,

@@ -39,7 +39,12 @@ export interface WrittenStep {
   arabe: string;           // le mot/verset interrogé
   translitteration?: string;
   options: { id: string; text: string }[];
-  bonneReponse: string;    // id de la bonne option
+  /**
+   * Id de la bonne option. ABSENT des leçons renvoyées par l'API (anti-triche :
+   * le judging est server-side, cf. POST /lessons/:id/steps/:stepId/answer).
+   * Présent uniquement dans buildSampleLesson() (démo locale).
+   */
+  bonneReponse?: string;
 }
 
 export type LessonStep = DiscoveryStep | WrittenStep;

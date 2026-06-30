@@ -1,17 +1,26 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import Toggle from '../../components/Toggle';
 import { useUserStore } from '../../store/userStore';
 import { useTheme } from '../../utils/useTheme';
+import { logout, updateSettings } from '../../lib/api';
 
 const LANGUES = {
   fr: { drapeau: '🇫🇷', nom: 'Français' },
   en: { drapeau: '🇬🇧', nom: 'Anglais' },
   ar: { drapeau: '🇸🇦', nom: 'Arabe' },
 } as const;
+
+/** Initiales à partir du nom (fallback avatar). */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 function Row({
   iconBg, icon, title, subtitle, right, onPress, titleColor, subColor,
@@ -37,13 +46,36 @@ function Row({
 export default function SettingsScreen() {
   const router = useRouter();
   const [reminder, setReminder] = useState(true);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+
+  // Active/désactive la voix : optimistic local + persistance serveur best-effort.
+  const toggleVoice = (v: boolean) => {
+    setVoiceEnabled(v);
+    updateSettings({ voiceEnabled: v }).catch(() => setVoiceEnabled(!v));
+  };
   const language = useUserStore((s) => s.language);
   const streak = useUserStore((s) => s.streak);
   const xp = useUserStore((s) => s.xp);
+  const name = useUserStore((s) => s.name);
+  const email = useUserStore((s) => s.email);
   const theme = useUserStore((s) => s.theme);
   const setTheme = useUserStore((s) => s.setTheme);
   const langue = LANGUES[language];
   const T = useTheme();
+
+  const confirmLogout = () => {
+    Alert.alert('Se déconnecter', 'Veux-tu vraiment te déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Se déconnecter',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+          router.replace('/(onboarding)/signup');
+        },
+      },
+    ]);
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
@@ -59,11 +91,11 @@ export default function SettingsScreen() {
         {/* Profile card */}
         <View style={[styles.profileCard, { backgroundColor: T.profileCardBg }]}>
           <View style={styles.profileAvatar}>
-            <Text style={styles.profileInitials}>MS</Text>
+            <Text style={styles.profileInitials}>{initials(name)}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.profileName, { color: T.text }]}>Medoune Seck</Text>
-            <Text style={[styles.profileEmail, { color: T.textSecondary }]}>smedoune16@gmail.com</Text>
+            <Text style={[styles.profileName, { color: T.text }]}>{name || 'Mon profil'}</Text>
+            <Text style={[styles.profileEmail, { color: T.textSecondary }]}>{email || '—'}</Text>
             <View style={styles.chips}>
               <View style={styles.chipOrange}>
                 <Text style={{ fontSize: 14 }}>🔥</Text>
@@ -79,11 +111,22 @@ export default function SettingsScreen() {
         {/* COMPTE */}
         <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>COMPTE</Text>
         <View style={[styles.card, { backgroundColor: T.cardBg }]}>
-          <Row iconBg="#6B4DFF" icon="user" title="Modifier le profil" subtitle="Nom, photo, bio" titleColor={T.text} subColor={T.textSecondary} />
+          <Row iconBg="#6B4DFF" icon="user" title="Modifier le profil" subtitle="Nom, photo, bio" titleColor={T.text} subColor={T.textSecondary} onPress={() => router.push('/(app)/edit-profile')} />
           <View style={[styles.divider, { backgroundColor: T.divider }]} />
-          <Row iconBg="#8A8F99" icon="lock" title="Mot de passe & sécurité" titleColor={T.text} subColor={T.textSecondary} />
+          <Row iconBg="#8A8F99" icon="lock" title="Mot de passe & sécurité" titleColor={T.text} subColor={T.textSecondary} onPress={() => router.push('/(app)/change-password')} />
           <View style={[styles.divider, { backgroundColor: T.divider }]} />
-          <Row iconBg="#E0387E" icon="mic" title="Voix & enregistrements" right={<Text style={styles.rightText}>Activé ›</Text>} titleColor={T.text} subColor={T.textSecondary} />
+          <View style={styles.row}>
+            <View style={[styles.rowIcon, { backgroundColor: '#E0387E' }]}>
+              <Feather name="mic" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowTitle, { color: T.text }]}>Voix & enregistrements</Text>
+              <Text style={[styles.rowSub, { color: T.textSecondary }]}>
+                {voiceEnabled ? 'Activé' : 'Désactivé'}
+              </Text>
+            </View>
+            <Toggle value={voiceEnabled} onChange={toggleVoice} />
+          </View>
         </View>
 
         {/* NOTIFICATIONS */}
@@ -170,6 +213,12 @@ export default function SettingsScreen() {
           })}
         </View>
 
+        {/* DÉCONNEXION */}
+        <Pressable style={[styles.logoutBtn, { backgroundColor: T.cardBg }]} onPress={confirmLogout}>
+          <Feather name="log-out" size={20} color="#E5484D" />
+          <Text style={styles.logoutText}>Se déconnecter</Text>
+        </Pressable>
+
         <View style={{ height: 16 }} />
       </ScrollView>
     </View>
@@ -188,6 +237,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   content: { paddingHorizontal: 22, paddingVertical: 18 },
+  logoutBtn: {
+    marginTop: 20, height: 56, borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+  },
+  logoutText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#E5484D' },
   profileCard: {
     backgroundColor: '#E8E2FB', borderRadius: 18, padding: 18,
     flexDirection: 'row', alignItems: 'center', gap: 14,
@@ -219,7 +273,6 @@ const styles = StyleSheet.create({
   rowSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99' },
   divider: { height: 1, backgroundColor: '#F0F1F4' },
   chevron: { fontSize: 20, color: '#C2C6CE' },
-  rightText: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#8A8F99' },
   langueValue: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#6B4DFF' },
   themeSwatches: { flexDirection: 'row', gap: 6 },
   swatch: { width: 26, height: 26, borderRadius: 7 },

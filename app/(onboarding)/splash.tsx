@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, Easing,
 } from 'react-native-reanimated';
 import Otter from '../../components/Otter';
+import { bootstrapSession } from '../../lib/api';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -13,8 +14,21 @@ export default function SplashScreen() {
 
   useEffect(() => {
     loadingWidth.value = withTiming(0.62, { duration: 2000, easing: Easing.out(Easing.quad) });
-    const t = setTimeout(() => router.replace('/(onboarding)/onboarding-1'), 2200);
-    return () => clearTimeout(t);
+
+    let cancelled = false;
+    // En parallèle de l'animation : tente de restaurer la session (token stocké).
+    (async () => {
+      const connected = await bootstrapSession().catch(() => false);
+      if (cancelled) return;
+      // On laisse l'animation se voir un minimum (~1.6s) avant de router.
+      setTimeout(() => {
+        if (cancelled) return;
+        if (connected) router.replace('/(app)/(tabs)/parcours');
+        else router.replace('/(onboarding)/onboarding-1');
+      }, 1600);
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   const barStyle = useAnimatedStyle(() => ({
@@ -22,7 +36,7 @@ export default function SplashScreen() {
   }));
 
   return (
-    <Pressable onPress={() => router.replace('/(onboarding)/onboarding-1')} style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <LinearGradient
         colors={['#5B3FD6', '#7C5BF0', '#9B7DF7']}
         start={{ x: 0.1, y: 0 }}
@@ -39,7 +53,7 @@ export default function SplashScreen() {
           <Animated.View style={[styles.loaderFill, barStyle]} />
         </View>
       </LinearGradient>
-    </Pressable>
+    </View>
   );
 }
 

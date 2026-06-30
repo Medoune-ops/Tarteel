@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { requestPasswordReset } from '../../lib/api';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -13,11 +14,16 @@ export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
-    if (!email.trim()) return;
+    if (!email.trim() || loading) return;
     setLoading(true);
-    // TODO: appel backend reset password
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
+    try {
+      await requestPasswordReset(email.trim());
+    } catch {
+      // On affiche l'écran "email envoyé" même en cas d'erreur : ne pas révéler
+      // si l'adresse existe (anti-énumération de comptes).
+    } finally {
+      setLoading(false);
+    }
     router.push({ pathname: '/(onboarding)/reset-sent', params: { email: email.trim() } });
   };
 

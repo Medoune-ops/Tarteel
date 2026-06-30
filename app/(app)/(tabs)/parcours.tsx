@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
@@ -14,10 +14,10 @@ import { useUserStore } from '../../../store/userStore';
 import { useTheme } from '../../../utils/useTheme';
 import type { ThemeColors } from '../../../constants/colors';
 import {
-  PARCOURS_SECTIONS,
   type ParcoursNode,
   type ParcoursSection,
 } from '../../../constants/parcours';
+import { fetchSections } from '../../../lib/api';
 import { playSound } from '../../../constants/sounds';
 
 // Icônes SVG pros pour les nodes complétés
@@ -577,11 +577,25 @@ export default function ParcoursScreen() {
   const { streak, xp, hearts, isPremium, syncHearts } = useUserStore();
   const { width, height } = useWindowDimensions();
 
-  // Régénère les cœurs à chaque fois qu'on revient sur le parcours.
+  // Parcours chargé depuis l'API (GET /sections), avec états de chargement.
+  const [sections, setSections] = useState<ParcoursSection[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  const loadSections = useCallback(async () => {
+    setLoadError(false);
+    try {
+      setSections(await fetchSections());
+    } catch {
+      setLoadError(true);
+    }
+  }, []);
+
+  // Régénère les cœurs ET recharge le parcours (états des nœuds) à chaque focus.
   useFocusEffect(
     useCallback(() => {
       syncHearts();
-    }, [syncHearts]),
+      loadSections();
+    }, [syncHearts, loadSections]),
   );
 
   const openLesson = (node: ParcoursNode) => {
@@ -590,7 +604,10 @@ export default function ParcoursScreen() {
       router.push('/(app)/lesson/out-of-hearts');
       return;
     }
-    router.push('/(app)/lesson/play');
+    router.push({
+      pathname: '/(app)/lesson/play',
+      params: node.lessonId ? { lessonId: node.lessonId } : undefined,
+    });
   };
 
   return (
@@ -625,7 +642,27 @@ export default function ParcoursScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <DailyChest />
-        {PARCOURS_SECTIONS.map((section, index) => (
+
+        {sections == null && !loadError && (
+          <View style={styles.centerState}>
+            <ActivityIndicator size="large" color="#6B4DFF" />
+            <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement du parcours…</Text>
+          </View>
+        )}
+
+        {loadError && (
+          <View style={styles.centerState}>
+            <Feather name="wifi-off" size={32} color={T.textSecondary} />
+            <Text style={[styles.stateText, { color: T.textSecondary }]}>
+              Impossible de charger le parcours.
+            </Text>
+            <Pressable style={styles.retryBtn} onPress={loadSections}>
+              <Text style={styles.retryLabel}>Réessayer</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {sections?.map((section, index) => (
           <SectionBlock
             key={section.id}
             section={section}
@@ -650,6 +687,13 @@ const styles = StyleSheet.create({
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 21 },
   scroll: { alignItems: 'center' },
+  centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
+  stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 6, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14,
+    backgroundColor: '#6B4DFF',
+  },
+  retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
   sectionWrap: { width: '100%' },
   sectionCard: {
     flexDirection: 'row', alignItems: 'center', gap: 16,

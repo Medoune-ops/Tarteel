@@ -19,7 +19,9 @@
         "tinted": "./assets/icon-tinted.png"
       },
       "entitlements": {
-        "com.apple.security.application-groups": ["group.com.tarteel.app"]
+        "com.apple.security.application-groups": [
+          "group.com.tarteel.app"
+        ]
       }
     },
     "android": {
@@ -39,7 +41,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-audio"
+      "expo-audio",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.REPLACE_WITH_IOS_REVERSED_CLIENT_ID"
+        }
+      ]
     ],
     "_widgetPlugin_activateForEASBuild": [
       "expo-widget",

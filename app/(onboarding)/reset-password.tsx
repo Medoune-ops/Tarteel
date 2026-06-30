@@ -3,9 +3,10 @@ import {
   View, Text, Pressable, StyleSheet, TextInput,
   KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { confirmPasswordReset, ApiError } from '../../lib/api';
 
 type Strength = 'vide' | 'faible' | 'moyen' | 'fort';
 
@@ -89,9 +90,11 @@ function PwdField({ value, onChange, placeholder }: { value: string; onChange: (
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { token } = useLocalSearchParams<{ token?: string }>();
   const [pwd, setPwd] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const strength = getStrength(pwd);
   const hasMin8    = pwd.length >= 8;
@@ -102,12 +105,24 @@ export default function ResetPasswordScreen() {
   const canSubmit  = hasMin8 && hasCase && hasNumber && hasSpecial && matches;
 
   const submit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || loading) return;
+    if (!token) {
+      setError('Lien invalide ou expiré. Refais une demande de réinitialisation.');
+      return;
+    }
     setLoading(true);
-    // TODO: appel backend avec token de l'URL
-    await new Promise((r) => setTimeout(r, 900));
-    setLoading(false);
-    router.replace('/(onboarding)/signup');
+    setError(null);
+    try {
+      await confirmPasswordReset(token, pwd);
+      router.replace('/(onboarding)/signup');
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? 'Lien invalide ou expiré. Refais une demande de réinitialisation.'
+          : 'Une erreur est survenue. Réessaie.',
+      );
+      setLoading(false);
+    }
   };
 
   return (
@@ -155,6 +170,8 @@ export default function ResetPasswordScreen() {
             <CheckItem ok={hasNumber}  label="Un chiffre" />
             <CheckItem ok={hasSpecial} label="Un caractère spécial (!@#$…)" />
           </View>
+
+          {error && <Text style={styles.errorText}>{error}</Text>}
 
           {/* CTA */}
           <Pressable
@@ -226,4 +243,8 @@ const styles = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.45 },
   ctaLabel: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 19, color: '#fff' },
+  errorText: {
+    fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#E5484D',
+    textAlign: 'center', marginTop: 16,
+  },
 });
