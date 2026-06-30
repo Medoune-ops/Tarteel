@@ -6,21 +6,11 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, FontAwesome } from '@expo/vector-icons';
-import {
-  GoogleSignin, statusCodes,
-} from '@react-native-google-signin/google-signin';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
-import { login, register, loginWithGoogle, ApiError } from '../../lib/api';
+import { login, register, ApiError } from '../../lib/api';
 
 type Mode = 'login' | 'signup';
-
-// Configuration Google Sign-In (une seule fois au chargement du module).
-// `webClientId` = client OAuth « Web » de la console Google Cloud, exposé via
-// une variable EXPO_PUBLIC_ pour rester côté client.
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-});
 
 /** Champ de saisie réutilisable (icône + TextInput + œil pour les mots de passe). */
 function Field({
@@ -76,44 +66,15 @@ export default function SignupScreen() {
   const isSignup = mode === 'signup';
 
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Navigation post-auth commune (email ou Google) : inscription ou profil non
-  // configuré → setup ; sinon → parcours.
+  // Navigation post-auth : inscription ou profil non configuré → setup ;
+  // sinon → parcours.
   const routeAfterAuth = (forceSetup = false) => {
     if (forceSetup || !useUserStore.getState().onboardingDone) {
       router.replace('/(setup)/niveau');
     } else {
       router.replace('/(app)/(tabs)/parcours');
-    }
-  };
-
-  const googleSubmit = async () => {
-    if (googleLoading || loading) return;
-    setError(null);
-    setGoogleLoading(true);
-    try {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      // idToken : présent dans response.data (nouvelle API) ou à la racine (ancienne).
-      const idToken =
-        (response as { data?: { idToken?: string | null } }).data?.idToken ??
-        (response as { idToken?: string | null }).idToken ??
-        null;
-      if (!idToken) {
-        setError('Connexion Google impossible (jeton manquant).');
-        return;
-      }
-      await loginWithGoogle(idToken);
-      routeAfterAuth();
-    } catch (e) {
-      const code = (e as { code?: string }).code;
-      // L'utilisateur a fermé la popup ou une connexion est déjà en cours : silencieux.
-      if (code === statusCodes.SIGN_IN_CANCELLED || code === statusCodes.IN_PROGRESS) return;
-      setError(e instanceof ApiError ? e.message : 'Connexion Google impossible. Réessaie.');
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -185,19 +146,9 @@ export default function SignupScreen() {
           </View>
 
           {/* Boutons sociaux */}
-          <Pressable
-            style={[styles.googleBtn, (googleLoading || loading) && styles.socialDisabled]}
-            onPress={googleSubmit}
-            disabled={googleLoading || loading}
-          >
-            {googleLoading ? (
-              <ActivityIndicator color="#4285F4" />
-            ) : (
-              <>
-                <Text style={styles.googleG}>G</Text>
-                <Text style={styles.socialLabel}>Continuer avec Google</Text>
-              </>
-            )}
+          <Pressable style={styles.googleBtn}>
+            <Text style={styles.googleG}>G</Text>
+            <Text style={styles.socialLabel}>Continuer avec Google</Text>
           </Pressable>
           <Pressable style={styles.appleBtn}>
             <FontAwesome name="apple" size={22} color="#fff" />
@@ -307,7 +258,6 @@ const styles = StyleSheet.create({
     width: '100%', height: 56, borderRadius: 16, borderWidth: 1.5, borderColor: '#E2E4EA',
     backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 18,
   },
-  socialDisabled: { opacity: 0.5 },
   googleG: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, color: '#4285F4' },
   socialLabel: { fontFamily: 'Nunito_700Bold', fontSize: 16, color: '#2B3240' },
   appleBtn: {

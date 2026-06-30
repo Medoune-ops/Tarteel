@@ -41,13 +41,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-audio",
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.REPLACE_WITH_IOS_REVERSED_CLIENT_ID"
-        }
-      ]
+      "expo-audio"
     ],
     "_widgetPlugin_activateForEASBuild": [
       "expo-widget",
