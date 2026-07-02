@@ -11,6 +11,8 @@ import {
   type WrittenStep,
 } from '../../../constants/lessonEngine';
 import { fetchLesson, answerStep, ApiError } from '../../../lib/api';
+import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
+import * as Speech from 'expo-speech';
 
 type Phase = 'answering' | 'correct' | 'wrong';
 
@@ -61,6 +63,20 @@ export default function LessonPlayScreen() {
       <View style={[styles.screen, styles.centerState]}>
         <ActivityIndicator size="large" color="#6B4DFF" />
         <Text style={styles.stateText}>Chargement de la leçon…</Text>
+      </View>
+    );
+  }
+
+  // Leçon sans contenu (étapes pas encore rédigées) : on évite le crash sur
+  // lesson.steps[0] et on renvoie proprement au parcours.
+  if (lesson.steps.length === 0) {
+    return (
+      <View style={[styles.screen, styles.centerState]}>
+        <Feather name="clock" size={34} color="#9AA0AA" />
+        <Text style={styles.stateText}>Cette leçon n'est pas encore disponible.</Text>
+        <Pressable style={styles.retryBtn} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
+          <Text style={styles.retryLabel}>Retour au parcours</Text>
+        </Pressable>
       </View>
     );
   }
@@ -140,11 +156,9 @@ export default function LessonPlayScreen() {
         exiting={SlideOutLeft.duration(220).easing(Easing.in(Easing.cubic))}
       >
         {step.type === 'discovery' && (
-          <DiscoveryView
-            step={step}
-            onContinue={goNext}
-            isFullVerse={step.id.startsWith('disc-full')}
-          />
+          step.mots && step.mots.length > 0
+            ? <FullVerseReader step={step} onContinue={goNext} />
+            : <DiscoveryView step={step} onContinue={goNext} isFullVerse={step.id.startsWith('disc-full')} />
         )}
         {step.type === 'written' && (
           <WrittenView
@@ -161,6 +175,113 @@ export default function LessonPlayScreen() {
   );
 }
 
+// ─── Étape VERSET COMPLET — lecteur mot par mot (aucun cœur) ─────────────────
+// Affiche tous les mots du verset (tappables) + une auto-lecture qui enchaîne
+// les mots avec un surlignage qui suit. Rendu quand le step porte `mots`.
+function FullVerseReader({ step, onContinue }: { step: DiscoveryStep; onContinue: () => void }) {
+  const mots = step.mots ?? [];
+  // Mot en cours de lecture (par position) — surlignage.
+  const [playing, setPlaying] = useState<number | null>(null);
+  const [autoPlaying, setAutoPlaying] = useState(false);
+  const autoRef = useRef(false);
+
+  const stopAuto = () => {
+    autoRef.current = false;
+    setAutoPlaying(false);
+    setPlaying(null);
+    stopRemoteAudio();
+  };
+
+  // Coupe toute lecture en quittant l'étape.
+  useEffect(() => () => stopAuto(), []);
+
+  const playWord = (position: number, url: string | null) => {
+    if (!url) return;
+    if (autoRef.current) stopAuto();            // un tap reprend la main
+    setPlaying(position);
+    playRemoteAudio(url);
+    setTimeout(() => setPlaying((p) => (p === position ? null : p)), 1500);
+  };
+
+  // Enchaîne les mots (avec audio) en déplaçant le surlignage.
+  const startAuto = async () => {
+    const seq = mots.filter((m) => m.audioUrl);
+    if (seq.length === 0) return;
+    autoRef.current = true;
+    setAutoPlaying(true);
+    for (const m of seq) {
+      if (!autoRef.current) break;
+      setPlaying(m.position);
+      await playRemoteAudioAsync(m.audioUrl);
+      if (!autoRef.current) break;              // stoppé pendant le mot
+    }
+    if (autoRef.current) {
+      autoRef.current = false;
+      setAutoPlaying(false);
+      setPlaying(null);
+    }
+  };
+
+  const toggleAuto = () => { if (autoPlaying) stopAuto(); else startAuto(); };
+
+  return (
+    <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={[styles.tag, { backgroundColor: '#FFF3E0' }]}>
+          <Feather name="volume-2" size={15} color="#E07A0C" />
+          <Text style={[styles.tagText, { color: '#E07A0C' }]}>Verset complet</Text>
+        </View>
+        <Text style={styles.consigne}>Écoute et répète à voix basse</Text>
+
+        <View style={styles.verseCard}>
+          {/* Mots en RTL (droite → gauche), tappables */}
+          <View style={readerStyles.wordsRow}>
+            {mots.map((m) => {
+              const active = playing === m.position;
+              return (
+                <Pressable
+                  key={m.position}
+                  onPress={() => playWord(m.position, m.audioUrl)}
+                  style={[readerStyles.word, active && readerStyles.wordActive]}
+                >
+                  <Text style={[readerStyles.wordText, active && readerStyles.wordTextActive]}>{m.texteArabe}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {!!step.translitteration && <Text style={styles.translit}>{step.translitteration}</Text>}
+          {!!step.traduction && <Text style={styles.traduction}>{step.traduction}</Text>}
+        </View>
+
+        <Pressable style={[readerStyles.autoBtn, autoPlaying && readerStyles.autoBtnActive]} onPress={toggleAuto}>
+          <Feather name={autoPlaying ? 'pause' : 'play'} size={20} color="#fff" />
+          <Text style={readerStyles.autoLabel}>
+            {autoPlaying ? 'Lecture en cours — appuie pour arrêter' : 'Lecture automatique mot par mot'}
+          </Text>
+        </Pressable>
+        <Text style={styles.hint}>Appuie sur un mot, ou lance la lecture automatique 🔊</Text>
+      </ScrollView>
+
+      <Footer label="J'ai répété" color="#34C724" colorDark="#2A9E1C" onPress={onContinue} />
+    </View>
+  );
+}
+
+const readerStyles = StyleSheet.create({
+  wordsRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  word: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
+  wordActive: { backgroundColor: '#DCF5D6' },
+  wordText: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 40, color: '#1B2333', lineHeight: 70 },
+  wordTextActive: { color: '#2A9E1C' },
+  autoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: '#6B4DFF', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 18,
+    marginTop: 26, width: '100%',
+  },
+  autoBtnActive: { backgroundColor: '#2A9E1C' },
+  autoLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
+});
+
 // ─── Étape DÉCOUVERTE (aucun cœur) ───────────────────────────────────────────
 function DiscoveryView({
   step, onContinue, isFullVerse,
@@ -169,6 +290,7 @@ function DiscoveryView({
   onContinue: () => void;
   isFullVerse?: boolean;
 }) {
+  const [noAudio, setNoAudio] = useState(false);
   return (
     <View style={styles.body}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -189,11 +311,25 @@ function DiscoveryView({
           <Text style={styles.traduction}>{step.traduction}</Text>
         </View>
 
-        <Pressable style={styles.playBtn}>
-          <Feather name="volume-2" size={40} color="#2A9E1C" />
+        <Pressable
+          style={[styles.playBtn, (!step.audioUrl && !step.ttsText) && styles.playBtnDisabled]}
+          onPress={() => {
+            if (step.ttsText) {
+              Speech.speak(step.ttsText, { language: 'ar' });
+            } else {
+              const ok = playRemoteAudio(step.audioUrl);
+              if (!ok) setNoAudio(true);
+            }
+          }}
+        >
+          <Feather name="volume-2" size={40} color={(step.audioUrl || step.ttsText) ? '#2A9E1C' : '#9AA0AA'} />
         </Pressable>
         <Text style={styles.hint}>
-          {isFullVerse ? 'Appuie pour écouter, puis répète à voix basse' : 'Écoute et répète à voix basse'}
+          {noAudio
+            ? 'Audio indisponible pour cette étape'
+            : isFullVerse
+              ? 'Appuie pour écouter, puis répète à voix basse'
+              : 'Écoute et répète à voix basse'}
         </Text>
 
         {isFullVerse && (
@@ -348,6 +484,7 @@ const styles = StyleSheet.create({
   traduction: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, color: '#8A8F99', marginTop: 8, textAlign: 'center' },
 
   playBtn: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#DCF5D6', alignItems: 'center', justifyContent: 'center', marginTop: 30 },
+  playBtnDisabled: { backgroundColor: '#ECEEF1' },
   hint: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, color: '#7A828F', marginTop: 14 },
   hintSmall: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#9AA0AA', marginTop: 14, textAlign: 'center' },
 

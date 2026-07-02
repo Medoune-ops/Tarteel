@@ -21,6 +21,13 @@ export const MAX_LESSON_STEPS = 25;
 
 export type StepType = 'discovery' | 'written';
 
+/** Un mot d'un verset avec sa propre récitation (lecteur mot par mot). */
+export interface StepMot {
+  position: number;
+  texteArabe: string;
+  audioUrl: string | null;
+}
+
 /** Étape Découverte : présenter un verset/mot, sans évaluation. */
 export interface DiscoveryStep {
   type: 'discovery';
@@ -29,6 +36,17 @@ export interface DiscoveryStep {
   translitteration: string;
   traduction: string;
   audioUrl?: string | null;
+  /**
+   * Texte à prononcer via expo-speech (TTS natif du device).
+   * Utilisé pour les lettres de l'alphabet (pas d'audio hébergé).
+   */
+  ttsText?: string | null;
+  /**
+   * Présent uniquement pour l'étape « verset complet » : la liste des mots avec
+   * leur audio. Sa présence bascule l'affichage en LECTEUR mot par mot
+   * (mots tappables + auto-lecture surlignée).
+   */
+  mots?: StepMot[];
 }
 
 /** Étape Test écrit (QCM) : choisir la bonne réponse. */

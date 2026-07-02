@@ -138,7 +138,7 @@ function Dashed({ color }: { color: string }) {
   return <View style={[styles.dashed, { borderColor: color }]} />;
 }
 
-function CompletedNode({ align, icon }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen' }) {
+function CompletedNode({ align, icon, onPress }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen'; onPress: () => void }) {
   const renderIcon = () => {
     if (icon === 'star') return <IconStar size={52} />;
     if (icon === 'book') return <IconBook size={52} />;
@@ -147,9 +147,9 @@ function CompletedNode({ align, icon }: { align: 'left' | 'right' | 'center'; ic
     return <Text style={styles.kaabaEmoji}>🕋</Text>;
   };
   return (
-    <View style={[styles.nodeRow, alignStyle(align)]}>
+    <Pressable onPress={onPress} style={[styles.nodeRow, alignStyle(align)]}>
       <View style={styles.completed}>{renderIcon()}</View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -453,7 +453,7 @@ function alignStyle(align: 'left' | 'right' | 'center') {
 function RenderNode({ node, onPress, theme }: { node: ParcoursNode; onPress: () => void; theme: ThemeColors }) {
   if (node.state === 'active') return <ActiveNode label={node.label} onPress={onPress} />;
   if (node.state === 'completed') {
-    return <CompletedNode align={node.align} icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'} />;
+    return <CompletedNode align={node.align} icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'} onPress={onPress} />;
   }
   return <LockedNode align={node.align} icon={node.icon as 'note' | 'moon' | 'trophy' | 'kaaba' | 'crescent' | 'mosque'} theme={theme} />;
 }
