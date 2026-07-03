@@ -34,6 +34,9 @@ interface UserState {
   theme: 'light' | 'dark' | 'system';
   /** Objectif de série fixé par l'utilisateur (null = aucun objectif en cours). */
   streakGoal: number | null;
+  /** Heure locale préférée (0–23) pour le rappel quotidien — miroir de
+   *  `reminderHour` côté backend (persistée ici pour survivre au redémarrage). */
+  reminderHour: number;
   /** Date (YYYY-MM-DD) du dernier coffre quotidien réclamé (null = jamais). */
   lastChestDay: string | null;
   /** Ids des podiums dont la récompense a déjà été réclamée. */
@@ -54,6 +57,8 @@ interface UserState {
   setTheme: (v: UserState['theme']) => void;
   /** Fixe (ou remplace) l'objectif de série. */
   setStreakGoal: (days: number) => void;
+  /** Change l'heure du rappel quotidien (0–23, heure locale). */
+  setReminderHour: (hour: number) => void;
   /**
    * Réclame le cadeau quand l'objectif est atteint : crédite des XP bonus
    * et efface l'objectif (l'utilisateur pourra en fixer un nouveau).
@@ -131,6 +136,7 @@ const initialState = {
   language: 'fr' as const,
   theme: 'system' as const,
   streakGoal: null as number | null,
+  reminderHour: 19,
   lastChestDay: null as string | null,
   claimedPodiums: [] as string[],
   dailyMinutes: 10,
@@ -175,6 +181,7 @@ export const useUserStore = create<UserState>()(
       setTheme: (theme) => set({ theme }),
 
       setStreakGoal: (days) => set({ streakGoal: days }),
+      setReminderHour: (hour) => set({ reminderHour: hour }),
 
       claimStreakReward: () => {
         const s = get();

@@ -60,6 +60,7 @@ export default function SettingsScreen() {
   const email = useUserStore((s) => s.email);
   const theme = useUserStore((s) => s.theme);
   const setTheme = useUserStore((s) => s.setTheme);
+  const reminderHour = useUserStore((s) => s.reminderHour);
   const langue = LANGUES[language];
   const T = useTheme();
 
@@ -138,7 +139,9 @@ export default function SettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.rowTitle, { color: T.text }]}>Rappel quotidien</Text>
-              <Text style={[styles.rowSub, { color: T.textSecondary }]}>Tous les jours à 20:30</Text>
+              <Text style={[styles.rowSub, { color: T.textSecondary }]}>
+                Tous les jours à {String(reminderHour).padStart(2, '0')} : 00
+              </Text>
             </View>
             <Toggle value={reminder} onChange={setReminder} />
           </View>
