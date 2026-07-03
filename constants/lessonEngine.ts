@@ -73,7 +73,9 @@ export interface WrittenStep {
 export interface OrderingStep {
   type: 'ordering';
   id: string;
-  arabe: string;
+  arabe?: string;
+  /** Consigne personnalisée (ex: « Remets les lettres dans l'ordre »). Défaut : mots. */
+  consigne?: string;
   mots: Array<{ position: number; texteArabe: string }>;
 }
 

@@ -13,7 +13,7 @@ import {
   type MatchingStep,
 } from '../../../constants/lessonEngine';
 import { fetchLesson, answerStep, ApiError } from '../../../lib/api';
-import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio, setRemotePlaybackRate } from '../../../constants/sounds';
+import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio, setRemotePlaybackRate, correctFeedback, wrongFeedback } from '../../../constants/sounds';
 import { getLetterSound } from '../../../constants/letterSounds';
 import * as Speech from 'expo-speech';
 
@@ -122,8 +122,10 @@ export default function LessonPlayScreen() {
       if (res.correct) {
         setCorrectCount((c) => c + 1);
         setPhase('correct');
+        correctFeedback();
       } else {
         setPhase('wrong');
+        wrongFeedback();
       }
     } catch (e) {
       // OUT_OF_HEARTS (403) ou réseau : on bascule au blocage si plus de cœurs.
@@ -145,8 +147,10 @@ export default function LessonPlayScreen() {
       if (res.correct) {
         setCorrectCount((c) => c + 1);
         setPhase('correct');
+        correctFeedback();
       } else {
         setPhase('wrong');
+        wrongFeedback();
       }
     } catch (e) {
       if (e instanceof ApiError && e.status === 403) {
@@ -555,7 +559,7 @@ function OrderingView({
           <Text style={[styles.tagText, { color: '#0070CC' }]}>Remise en ordre</Text>
         </View>
 
-        <Text style={styles.consigne}>Remets les mots dans le bon ordre</Text>
+        <Text style={styles.consigne}>{step.consigne ?? 'Remets les mots dans le bon ordre'}</Text>
 
         {/* Zone de réponse (RTL) */}
         <View style={orderStyles.placedZone}>
@@ -654,8 +658,10 @@ function MatchingView({ step, onContinue }: { step: MatchingStep; onContinue: ()
       setMatched((m) => new Set([...m, arabeId]));
       setSelArabe(null);
       setSelTrad(null);
+      correctFeedback();
     } else {
       setWrongId(arabeId);
+      wrongFeedback();
       setTimeout(() => { setWrongId(null); setSelArabe(null); setSelTrad(null); }, 700);
     }
   };
