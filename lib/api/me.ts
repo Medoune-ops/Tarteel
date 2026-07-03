@@ -106,3 +106,36 @@ export async function updateSettings(input: UpdateSettingsInput): Promise<MeResp
   useUserStore.getState().hydrateFromBackend(data);
   return data;
 }
+
+export interface NotificationPrefs {
+  notifDailyReminder: boolean;
+  notifStreakAlert: boolean;
+  /** Heure locale préférée (0–23) pour le rappel quotidien. */
+  reminderHour: number;
+}
+
+/** `GET /me/notifications/preferences` — préférences de notification (source de vérité serveur). */
+export async function fetchNotificationPrefs(): Promise<NotificationPrefs> {
+  return apiFetch<NotificationPrefs>('/me/notifications/preferences');
+}
+
+export interface UpdateNotificationPrefsInput {
+  notifDailyReminder?: boolean;
+  notifStreakAlert?: boolean;
+  reminderHour?: number;
+}
+
+/**
+ * `PATCH /me/notifications/preferences` — persiste `reminderHour` (0–23, heure
+ * locale). Le job `jobs:reminders` (backend, horaire) relit ce champ à chaque
+ * passage : aucune reprogrammation manuelle n'est nécessaire côté client, la
+ * nouvelle heure est prise en compte dès le prochain tick.
+ */
+export async function updateNotificationPrefs(
+  input: UpdateNotificationPrefsInput,
+): Promise<NotificationPrefs> {
+  return apiFetch<NotificationPrefs>('/me/notifications/preferences', {
+    method: 'PATCH',
+    json: input,
+  });
+}
