@@ -12,6 +12,13 @@
 import { apiFetch } from './client';
 import { useUserStore } from '../../store/userStore';
 import type { MeResponse } from './me';
+import type { Lesson } from '../../constants/lessonEngine';
+
+/** `GET /lessons/:id` — la séquence d'étapes (réponses correctes non incluses, judging server-side). */
+export async function fetchLesson(lessonId: string): Promise<Lesson> {
+  const data = await apiFetch<{ lesson: Lesson }>(`/lessons/${encodeURIComponent(lessonId)}`);
+  return data.lesson;
+}
 
 export interface CompleteLessonInput {
   lessonId: string;
