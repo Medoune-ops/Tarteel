@@ -9,9 +9,12 @@ import {
   type Lesson,
   type DiscoveryStep,
   type WrittenStep,
+  type OrderingStep,
+  type MatchingStep,
 } from '../../../constants/lessonEngine';
 import { fetchLesson, answerStep, ApiError } from '../../../lib/api';
-import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
+import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio, setRemotePlaybackRate } from '../../../constants/sounds';
+import { getLetterSound } from '../../../constants/letterSounds';
 import * as Speech from 'expo-speech';
 
 type Phase = 'answering' | 'correct' | 'wrong';
@@ -84,8 +87,8 @@ export default function LessonPlayScreen() {
   const step = lesson.steps[index];
   const total = lesson.steps.length;
   const progress = index / total;
-  // Nombre d'étapes notées (test écrit) — base du score correct/total côté serveur.
-  const scoredTotal = lesson.steps.filter((s) => s.type === 'written').length;
+  // Étapes notées côté serveur (written + ordering). Matching est client-side.
+  const scoredTotal = lesson.steps.filter((s) => s.type === 'written' || s.type === 'ordering').length;
 
   // Passe à l'étape suivante, ou termine la leçon → écran de fin.
   // L'XP/streak/cœurs sont désormais crédités par le backend (POST /lesson/complete),
@@ -134,6 +137,28 @@ export default function LessonPlayScreen() {
     }
   };
 
+  const onSubmitOrdering = async (st: OrderingStep, positions: number[]) => {
+    if (judging) return;
+    setJudging(true);
+    try {
+      const res = await answerStep(lesson.id, st.id, { positions });
+      if (res.correct) {
+        setCorrectCount((c) => c + 1);
+        setPhase('correct');
+      } else {
+        setPhase('wrong');
+      }
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) {
+        router.replace('/(app)/lesson/out-of-hearts');
+      } else {
+        setLoadError(true);
+      }
+    } finally {
+      setJudging(false);
+    }
+  };
+
   // "Continuer" après un feedback : si plus de cœurs → écran de blocage.
   const onContinueAfterFeedback = () => {
     const hearts = useUserStore.getState().hearts;
@@ -170,6 +195,18 @@ export default function LessonPlayScreen() {
             onContinue={onContinueAfterFeedback}
           />
         )}
+        {step.type === 'ordering' && (
+          <OrderingView
+            step={step}
+            phase={phase}
+            judging={judging}
+            onValidate={(positions) => onSubmitOrdering(step, positions)}
+            onContinue={onContinueAfterFeedback}
+          />
+        )}
+        {step.type === 'matching' && (
+          <MatchingView step={step} onContinue={goNext} />
+        )}
       </Animated.View>
     </View>
   );
@@ -178,12 +215,22 @@ export default function LessonPlayScreen() {
 // ─── Étape VERSET COMPLET — lecteur mot par mot (aucun cœur) ─────────────────
 // Affiche tous les mots du verset (tappables) + une auto-lecture qui enchaîne
 // les mots avec un surlignage qui suit. Rendu quand le step porte `mots`.
+// Vitesses de lecture proposées sous la récitation.
+const SPEEDS = [0.5, 0.75, 1, 1.5] as const;
+
 function FullVerseReader({ step, onContinue }: { step: DiscoveryStep; onContinue: () => void }) {
   const mots = step.mots ?? [];
   // Mot en cours de lecture (par position) — surlignage.
   const [playing, setPlaying] = useState<number | null>(null);
   const [autoPlaying, setAutoPlaying] = useState(false);
+  const [speed, setSpeed] = useState<number>(1);
   const autoRef = useRef(false);
+
+  // Applique la vitesse choisie au moteur audio (player en cours + suivants).
+  const changeSpeed = (rate: number) => {
+    setSpeed(rate);
+    setRemotePlaybackRate(rate);
+  };
 
   const stopAuto = () => {
     autoRef.current = false;
@@ -192,8 +239,8 @@ function FullVerseReader({ step, onContinue }: { step: DiscoveryStep; onContinue
     stopRemoteAudio();
   };
 
-  // Coupe toute lecture en quittant l'étape.
-  useEffect(() => () => stopAuto(), []);
+  // Coupe toute lecture en quittant l'étape et rétablit la vitesse normale.
+  useEffect(() => () => { stopAuto(); setRemotePlaybackRate(1); }, []);
 
   const playWord = (position: number, url: string | null) => {
     if (!url) return;
@@ -259,6 +306,25 @@ function FullVerseReader({ step, onContinue }: { step: DiscoveryStep; onContinue
             {autoPlaying ? 'Lecture en cours — appuie pour arrêter' : 'Lecture automatique mot par mot'}
           </Text>
         </Pressable>
+
+        {/* Sélecteur de vitesse — ralentir pour répéter plus facilement. */}
+        <View style={readerStyles.speedRow}>
+          {SPEEDS.map((s) => {
+            const active = speed === s;
+            return (
+              <Pressable
+                key={s}
+                onPress={() => changeSpeed(s)}
+                style={[readerStyles.speedChip, active && readerStyles.speedChipActive]}
+              >
+                <Text style={[readerStyles.speedText, active && readerStyles.speedTextActive]}>
+                  {`${s}×`}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Text style={styles.hint}>Appuie sur un mot, ou lance la lecture automatique 🔊</Text>
       </ScrollView>
 
@@ -280,6 +346,14 @@ const readerStyles = StyleSheet.create({
   },
   autoBtnActive: { backgroundColor: '#2A9E1C' },
   autoLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
+  speedRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  speedChip: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: '#EDEDF2', borderWidth: 1.5, borderColor: '#E4E7EC',
+  },
+  speedChipActive: { backgroundColor: '#EDE8FF', borderColor: '#6B4DFF' },
+  speedText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#7A828F' },
+  speedTextActive: { color: '#6B4DFF' },
 });
 
 // ─── Étape DÉCOUVERTE (aucun cœur) ───────────────────────────────────────────
@@ -312,9 +386,12 @@ function DiscoveryView({
         </View>
 
         <Pressable
-          style={[styles.playBtn, (!step.audioUrl && !step.ttsText) && styles.playBtnDisabled]}
+          style={[styles.playBtn, (!step.audioUrl && !step.ttsText && !step.letterKey) && styles.playBtnDisabled]}
           onPress={() => {
-            if (step.ttsText) {
+            const localSrc = getLetterSound(step.letterKey);
+            if (localSrc != null) {
+              playRemoteAudio(localSrc);
+            } else if (step.ttsText) {
               Speech.speak(step.ttsText, { language: 'ar' });
             } else {
               const ok = playRemoteAudio(step.audioUrl);
@@ -322,7 +399,7 @@ function DiscoveryView({
             }
           }}
         >
-          <Feather name="volume-2" size={40} color={(step.audioUrl || step.ttsText) ? '#2A9E1C' : '#9AA0AA'} />
+          <Feather name="volume-2" size={40} color={(step.audioUrl || step.ttsText || step.letterKey) ? '#2A9E1C' : '#9AA0AA'} />
         </Pressable>
         <Text style={styles.hint}>
           {noAudio
@@ -424,6 +501,272 @@ function WrittenView({
     </View>
   );
 }
+
+// ─── Utilitaire shuffle (initialiseurs useState) ─────────────────────────────
+function shuffleArr<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j]!, a[i]!];
+  }
+  return a;
+}
+
+// ─── Étape REMISE EN ORDRE ─────────────────────────────────────────────────
+// Les mots du verset sont présentés dans un ordre aléatoire (banque). L'utilisateur
+// les place un à un dans la zone de réponse. Un tap sur un mot placé le renvoie
+// dans la banque. Le judging (positions → serveur) coûte un cœur si faux.
+function OrderingView({
+  step, phase, judging, onValidate, onContinue,
+}: {
+  step: OrderingStep;
+  phase: Phase;
+  judging: boolean;
+  onValidate: (positions: number[]) => void;
+  onContinue: () => void;
+}) {
+  const [bank, setBank]     = useState(() => shuffleArr([...step.mots]));
+  const [placed, setPlaced] = useState<Array<{ position: number; texteArabe: string }>>([]);
+  const answered = phase !== 'answering';
+  const ready = placed.length === step.mots.length;
+
+  const tapBank = (mot: { position: number; texteArabe: string }) => {
+    if (answered || judging) return;
+    setBank((b) => b.filter((m) => m.position !== mot.position));
+    setPlaced((p) => [...p, mot]);
+  };
+
+  const tapPlaced = (mot: { position: number; texteArabe: string }) => {
+    if (answered || judging) return;
+    setPlaced((p) => p.filter((m) => m.position !== mot.position));
+    setBank((b) => [...b, mot]);
+  };
+
+  const validate = () => {
+    if (!ready || judging) return;
+    onValidate(placed.map((m) => m.position));
+  };
+
+  return (
+    <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={[styles.tag, { backgroundColor: '#E8F4FF' }]}>
+          <Feather name="layers" size={15} color="#0070CC" />
+          <Text style={[styles.tagText, { color: '#0070CC' }]}>Remise en ordre</Text>
+        </View>
+
+        <Text style={styles.consigne}>Remets les mots dans le bon ordre</Text>
+
+        {/* Zone de réponse (RTL) */}
+        <View style={orderStyles.placedZone}>
+          {placed.length === 0 ? (
+            <Text style={orderStyles.placeholder}>Appuie sur un mot ci-dessous</Text>
+          ) : (
+            <View style={orderStyles.placedRow}>
+              {placed.map((m) => (
+                <Pressable
+                  key={m.position}
+                  disabled={answered}
+                  onPress={() => tapPlaced(m)}
+                  style={[
+                    orderStyles.chip,
+                    orderStyles.chipPlaced,
+                    answered && phase === 'correct' && orderStyles.chipCorrect,
+                    answered && phase === 'wrong'   && orderStyles.chipWrong,
+                  ]}
+                >
+                  <Text style={orderStyles.chipText}>{m.texteArabe}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Banque de mots */}
+        <View style={orderStyles.bankRow}>
+          {bank.map((m) => (
+            <Pressable
+              key={m.position}
+              disabled={answered || judging}
+              onPress={() => tapBank(m)}
+              style={orderStyles.chip}
+            >
+              <Text style={orderStyles.chipText}>{m.texteArabe}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {!answered && (
+          <Text style={styles.hintSmall}>Tape un mot placé pour le remettre dans la banque</Text>
+        )}
+        <View style={{ height: 20 }} />
+      </ScrollView>
+
+      {!answered ? (
+        <Footer
+          label={judging ? 'Validation…' : 'Valider'}
+          color={ready && !judging ? '#34C724' : '#C9CDD4'}
+          colorDark={ready && !judging ? '#2A9E1C' : '#B0B5BE'}
+          disabled={!ready || judging}
+          onPress={validate}
+        />
+      ) : (
+        <FeedbackBar correct={phase === 'correct'} onContinue={onContinue} />
+      )}
+    </View>
+  );
+}
+
+const orderStyles = StyleSheet.create({
+  placedZone: {
+    width: '100%', minHeight: 80, backgroundColor: '#E6E8ED', borderRadius: 18,
+    borderWidth: 2, borderColor: '#D0D3DA', borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', padding: 12, marginBottom: 16,
+  },
+  placeholder: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#9AA0AA' },
+  placedRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
+  bankRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 16 },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14,
+    backgroundColor: '#fff', borderWidth: 2, borderColor: '#D0D3DA',
+  },
+  chipPlaced: { backgroundColor: '#EDE8FF', borderColor: '#6B4DFF' },
+  chipCorrect: { backgroundColor: '#DEF5E5', borderColor: '#34C724' },
+  chipWrong:   { backgroundColor: '#FFE7E7', borderColor: '#FF4B4B' },
+  chipText: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 30, color: '#1B2333' },
+});
+
+// ─── Étape ASSOCIATION verset ↔ traduction ────────────────────────────────────
+// Client-side uniquement : aucun appel serveur, aucun cœur en jeu. L'utilisateur
+// relie chaque ligne arabe à sa traduction. Toutes les paires trouvées → Continuer.
+function MatchingView({ step, onContinue }: { step: MatchingStep; onContinue: () => void }) {
+  const [arabeOrder] = useState(() => shuffleArr([...step.paires]));
+  const [tradOrder]  = useState(() => shuffleArr([...step.paires]));
+  const [selArabe, setSelArabe] = useState<string | null>(null);
+  const [selTrad,  setSelTrad]  = useState<string | null>(null);
+  const [matched,  setMatched]  = useState<Set<string>>(new Set());
+  const [wrongId,  setWrongId]  = useState<string | null>(null);
+
+  const allMatched = matched.size === step.paires.length;
+
+  const tryMatch = (arabeId: string, tradId: string) => {
+    if (arabeId === tradId) {
+      setMatched((m) => new Set([...m, arabeId]));
+      setSelArabe(null);
+      setSelTrad(null);
+    } else {
+      setWrongId(arabeId);
+      setTimeout(() => { setWrongId(null); setSelArabe(null); setSelTrad(null); }, 700);
+    }
+  };
+
+  const tapArabe = (id: string) => {
+    if (matched.has(id) || wrongId) return;
+    const next = selArabe === id ? null : id;
+    setSelArabe(next);
+    if (next && selTrad) tryMatch(next, selTrad);
+  };
+
+  const tapTrad = (id: string) => {
+    if (matched.has(id) || wrongId) return;
+    const next = selTrad === id ? null : id;
+    setSelTrad(next);
+    if (selArabe && next) tryMatch(selArabe, next);
+  };
+
+  return (
+    <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={[styles.tag, { backgroundColor: '#FEF4FF' }]}>
+          <Feather name="link" size={15} color="#9C27B0" />
+          <Text style={[styles.tagText, { color: '#9C27B0' }]}>Association</Text>
+        </View>
+
+        <Text style={styles.consigne}>Relie chaque verset à sa traduction</Text>
+
+        <View style={matchStyles.columns}>
+          <View style={matchStyles.col}>
+            {arabeOrder.map((p) => {
+              const isMatched = matched.has(p.id);
+              const isSel  = selArabe === p.id && !isMatched;
+              const isWrong = wrongId === p.id;
+              return (
+                <Pressable
+                  key={p.id}
+                  disabled={isMatched || !!wrongId}
+                  onPress={() => tapArabe(p.id)}
+                  style={[
+                    matchStyles.card,
+                    isMatched && matchStyles.cardMatched,
+                    isSel     && matchStyles.cardSelected,
+                    isWrong   && matchStyles.cardWrong,
+                  ]}
+                >
+                  <Text style={[matchStyles.arabeText, isMatched && matchStyles.textMatched]}>{p.arabe}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={matchStyles.col}>
+            {tradOrder.map((p) => {
+              const isMatched = matched.has(p.id);
+              const isSel = selTrad === p.id && !isMatched;
+              return (
+                <Pressable
+                  key={p.id}
+                  disabled={isMatched || !!wrongId}
+                  onPress={() => tapTrad(p.id)}
+                  style={[
+                    matchStyles.card,
+                    isMatched && matchStyles.cardMatched,
+                    isSel     && matchStyles.cardSelected,
+                  ]}
+                >
+                  <Text style={[matchStyles.tradText, isMatched && matchStyles.textMatched]}>{p.traduction}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {allMatched && (
+          <View style={matchStyles.successBanner}>
+            <Feather name="check-circle" size={18} color="#2A9E1C" />
+            <Text style={matchStyles.successText}>Toutes les paires trouvées !</Text>
+          </View>
+        )}
+        <Text style={styles.hintSmall}>Appuie sur un verset, puis sur sa traduction</Text>
+        <View style={{ height: 20 }} />
+      </ScrollView>
+
+      <Footer
+        label={allMatched ? 'Continuer' : `${matched.size} / ${step.paires.length} paires`}
+        color={allMatched ? '#34C724' : '#C9CDD4'}
+        colorDark={allMatched ? '#2A9E1C' : '#B0B5BE'}
+        disabled={!allMatched}
+        onPress={onContinue}
+      />
+    </View>
+  );
+}
+
+const matchStyles = StyleSheet.create({
+  columns: { flexDirection: 'row', gap: 10, width: '100%', alignItems: 'flex-start' },
+  col: { flex: 1, gap: 10 },
+  card: {
+    borderRadius: 14, padding: 12, backgroundColor: '#fff',
+    borderWidth: 2, borderColor: '#E4E7EC', alignItems: 'center',
+  },
+  cardSelected: { borderColor: '#6B4DFF', backgroundColor: '#EDE8FF' },
+  cardMatched:  { borderColor: '#34C724', backgroundColor: '#DEF5E5' },
+  cardWrong:    { borderColor: '#FF4B4B', backgroundColor: '#FFE7E7' },
+  arabeText: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 26, color: '#1B2333', textAlign: 'center' },
+  tradText:  { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#1B2333', textAlign: 'center' },
+  textMatched: { color: '#2A9E1C' },
+  successBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
+  successText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#2A9E1C' },
+});
 
 // ─── Barre de feedback (correct / faux) ──────────────────────────────────────
 function FeedbackBar({ correct, onContinue }: { correct: boolean; onContinue: () => void }) {

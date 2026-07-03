@@ -19,7 +19,7 @@
 
 export const MAX_LESSON_STEPS = 25;
 
-export type StepType = 'discovery' | 'written';
+export type StepType = 'discovery' | 'written' | 'ordering' | 'matching';
 
 /** Un mot d'un verset avec sa propre récitation (lecteur mot par mot). */
 export interface StepMot {
@@ -37,8 +37,12 @@ export interface DiscoveryStep {
   traduction: string;
   audioUrl?: string | null;
   /**
-   * Texte à prononcer via expo-speech (TTS natif du device).
-   * Utilisé pour les lettres de l'alphabet (pas d'audio hébergé).
+   * Clé de lettre alphabet (ex: "alif") → résolu en audio local bundlé
+   * via getLetterSound(). Prioritaire sur ttsText quand le fichier existe.
+   */
+  letterKey?: string | null;
+  /**
+   * Fallback TTS si le fichier audio local est absent (expo-speech).
    */
   ttsText?: string | null;
   /**
@@ -65,7 +69,22 @@ export interface WrittenStep {
   bonneReponse?: string;
 }
 
-export type LessonStep = DiscoveryStep | WrittenStep;
+/** Étape Remise en ordre — drag-free : les mots en chips à tapper dans le bon ordre. */
+export interface OrderingStep {
+  type: 'ordering';
+  id: string;
+  arabe: string;
+  mots: Array<{ position: number; texteArabe: string }>;
+}
+
+/** Étape Association verset ↔ traduction — client-side, aucun cœur en jeu. */
+export interface MatchingStep {
+  type: 'matching';
+  id: string;
+  paires: Array<{ id: string; arabe: string; traduction: string }>;
+}
+
+export type LessonStep = DiscoveryStep | WrittenStep | OrderingStep | MatchingStep;
 
 /** Une leçon complète telle que renvoyée par l'API. */
 export interface Lesson {
