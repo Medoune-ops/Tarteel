@@ -1,26 +1,58 @@
-import { useEffect, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, Animated, Easing } from 'react-native';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, Animated, Easing, ActivityIndicator, Pressable } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
+import { getOrJoinLeague, type LeagueView, type LeagueMember } from '../../../lib/api';
 
-const TOP3 = [
-  { rank: 2, initials: 'SB', name: 'Sarah B.',   xp: 1480, height: 86,  size: 62, colors: ['#C4CCD8', '#9AA4B2'] as const, block: ['#EEF0F4', '#E1E5EC'] as const, accent: '#7A8595', ring: 0.78 },
-  { rank: 1, initials: 'IM', name: 'Idriss M.',  xp: 1620, height: 120, size: 74, colors: ['#FFD66B', '#F0A41E'] as const, block: ['#FBEAC9', '#F6D89C'] as const, accent: '#E07A0C', ring: 1.0 },
-  { rank: 3, initials: 'KN', name: 'Khadija N.', xp: 1320, height: 64,  size: 58, colors: ['#E6B07A', '#C67E3A'] as const, block: ['#F4E3CE', '#EBD3B4'] as const, accent: '#B5701F', ring: 0.66 },
-];
+// Style VISUEL du podium par rang (couleurs, hauteur de marche, anneau). Les
+// DONNÉES (nom, initiales, xp) viennent du backend ; seul l'habillage est ici.
+const PODIUM_STYLE: Record<number, {
+  height: number; size: number; colors: readonly [string, string];
+  block: readonly [string, string]; accent: string; ring: number;
+}> = {
+  1: { height: 120, size: 74, colors: ['#FFD66B', '#F0A41E'], block: ['#FBEAC9', '#F6D89C'], accent: '#E07A0C', ring: 1.0 },
+  2: { height: 86,  size: 62, colors: ['#C4CCD8', '#9AA4B2'], block: ['#EEF0F4', '#E1E5EC'], accent: '#7A8595', ring: 0.78 },
+  3: { height: 64,  size: 58, colors: ['#E6B07A', '#C67E3A'], block: ['#F4E3CE', '#EBD3B4'], accent: '#B5701F', ring: 0.66 },
+};
 
-const PARTICIPANTS = [
-  { rank: 4, initials: 'YA', name: 'Yasmine A. (toi)', xp: 1250, me: true },
-  { rank: 5, initials: 'AR', name: 'Amine R.', xp: 1180 },
-  { rank: 6, initials: 'LD', name: 'Leïla D.', xp: 1050 },
-  { rank: 7, initials: 'OK', name: 'Oussama K.', xp: 990 },
-  { rank: 8, initials: 'MT', name: 'Maryam T.', xp: 870 },
-  { rank: 9, initials: 'HB', name: 'Hicham B.', xp: 720, releg: true },
-];
+// Ordre d'affichage du podium : 2e à gauche, 1er au centre, 3e à droite.
+const PODIUM_ORDER = [2, 1, 3];
 
-const ME = PARTICIPANTS.find((p) => p.me)!;
+// Habillage de la carte d'en-tête selon la vraie ligue de l'utilisateur.
+// `colors` = dégradé du fond, `shadow` = couleur de l'ombre portée.
+// Clé = nom de ligue normalisé (minuscules, sans accents). Fallback = 'or'.
+type LeagueTheme = { colors: readonly [string, string, string]; shadow: string };
+const LEAGUE_THEME: Record<string, LeagueTheme> = {
+  bronze:   { colors: ['#E6B07A', '#C67E3A', '#A75F1E'], shadow: '#A75F1E' },
+  argent:   { colors: ['#D4DBE6', '#A9B4C4', '#8996A8'], shadow: '#8996A8' },
+  or:       { colors: ['#FFC247', '#F0A41E', '#E07A0C'], shadow: '#E07A0C' },
+  emeraude: { colors: ['#5FE39B', '#2FBD73', '#149A56'], shadow: '#149A56' },
+  saphir:   { colors: ['#6FB4FF', '#3B82F6', '#1E5FD6'], shadow: '#1E5FD6' },
+  rubis:    { colors: ['#FF7A8A', '#F0384E', '#C71F33'], shadow: '#C71F33' },
+  diamant:  { colors: ['#7FE7FF', '#3BC4E6', '#1E97C7'], shadow: '#1E97C7' },
+};
+
+/** Choisit l'habillage de la carte à partir du nom de ligue (fallback = or). */
+function leagueTheme(nom?: string | null): LeagueTheme {
+  // NFD sépare lettre + accent ; ̀-ͯ = plage des diacritiques combinants.
+  const key = (nom ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+  return LEAGUE_THEME[key] ?? LEAGUE_THEME.or;
+}
+
+/** Formate un délai (ms) en "Jj Hh" (ex: 3 j 14 h). */
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return 'Terminé';
+  const totalH = Math.floor(ms / 3_600_000);
+  const j = Math.floor(totalH / 24);
+  const h = totalH % 24;
+  return j > 0 ? `${j} j ${h} h` : `${h} h`;
+}
 
 /** Anneau de progression décoratif autour d'un avatar podium (segments). */
 function Ring({ size, ratio, color }: { size: number; ratio: number; color: string }) {
@@ -50,24 +82,69 @@ function Ring({ size, ratio, color }: { size: number; ratio: number; color: stri
 
 export default function LiguesScreen() {
   const T = useTheme();
-  // Animation d'entrée des lignes du classement (cascade).
-  const rows = useRef(PARTICIPANTS.map(() => new Animated.Value(0))).current;
-  const podium = useRef(TOP3.map(() => new Animated.Value(0))).current;
+
+  // Vue de ligue chargée depuis le backend (GET /leagues/me, auto-join sinon).
+  const [view, setView] = useState<LeagueView | null>(null);
+  const [error, setError] = useState(false);
+
+  const load = useCallback(async () => {
+    setError(false);
+    try {
+      setView(await getOrJoinLeague());
+    } catch {
+      setError(true);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Valeurs d'animation à capacité fixe (podium ≤ 3, liste ≤ 8) — évite de
+  // recréer des hooks quand les données changent.
+  const rows = useRef(Array.from({ length: 8 }, () => new Animated.Value(0))).current;
+  const podium = useRef(Array.from({ length: 3 }, () => new Animated.Value(0))).current;
 
   useEffect(() => {
-    Animated.stagger(
-      90,
-      podium.map((v) =>
-        Animated.spring(v, { toValue: 1, useNativeDriver: true, friction: 7, tension: 60 })
-      )
-    ).start();
-    Animated.stagger(
-      70,
-      rows.map((v) =>
-        Animated.timing(v, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true })
-      )
-    ).start();
-  }, []);
+    if (!view) return;
+    Animated.stagger(90, podium.map((v) =>
+      Animated.spring(v, { toValue: 1, useNativeDriver: true, friction: 7, tension: 60 })
+    )).start();
+    Animated.stagger(70, rows.map((v) =>
+      Animated.timing(v, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true })
+    )).start();
+  }, [view]);
+
+  // ── États de chargement / erreur ──
+  if (!view && !error) {
+    return (
+      <View style={[styles.screen, styles.centerState, { backgroundColor: T.pageBg }]}>
+        <DeviceStatusBar />
+        <ActivityIndicator size="large" color="#6B4DFF" />
+        <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement des ligues…</Text>
+      </View>
+    );
+  }
+  if (error) {
+    return (
+      <View style={[styles.screen, styles.centerState, { backgroundColor: T.pageBg }]}>
+        <DeviceStatusBar />
+        <Feather name="wifi-off" size={32} color={T.textSecondary} />
+        <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger les ligues.</Text>
+        <Pressable style={styles.retryBtn} onPress={load}>
+          <Text style={styles.retryLabel}>Réessayer</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const v = view!;
+  // Habillage de la carte d'en-tête selon la vraie ligue (bronze/argent/or/…).
+  const lt = leagueTheme(v.league?.nom);
+  // Podium ordonné (2,1,3) à partir des données backend.
+  const podiumByRank = new Map(v.podium.map((m) => [m.rang, m]));
+  const podiumDisplay = PODIUM_ORDER
+    .map((rank) => podiumByRank.get(rank))
+    .filter((m): m is LeagueMember => !!m);
+  const me = [...v.podium, ...v.around].find((m) => m.me) ?? null;
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
@@ -81,8 +158,8 @@ export default function LiguesScreen() {
           </View>
         </View>
 
-        {/* Carte ligue or */}
-        <LinearGradient colors={['#FFC247', '#F0A41E', '#E07A0C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.goldCard}>
+        {/* Carte ligue — dégradé adapté à la vraie ligue de l'utilisateur */}
+        <LinearGradient colors={lt.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.goldCard, { shadowColor: lt.shadow }]}>
           <View style={styles.goldGlow} />
           <View style={styles.goldGlow2} />
           <View style={styles.goldRow}>
@@ -90,35 +167,38 @@ export default function LiguesScreen() {
               <Feather name="award" size={30} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.goldTitle}>Ligue Or</Text>
-              <Text style={styles.goldSub}>Semaine 23 · 30 participants</Text>
+              <Text style={styles.goldTitle}>Ligue {v.league?.nom ?? '—'}</Text>
+              <Text style={styles.goldSub}>
+                {v.semaine != null ? `Semaine ${v.semaine} · ` : ''}{v.participants} participant{v.participants > 1 ? 's' : ''}
+              </Text>
             </View>
             <View style={styles.divisionBadge}>
               <Feather name="star" size={13} color="#fff" />
-              <Text style={styles.divisionText}>IV</Text>
+              <Text style={styles.divisionText}>{v.league?.niveau ?? '—'}</Text>
             </View>
           </View>
           <View style={styles.goldChip}>
             <View style={styles.goldChipLeft}>
               <View style={styles.goldChipIcon}>
-                <Feather name="trending-up" size={15} color="#E07A0C" />
+                <Feather name="trending-up" size={15} color={lt.shadow} />
               </View>
-              <Text style={styles.goldChipText}>Top 3 → Ligue Émeraude</Text>
+              <Text style={styles.goldChipText}>Top {v.promotionZone} → promotion</Text>
             </View>
             <View style={styles.goldChipLeft}>
               <Feather name="clock" size={14} color="#fff" />
-              <Text style={styles.goldChipText}>3 j 14 h</Text>
+              <Text style={styles.goldChipText}>{formatCountdown(v.msUntilEnd)}</Text>
             </View>
           </View>
         </LinearGradient>
 
         {/* ── Podium 3D ── */}
         <View style={styles.podium}>
-          {TOP3.map((p, i) => {
-            const first = p.rank === 1;
+          {podiumDisplay.map((p, i) => {
+            const first = p.rang === 1;
+            const st = PODIUM_STYLE[p.rang] ?? PODIUM_STYLE[3];
             return (
               <Animated.View
-                key={p.rank}
+                key={p.userId}
                 style={[
                   styles.podCol,
                   {
@@ -136,26 +216,26 @@ export default function LiguesScreen() {
                   </View>
                 )}
                 {/* avatar + anneau */}
-                <View style={[styles.avatarHolder, { width: p.size, height: p.size }]}>
-                  <Ring size={p.size} ratio={p.ring} color={p.accent} />
-                  <LinearGradient colors={p.colors} style={[styles.podAvatar, { width: p.size, height: p.size, borderRadius: p.size / 2 }, first && styles.podAvatarGlow]}>
+                <View style={[styles.avatarHolder, { width: st.size, height: st.size }]}>
+                  <Ring size={st.size} ratio={st.ring} color={st.accent} />
+                  <LinearGradient colors={st.colors} style={[styles.podAvatar, { width: st.size, height: st.size, borderRadius: st.size / 2 }, first && styles.podAvatarGlow]}>
                     <Text style={[styles.podAvatarText, first && { fontSize: 24 }]}>{p.initials}</Text>
                   </LinearGradient>
-                  <View style={[styles.medal, { backgroundColor: p.accent }]}>
-                    <Text style={styles.medalText}>{p.rank}</Text>
+                  <View style={[styles.medal, { backgroundColor: st.accent }]}>
+                    <Text style={styles.medalText}>{p.rang}</Text>
                   </View>
                 </View>
                 {/* nom + xp */}
                 <Text style={[styles.podName, first && { color: '#8A5A0C' }]} numberOfLines={1}>{p.name}</Text>
                 <View style={[styles.podXpPill, first && { backgroundColor: '#fff' }]}>
-                  <Feather name="zap" size={11} color={p.accent} />
-                  <Text style={[styles.podXp, { color: p.accent }]}>{p.xp}</Text>
+                  <Feather name="zap" size={11} color={st.accent} />
+                  <Text style={[styles.podXp, { color: st.accent }]}>{p.weeklyXp}</Text>
                 </View>
                 {/* marche 3D */}
-                <View style={[styles.step, { height: p.height }]}>
-                  <LinearGradient colors={p.block} style={styles.stepTop} />
-                  <View style={[styles.stepFace, { backgroundColor: p.block[1] }]}>
-                    <Text style={[styles.stepRank, { color: p.accent }]}>{p.rank}</Text>
+                <View style={[styles.step, { height: st.height }]}>
+                  <LinearGradient colors={st.block} style={styles.stepTop} />
+                  <View style={[styles.stepFace, { backgroundColor: st.block[1] }]}>
+                    <Text style={[styles.stepRank, { color: st.accent }]}>{p.rang}</Text>
                   </View>
                 </View>
               </Animated.View>
@@ -175,30 +255,30 @@ export default function LiguesScreen() {
 
         {/* Liste participants (animée) */}
         <View style={[styles.list, { backgroundColor: T.cardBg }]}>
-          {PARTICIPANTS.map((p, i) => (
+          {v.around.map((p, i) => (
             <Animated.View
-              key={p.rank}
+              key={p.userId}
               style={{
-                opacity: rows[i],
-                transform: [{ translateX: rows[i].interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
+                opacity: rows[i] ?? 1,
+                transform: [{ translateX: (rows[i] ?? new Animated.Value(1)).interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
               }}
             >
-              <View style={[styles.listRow, p.me && [styles.listRowMe, T.isDark && { backgroundColor: '#241F3D' }], i > 0 && !p.me && !PARTICIPANTS[i - 1].me && [styles.listBorder, { borderTopColor: T.divider }]]}>
-                <Text style={[styles.rankNum, p.me && { color: '#6B4DFF' }, p.releg && { color: '#FF4B4B' }]}>{p.rank}</Text>
+              <View style={[styles.listRow, p.me && [styles.listRowMe, T.isDark && { backgroundColor: '#241F3D' }], i > 0 && !p.me && !v.around[i - 1].me && [styles.listBorder, { borderTopColor: T.divider }]]}>
+                <Text style={[styles.rankNum, p.me && { color: '#6B4DFF' }, p.relegation && { color: '#FF4B4B' }]}>{p.rang}</Text>
                 <View style={[styles.avatar, { backgroundColor: p.me ? '#6B4DFF' : '#C9C3B4' }]}>
                   <Text style={styles.avatarText}>{p.initials}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.name, { color: T.text }, p.me && { color: T.text, fontFamily: 'Nunito_800ExtraBold' }]}>{p.name}</Text>
-                  {p.releg && <Text style={styles.relegText}>Zone de relégation</Text>}
+                  {p.relegation && <Text style={styles.relegText}>Zone de relégation</Text>}
                 </View>
                 <View style={[styles.xpRow, p.me && [styles.xpRowMe, T.isDark && { backgroundColor: '#15131F' }]]}>
                   <Feather name="zap" size={15} color={p.me ? '#6B4DFF' : '#9AA0AA'} />
-                  <Text style={[styles.xpText, { color: p.me ? '#6B4DFF' : '#6B7280' }]}>{p.xp}</Text>
+                  <Text style={[styles.xpText, { color: p.me ? '#6B4DFF' : '#6B7280' }]}>{p.weeklyXp}</Text>
                 </View>
               </View>
 
-              {PARTICIPANTS[i + 1]?.releg && (
+              {v.around[i + 1]?.relegation && (
                 <View style={[styles.zoneTagInline, { backgroundColor: T.cardBg }]}>
                   <View style={[styles.zoneLine, { backgroundColor: T.isDark ? '#4A2330' : '#FBD5D5' }]} />
                   <View style={[styles.zonePill, { backgroundColor: T.isDark ? '#3A1F26' : '#FDE8E8' }]}>
@@ -210,6 +290,11 @@ export default function LiguesScreen() {
               )}
             </Animated.View>
           ))}
+          {v.around.length === 0 && (
+            <Text style={[styles.emptyList, { color: T.textSecondary }]}>
+              Termine une leçon pour gagner de l'XP et apparaître au classement.
+            </Text>
+          )}
         </View>
 
         {/* espace pour la carte sticky */}
@@ -219,15 +304,17 @@ export default function LiguesScreen() {
       {/* ── Carte « ta position » fixée au-dessus de la TabBar ── */}
       <LinearGradient colors={['#7A5CFF', '#6B4DFF']} style={styles.myCard}>
         <View style={styles.myRank}>
-          <Text style={styles.myRankText}>{ME.rank}</Text>
+          <Text style={styles.myRankText}>{me?.rang ?? v.myRank ?? '—'}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.myLabel}>Ta position</Text>
-          <Text style={styles.myHint}>Plus que 70 XP pour passer 3e</Text>
+          <Text style={styles.myHint}>
+            {me?.promotion ? 'Tu es en zone de promotion !' : me?.relegation ? 'Attention, zone de relégation' : `${v.participants} participants cette semaine`}
+          </Text>
         </View>
         <View style={styles.myXp}>
           <Feather name="zap" size={16} color="#fff" />
-          <Text style={styles.myXpText}>{ME.xp}</Text>
+          <Text style={styles.myXpText}>{me?.weeklyXp ?? 0}</Text>
         </View>
       </LinearGradient>
     </View>
@@ -236,6 +323,11 @@ export default function LiguesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  centerState: { alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
+  stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
+  retryBtn: { marginTop: 6, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#6B4DFF' },
+  retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
+  emptyList: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, textAlign: 'center', paddingVertical: 28, paddingHorizontal: 20 },
   content: { paddingHorizontal: 22, paddingTop: 10 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30 },

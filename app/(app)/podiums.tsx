@@ -1,37 +1,85 @@
-import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useState, useCallback } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import {
-  PODIUMS_HISTORIQUE, LIGUES, podiumRangLabel, podiumMedaille,
-} from '../../constants/ligues';
-import { PODIUM_REWARD } from '../../constants/rewards';
-import { useUserStore } from '../../store/userStore';
+import { LIGUES, podiumRangLabel, podiumMedaille } from '../../constants/ligues';
+import { fetchPodiums, claimPodium, ApiError, type PodiumEntry } from '../../lib/api';
 import { playSound } from '../../constants/sounds';
 
 export default function PodiumsScreen() {
   const router = useRouter();
-  const entries = PODIUMS_HISTORIQUE;
-  const claimPodiumReward = useUserStore((s) => s.claimPodiumReward);
-  const isPodiumClaimed = useUserStore((s) => s.isPodiumClaimed);
-  // Force le re-render après une réclamation.
-  const [, setTick] = useState(0);
 
-  // La récompense réclamable = le podium le plus récent encore non réclamé.
-  const claimableId = entries.find((e) => !isPodiumClaimed(e.id))?.id ?? null;
+  // Historique RÉEL des podiums (GET /me/podiums). Vide = aucun trophée gagné.
+  const [entries, setEntries] = useState<PodiumEntry[] | null>(null);
+  const [error, setError] = useState(false);
+  const [claiming, setClaiming] = useState<string | null>(null);
 
-  const claim = (id: string, rang: 1 | 2 | 3) => {
-    const gained = claimPodiumReward(id, rang);
-    if (gained > 0) {
+  const load = useCallback(async () => {
+    setError(false);
+    try {
+      setEntries(await fetchPodiums());
+    } catch {
+      setError(true);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const claim = async (ref: string) => {
+    if (claiming) return;
+    setClaiming(ref);
+    try {
+      const gained = await claimPodium(ref);
       playSound('finish');
       Alert.alert('🏆 Récompense récupérée !', `+${gained} XP pour ton podium. Continue comme ça !`);
-      setTick((t) => t + 1);
+      await load(); // rafraîchit l'état "réclamé"
+    } catch (e) {
+      Alert.alert('Oups', e instanceof ApiError ? e.message : 'Impossible de récupérer la récompense.');
+    } finally {
+      setClaiming(null);
     }
   };
 
-  const total = entries.length;
-  const victoires = entries.filter((e) => e.rang === 1).length;
-  const meilleureLigue = entries.reduce<typeof entries[number] | null>((best, e) => {
+  // ── États chargement / erreur ──
+  if (!entries && !error) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} hitSlop={10}><Text style={styles.back}>‹</Text></Pressable>
+          <Text style={styles.headerTitle}>Mes podiums</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color="#E0A02C" />
+          <Text style={styles.stateText}>Chargement de tes podiums…</Text>
+        </View>
+      </View>
+    );
+  }
+  if (error) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} hitSlop={10}><Text style={styles.back}>‹</Text></Pressable>
+          <Text style={styles.headerTitle}>Mes podiums</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.centerState}>
+          <Feather name="wifi-off" size={30} color="#9AA0AA" />
+          <Text style={styles.stateText}>Impossible de charger tes podiums.</Text>
+          <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>Réessayer</Text></Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  const list = entries!;
+  // La récompense réclamable = le podium le plus récent encore non réclamé.
+  const claimableId = list.find((e) => !e.claimed)?.id ?? null;
+
+  const total = list.length;
+  const victoires = list.filter((e) => e.rang === 1).length;
+  const meilleureLigue = list.reduce<PodiumEntry | null>((best, e) => {
     const order: Record<string, number> = { bronze: 1, argent: 2, or: 3, emeraude: 4, diamant: 5 };
     return !best || order[e.ligue] > order[best.ligue] ? e : best;
   }, null);
@@ -68,10 +116,19 @@ export default function PodiumsScreen() {
 
         <Text style={styles.sectionLabel}>HISTORIQUE</Text>
 
-        {entries.map((e) => {
+        {list.length === 0 && (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyEmoji}>🏆</Text>
+            <Text style={styles.emptyTitle}>Aucun podium pour l'instant</Text>
+            <Text style={styles.emptyText}>
+              Finis dans le top 3 d'une ligue à la fin d'une semaine pour décrocher ton premier trophée.
+            </Text>
+          </View>
+        )}
+
+        {list.map((e) => {
           const l = LIGUES[e.ligue];
           const claimable = e.id === claimableId;
-          const claimed = isPodiumClaimed(e.id);
           return (
             <View key={e.id} style={[styles.card, claimable && styles.cardClaimable]}>
               <View style={[styles.medalBox, { backgroundColor: l.bg }]}>
@@ -79,34 +136,42 @@ export default function PodiumsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>{l.nom}</Text>
-                <Text style={styles.cardSub}>Semaine {e.semaine} · {e.date}</Text>
+                <Text style={styles.cardSub}>Semaine {e.semaine}</Text>
                 <View style={[styles.rangPill, { backgroundColor: l.bg, alignSelf: 'flex-start', marginTop: 6 }]}>
                   <Text style={[styles.rangText, { color: l.couleur }]}>{podiumRangLabel(e.rang)}</Text>
                 </View>
               </View>
 
               {claimable ? (
-                <Pressable style={styles.claimBtn} onPress={() => claim(e.id, e.rang)}>
-                  <Feather name="gift" size={15} color="#fff" />
-                  <Text style={styles.claimBtnText}>+{PODIUM_REWARD[e.rang]}</Text>
+                <Pressable style={styles.claimBtn} disabled={claiming === e.id} onPress={() => claim(e.id)}>
+                  {claiming === e.id ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Feather name="gift" size={15} color="#fff" />
+                      <Text style={styles.claimBtnText}>+{e.reward}</Text>
+                    </>
+                  )}
                 </Pressable>
-              ) : claimed ? (
+              ) : e.claimed ? (
                 <View style={styles.claimedPill}>
                   <Feather name="check" size={14} color="#2A9E1C" />
                   <Text style={styles.claimedText}>Récupéré</Text>
                 </View>
               ) : (
                 <View style={styles.rewardPill}>
-                  <Text style={styles.rewardPillText}>🎁 +{PODIUM_REWARD[e.rang]}</Text>
+                  <Text style={styles.rewardPillText}>🎁 +{e.reward}</Text>
                 </View>
               )}
             </View>
           );
         })}
 
-        <Text style={styles.note}>
-          Finis dans le top 3 chaque semaine pour grimper de ligue 🏆
-        </Text>
+        {list.length > 0 && (
+          <Text style={styles.note}>
+            Finis dans le top 3 chaque semaine pour grimper de ligue 🏆
+          </Text>
+        )}
         <View style={{ height: 24 }} />
       </ScrollView>
     </View>
@@ -115,6 +180,14 @@ export default function PodiumsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  centerState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 40 },
+  stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#7A828F', textAlign: 'center' },
+  retryBtn: { marginTop: 6, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#E0A02C' },
+  retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
+  emptyBox: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24, gap: 8 },
+  emptyEmoji: { fontSize: 48 },
+  emptyTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 18, color: '#1B2333' },
+  emptyText: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#8A8F99', textAlign: 'center', lineHeight: 20 },
   header: {
     backgroundColor: '#fff', paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

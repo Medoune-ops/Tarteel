@@ -1,11 +1,13 @@
+import { useState, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { useRouter, useFocusEffect, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../../components/Otter';
 import ProgressBar from '../../../components/ProgressBar';
 import { useUserStore } from '../../../store/userStore';
 import { useTheme } from '../../../utils/useTheme';
+import { fetchActivity } from '../../../lib/api';
 
 type Badge = { emoji: string; bg: string; bgDark: string; border: string; label: string; route?: Href };
 
@@ -16,13 +18,13 @@ function streakGoalLabel(streak: number, goal: number | null): string {
   return `${streak}/${goal} j`;
 }
 
-function buildBadges(streak: number, streakGoal: number | null): Badge[] {
+function buildBadges(streak: number, streakGoal: number | null, sourates: number): Badge[] {
   return [
     { emoji: '✍️', bg: '#E8E4FF', bgDark: '#241F3D', border: '#6B4DFF', label: 'Alphabet'    },
     { emoji: '🔥', bg: '#FFE8E8', bgDark: '#3A1F26', border: '#FF4B4B', label: streakGoalLabel(streak, streakGoal), route: '/(app)/streak-goal' },
     { emoji: '🎵', bg: '#F0E8FF', bgDark: '#2A2140', border: '#8A5CF0', label: 'Tajwid'      },
-    { emoji: '📖', bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: '12 Sourates', route: '/(app)/sourates' },
-    { emoji: '🏆', bg: '#FFF3CD', bgDark: '#332A14', border: '#E0A02C', label: 'Ligue Or', route: '/(app)/podiums' },
+    { emoji: '📖', bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: `${sourates} Sourate${sourates > 1 ? 's' : ''}`, route: '/(app)/sourates' },
+    { emoji: '🏆', bg: '#FFF3CD', bgDark: '#332A14', border: '#E0A02C', label: 'Mes podiums', route: '/(app)/podiums' },
   ];
 }
 
@@ -30,18 +32,47 @@ export default function ProfilScreen() {
   const router = useRouter();
   const T = useTheme();
   const logout = useUserStore((s) => s.logout);
+  const name = useUserStore((s) => s.name);
   const streak = useUserStore((s) => s.streak);
   const xp = useUserStore((s) => s.xp);
   const streakGoal = useUserStore((s) => s.streakGoal);
   const sourates = useUserStore((s) => s.sourates);
   const precision = useUserStore((s) => s.precision);
 
-  const badges = buildBadges(streak, streakGoal);
-  // Calendrier : 3 semaines centrées autour de la série en cours.
-  const CAL_DAYS = 21;
-  const calDays = Array.from({ length: CAL_DAYS }, (_, i) => i + 1);
-  // Le jour "courant" = position de la série dans la grille (max = CAL_DAYS).
-  const todayIndex = Math.min(streak, CAL_DAYS);
+  const badges = buildBadges(streak, streakGoal, sourates);
+
+  // ── Vrai calendrier du mois en cours ──
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = now.getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Décalage pour démarrer la semaine le lundi (getDay(): 0 = dimanche).
+  const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7;
+  const monthLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; // "YYYY-MM"
+  // Cases de la grille : décalage de début (null) puis les jours du mois.
+  const calCells: (number | null)[] = [
+    ...Array.from({ length: leadingBlanks }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+  // Jours RÉELLEMENT actifs du mois (GET /me/activity) — set des numéros de jour.
+  const [activeDays, setActiveDays] = useState<Set<number>>(new Set());
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      fetchActivity(monthKey)
+        .then((days) => {
+          if (cancelled) return;
+          // "2026-06-07" → 7. On ne garde que le numéro de jour.
+          setActiveDays(new Set(days.map((d) => Number(d.slice(8, 10)))));
+        })
+        .catch(() => { /* hors-ligne : calendrier vide, pas d'erreur bloquante */ });
+      return () => { cancelled = true; };
+    }, [monthKey]),
+  );
 
   const handleLogout = () => {
     Alert.alert(
@@ -72,7 +103,7 @@ export default function ProfilScreen() {
           <View style={styles.avatar}>
             <Otter size={84} />
           </View>
-          <Text style={styles.name}>Medoune</Text>
+          <Text style={styles.name}>{name || 'Toi'}</Text>
           <View style={styles.stars}>
             {[0, 1, 2].map((i) => <Feather key={i} name="star" size={18} color="#FFC83D" />)}
           </View>
@@ -141,27 +172,37 @@ export default function ProfilScreen() {
             ))}
           </View>
 
-          {/* Calendrier */}
+          {/* Calendrier du mois en cours */}
           <View style={styles.calTitleRow}>
-            <Text style={[styles.sectionTitle, { color: T.text }]}>Calendrier — Série active</Text>
+            <Text style={[styles.sectionTitle, { color: T.text, textTransform: 'capitalize' }]}>{monthLabel}</Text>
             <Text style={{ fontSize: 20 }}>🔥</Text>
           </View>
+
+          {/* En-tête jours de la semaine */}
+          <View style={styles.calWeekHeader}>
+            {WEEKDAYS.map((w, i) => (
+              <Text key={i} style={[styles.calWeekday, { color: T.textTertiary }]}>{w}</Text>
+            ))}
+          </View>
+
           <View style={styles.calGrid}>
-            {calDays.map((d) => {
-              const done = d <= todayIndex;
-              const current = d === todayIndex;
-              const future = d > todayIndex;
+            {calCells.map((d, i) => {
+              if (d === null) return <View key={`b${i}`} style={styles.calCell} />;
+              const isToday = d === today;
+              const isActive = activeDays.has(d); // jour réellement actif (backend)
+              const future = d > today;
               return (
-                <View
-                  key={d}
-                  style={[
-                    styles.calCell,
-                    done && [styles.calDone, T.isDark && { backgroundColor: '#173322' }],
-                    current && [styles.calCurrent, T.isDark && { backgroundColor: '#173322' }],
-                    future && [styles.calFuture, { backgroundColor: T.selectorBg }],
-                  ]}
-                >
-                  <Text style={[styles.calNum, future ? [styles.calNumFuture, { color: T.textTertiary }] : [styles.calNumDone, T.isDark && { color: '#4ED83A' }]]}>{d}</Text>
+                <View key={d} style={styles.calCell}>
+                  <View
+                    style={[
+                      styles.calCellInner,
+                      isActive && [styles.calDone, T.isDark && { backgroundColor: '#173322' }],
+                      isToday && [styles.calCurrent, T.isDark && { backgroundColor: '#173322' }],
+                      !isActive && !isToday && future && [styles.calFuture, { backgroundColor: T.selectorBg }],
+                    ]}
+                  >
+                    <Text style={[styles.calNum, (isActive || isToday) ? [styles.calNumDone, T.isDark && { color: '#4ED83A' }] : [styles.calNumFuture, { color: future ? T.textTertiary : T.textSecondary }]]}>{d}</Text>
+                  </View>
                 </View>
               );
             })}
@@ -213,9 +254,19 @@ const styles = StyleSheet.create({
   badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, textAlign: 'center' },
   badgeArrow: { position: 'absolute', top: 6, right: 6 },
   calTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  calGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  calWeekHeader: { flexDirection: 'row', marginBottom: 6 },
+  // 7 colonnes = 100 %/7. Pas de `gap` (sinon 7×largeur + gaps > 100 % et la
+  // 7ᵉ colonne — dimanche — passe à la ligne). L'espacement est géré par un
+  // padding interne sur chaque case.
+  calWeekday: { width: `${100 / 7}%`, textAlign: 'center', fontFamily: 'Nunito_700Bold', fontSize: 12 },
+  calGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   calCell: {
-    width: '12.7%', aspectRatio: 1, borderRadius: 12,
+    width: `${100 / 7}%`, aspectRatio: 1, padding: 4,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // Fond/bordure appliqués au contenu interne pour conserver l'espacement.
+  calCellInner: {
+    width: '100%', height: '100%', borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
   calDone: { backgroundColor: '#DEF5E5', borderWidth: 2, borderColor: '#34C724' },

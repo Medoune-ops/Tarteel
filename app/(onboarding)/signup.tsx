@@ -82,20 +82,35 @@ export default function SignupScreen() {
     if (loading) return;
     setError(null);
 
-    // Validations minimales côté client (le backend revalide de toute façon).
-    if (!email.trim() || !password) {
-      setError('Renseigne ton email et ton mot de passe.');
+    // Validation PRÉCISE côté client (réponse instantanée, sans aller-retour
+    // serveur). Le backend revalide de toute façon — ceci est l'aide à la saisie.
+    // On vérifie un problème à la fois, dans l'ordre où l'utilisateur les remplit.
+    const mail = email.trim();
+    if (!mail) {
+      setError('Renseigne ton adresse email.');
       return;
     }
-    if (isSignup) {
-      if (!fullName.trim()) {
-        setError('Renseigne ton nom complet.');
-        return;
-      }
-      if (password !== confirm) {
-        setError('Les mots de passe ne correspondent pas.');
-        return;
-      }
+    // Format email simple (le backend applique la règle stricte).
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+      setError("L'adresse email n'est pas valide. Exemple : nom@exemple.com");
+      return;
+    }
+    if (isSignup && !fullName.trim()) {
+      setError('Renseigne ton nom complet.');
+      return;
+    }
+    if (!password) {
+      setError('Renseigne ton mot de passe.');
+      return;
+    }
+    // Le backend exige 8 caractères minimum à l'inscription.
+    if (isSignup && password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+    if (isSignup && password !== confirm) {
+      setError('Les deux mots de passe ne correspondent pas.');
+      return;
     }
 
     setLoading(true);
@@ -110,6 +125,8 @@ export default function SignupScreen() {
       // Connexion → la config seulement si le profil n'a pas encore été configuré.
       routeAfterAuth(isSignup);
     } catch (e) {
+      // Le client API produit déjà un message précis (champ + raison) à partir
+      // de l'erreur backend. On l'affiche tel quel.
       setError(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessaie.');
     } finally {
       setLoading(false);
