@@ -41,11 +41,15 @@ interface UserState {
   dailyMinutes: number;
   currentLesson: number;
   onboardingDone: boolean;
+  /** Numéros (1–114) des sourates déjà mémorisées, cochées à l'onboarding.
+   *  Transmis à saveOnboarding pour personnaliser le point de départ. */
+  memorizedSourates: number[];
 
   /** Met à jour le profil local (nom/avatar) — ex: après PATCH /me. */
   setProfile: (p: { name?: string; avatar?: string | null }) => void;
   setLevel: (v: UserState['level']) => void;
   setObjectif: (v: UserState['objectif']) => void;
+  setMemorizedSourates: (v: number[]) => void;
   setLanguage: (v: UserState['language']) => void;
   setTheme: (v: UserState['theme']) => void;
   /** Fixe (ou remplace) l'objectif de série. */
@@ -103,6 +107,10 @@ interface UserState {
     name?: string;
     email?: string;
     avatar?: string | null;
+    onboardingDone?: boolean;
+    level?: UserState['level'];
+    objectif?: UserState['objectif'];
+    dailyMinutes?: number;
   }) => void;
   logout: () => void;
 }
@@ -128,6 +136,7 @@ const initialState = {
   dailyMinutes: 10,
   currentLesson: 1,
   onboardingDone: false,
+  memorizedSourates: [] as number[],
 };
 
 /**
@@ -161,6 +170,7 @@ export const useUserStore = create<UserState>()(
         })),
       setLevel: (level) => set({ level }),
       setObjectif: (objectif) => set({ objectif }),
+      setMemorizedSourates: (memorizedSourates) => set({ memorizedSourates }),
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
 
@@ -271,6 +281,12 @@ export const useUserStore = create<UserState>()(
           ...(data.name   != null && { name:   data.name   }),
           ...(data.email  != null && { email:  data.email  }),
           ...(data.avatar !== undefined && { avatar: data.avatar }),
+          // Onboarding/prefs : restaurés depuis le serveur pour ne PAS relancer
+          // le setup à chaque reconnexion.
+          ...(data.onboardingDone != null && { onboardingDone: data.onboardingDone }),
+          ...(data.level        != null && { level:        data.level }),
+          ...(data.objectif     != null && { objectif:     data.objectif }),
+          ...(data.dailyMinutes != null && { dailyMinutes: data.dailyMinutes }),
         });
         syncWidgetData({
           streak: data.streak,

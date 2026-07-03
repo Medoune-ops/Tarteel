@@ -27,7 +27,7 @@ export default function ObjectifScreen() {
   return (
     <View style={styles.screen}>
       <DeviceStatusBar />
-      <SegmentProgress total={4} filled={2} />
+      <SegmentProgress total={5} filled={2} />
 
       <View style={styles.body}>
         <View style={styles.iconWrap}>
@@ -54,7 +54,7 @@ export default function ObjectifScreen() {
       <View style={styles.footer}>
         <Pressable
           style={styles.cta}
-          onPress={() => { setObjectif(selected); router.push('/(setup)/temps'); }}
+          onPress={() => { setObjectif(selected); router.push('/(setup)/sourates'); }}
         >
           <Text style={styles.ctaLabel}>Continuer →</Text>
         </Pressable>

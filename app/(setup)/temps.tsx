@@ -26,7 +26,7 @@ export default function TempsScreen() {
   return (
     <View style={styles.screen}>
       <DeviceStatusBar />
-      <SegmentProgress total={4} filled={3} />
+      <SegmentProgress total={5} filled={4} />
 
       <View style={styles.body}>
         <View style={styles.iconWrap}>

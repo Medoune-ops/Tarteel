@@ -28,7 +28,7 @@ export default function NiveauScreen() {
   return (
     <View style={styles.screen}>
       <DeviceStatusBar />
-      <SegmentProgress total={4} filled={1} />
+      <SegmentProgress total={5} filled={1} />
 
       <View style={styles.body}>
         <View style={styles.otterWrap}>

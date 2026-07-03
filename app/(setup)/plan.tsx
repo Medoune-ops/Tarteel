@@ -10,6 +10,7 @@ import Animated, {
 import Otter from '../../components/Otter';
 import Confetti from '../../components/Confetti';
 import { useUserStore } from '../../store/userStore';
+import { saveOnboarding } from '../../lib/api';
 
 export default function PlanScreen() {
   const router = useRouter();
@@ -57,8 +58,18 @@ export default function PlanScreen() {
     opacity: barOpacity.value,
   }));
 
-  const start = () => {
+  const start = async () => {
+    // Marque l'onboarding fini localement (réactivité immédiate).
     completeOnboarding();
+    // Persiste les choix du setup + onboardingDone côté serveur : sans ça, la
+    // reconnexion relancerait la configuration (le flag local est effacé au logout).
+    const { level, objectif, dailyMinutes, memorizedSourates } = useUserStore.getState();
+    try {
+      await saveOnboarding({ level, objectif, dailyMinutes, sourates: memorizedSourates });
+    } catch {
+      // Hors-ligne : on continue quand même ; la prochaine session /me
+      // rattrapera l'état une fois le réseau revenu.
+    }
     router.replace('/(app)/(tabs)/parcours');
   };
 
