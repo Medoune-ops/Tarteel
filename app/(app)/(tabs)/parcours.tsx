@@ -18,6 +18,8 @@ import {
   type ParcoursSection,
 } from '../../../constants/parcours';
 import { fetchSections } from '../../../lib/api';
+import { fetchDailyChestAvailable, claimDailyChestApi } from '../../../lib/api/rewards';
+import { useT, t } from '../../../lib/i18n';
 import { playSound } from '../../../constants/sounds';
 
 // Icônes SVG pros pour les nodes complétés
@@ -505,7 +507,7 @@ function SectionBlock({
           <View style={styles.sectionProgressTrack}>
             <View style={[styles.sectionProgressFill, { width: `${pct}%` }]} />
           </View>
-          <Text style={styles.sectionProgressLabel}>{done}/{total} leçons</Text>
+          <Text style={styles.sectionProgressLabel}>{t('parcours.lessons', { done, total })}</Text>
         </View>
         </LinearGradient>
       </Animated.View>
@@ -522,23 +524,37 @@ function SectionBlock({
   );
 }
 
-/** Carte « coffre quotidien » — affichée une fois par jour, en haut du parcours. */
+/** Carte « coffre quotidien » — affichée une fois par jour, en haut du parcours.
+ *  Tirage et plafond 1×/jour jugés CÔTÉ SERVEUR ; si les cœurs sont déjà
+ *  pleins, le serveur convertit la récompense en gemmes. */
 function DailyChest() {
-  const canClaim = useUserStore((s) => s.canClaimDailyChest);
-  const claim = useUserStore((s) => s.claimDailyChest);
-  const [available, setAvailable] = useState(canClaim());
+  const [available, setAvailable] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const tr = useT();
+
+  useEffect(() => {
+    fetchDailyChestAvailable().then(setAvailable).catch(() => setAvailable(false));
+  }, []);
 
   if (!available) return null;
 
-  const open = () => {
-    const reward = claim();
+  const open = async () => {
+    if (opening) return;
+    setOpening(true);
+    const reward = await claimDailyChestApi();
+    setOpening(false);
     setAvailable(false);
     if (!reward) return;
     playSound('finish');
-    const msg = reward.type === 'xp'
-      ? `+${reward.amount} XP ajoutés à ton compte !`
-      : `+${reward.amount} cœur${reward.amount > 1 ? 's' : ''} ❤️ rechargé${reward.amount > 1 ? 's' : ''} !`;
-    Alert.alert('🎁 Coffre quotidien', msg);
+    const msg =
+      reward.type === 'xp'
+        ? t('chest.xp', { n: reward.amount })
+        : reward.type === 'gems'
+          ? t('chest.gems', { n: reward.amount })
+          : reward.amount > 1
+            ? t('chest.hearts', { n: reward.amount })
+            : t('chest.heart');
+    Alert.alert(t('chest.alertTitle'), msg);
   };
 
   return (
@@ -550,8 +566,8 @@ function DailyChest() {
       >
         <Text style={chestStyles.emoji}>🎁</Text>
         <View style={{ flex: 1 }}>
-          <Text style={chestStyles.title}>Coffre quotidien</Text>
-          <Text style={chestStyles.sub}>Récupère ta récompense du jour</Text>
+          <Text style={chestStyles.title}>{tr('chest.title')}</Text>
+          <Text style={chestStyles.sub}>{tr('chest.sub')}</Text>
         </View>
         <Feather name="chevron-right" size={22} color="#fff" />
       </LinearGradient>
@@ -650,7 +666,7 @@ export default function ParcoursScreen() {
         {sections == null && !loadError && (
           <View style={styles.centerState}>
             <ActivityIndicator size="large" color="#6B4DFF" />
-            <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement du parcours…</Text>
+            <Text style={[styles.stateText, { color: T.textSecondary }]}>{t('parcours.loading')}</Text>
           </View>
         )}
 
@@ -658,10 +674,10 @@ export default function ParcoursScreen() {
           <View style={styles.centerState}>
             <Feather name="wifi-off" size={32} color={T.textSecondary} />
             <Text style={[styles.stateText, { color: T.textSecondary }]}>
-              Impossible de charger le parcours.
+              {t('parcours.loadError')}
             </Text>
             <Pressable style={styles.retryBtn} onPress={loadSections}>
-              <Text style={styles.retryLabel}>Réessayer</Text>
+              <Text style={styles.retryLabel}>{t('common.retry')}</Text>
             </Pressable>
           </View>
         )}

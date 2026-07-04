@@ -7,13 +7,14 @@ import Otter from '../../../components/Otter';
 import { useUserStore } from '../../../store/userStore';
 import { refillHeartsWithGems } from '../../../lib/api/gems';
 import { ApiError } from '../../../lib/api/client';
+import { useT, t } from '../../../lib/i18n';
 
 /** Coût serveur d'un refill complet (source de vérité : backend, 350 gemmes). */
 const REFILL_COST = 350;
 
 /** Formate un nombre de ms en "Xh Ymin". */
 function formatRemaining(ms: number): string {
-  if (ms <= 0) return 'Bientôt';
+  if (ms <= 0) return t('common.soon');
   const totalMin = Math.ceil(ms / 60000);
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
@@ -30,6 +31,7 @@ export default function OutOfHeartsScreen() {
 
   const [remaining, setRemaining] = useState(msUntilNextHeart());
   const [refilling, setRefilling] = useState(false);
+  const tr = useT();
 
   // Tic chaque seconde : met à jour le compte à rebours et régénère si besoin.
   useEffect(() => {
@@ -55,9 +57,9 @@ export default function OutOfHeartsScreen() {
     } catch (e) {
       const msg =
         e instanceof ApiError && e.code === 'INSUFFICIENT_GEMS'
-          ? `Il te faut ${REFILL_COST} gemmes — continue tes leçons pour en gagner !`
-          : 'Impossible de recharger pour le moment. Réessaie.';
-      Alert.alert('Recharge impossible', msg);
+          ? t('hearts.refillFailInsufficient', { n: REFILL_COST })
+          : t('hearts.refillFailGeneric');
+      Alert.alert(t('hearts.refillFailTitle'), msg);
     } finally {
       setRefilling(false);
     }
@@ -76,7 +78,7 @@ export default function OutOfHeartsScreen() {
         </View>
       </View>
 
-      <Text style={styles.title}>Plus de cœurs !</Text>
+      <Text style={styles.title}>{tr('hearts.title')}</Text>
 
       {/* Porte n°1 — Réviser pour regagner (gratuit, toujours en premier). */}
       <Pressable
@@ -85,8 +87,8 @@ export default function OutOfHeartsScreen() {
       >
         <Text style={{ fontSize: 22 }}>📖</Text>
         <View style={{ flex: 1 }}>
-          <Text style={styles.reviewLabel}>Réviser pour regagner</Text>
-          <Text style={styles.reviewHint}>1 session de révision = +1 cœur (gratuit)</Text>
+          <Text style={styles.reviewLabel}>{tr('hearts.reviewTitle')}</Text>
+          <Text style={styles.reviewHint}>{tr('hearts.reviewHint')}</Text>
         </View>
         <Feather name="chevron-right" size={22} color="#2E7D32" />
       </Pressable>
@@ -95,7 +97,7 @@ export default function OutOfHeartsScreen() {
       <View style={styles.timerCard}>
         <Feather name="clock" size={22} color="#FF4B4B" />
         <View>
-          <Text style={styles.timerLabel}>Prochain cœur dans</Text>
+          <Text style={styles.timerLabel}>{tr('hearts.nextIn')}</Text>
           <Text style={styles.timerValue}>{formatRemaining(remaining)}</Text>
         </View>
       </View>
@@ -108,8 +110,8 @@ export default function OutOfHeartsScreen() {
           <>
             <Text style={{ fontSize: 22 }}>💎</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.gemLabel}>5 cœurs instantanés</Text>
-              <Text style={styles.gemHint}>Ton solde : {gems} 💎</Text>
+              <Text style={styles.gemLabel}>{tr('hearts.refillTitle')}</Text>
+              <Text style={styles.gemHint}>{tr('hearts.balance', { n: gems })}</Text>
             </View>
             <Text style={styles.gemCost}>{REFILL_COST}</Text>
           </>
@@ -122,12 +124,12 @@ export default function OutOfHeartsScreen() {
       <Pressable onPress={() => router.replace('/(app)/subscription')} style={{ width: '100%' }}>
         <LinearGradient colors={['#FFA53D', '#F0820C']} style={styles.premiumCta}>
           <Feather name="star" size={20} color="#fff" />
-          <Text style={styles.premiumLabel}>Cœurs illimités avec Premium</Text>
+          <Text style={styles.premiumLabel}>{tr('hearts.premiumCta')}</Text>
         </LinearGradient>
       </Pressable>
 
       <Pressable style={styles.waitBtn} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
-        <Text style={styles.waitLabel}>J'attends</Text>
+        <Text style={styles.waitLabel}>{tr('hearts.wait')}</Text>
       </Pressable>
     </View>
   );

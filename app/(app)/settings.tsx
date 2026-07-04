@@ -7,11 +7,12 @@ import Toggle from '../../components/Toggle';
 import { useUserStore } from '../../store/userStore';
 import { useTheme } from '../../utils/useTheme';
 import { logout, updateSettings } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 const LANGUES = {
-  fr: { drapeau: '🇫🇷', nom: 'Français' },
-  en: { drapeau: '🇬🇧', nom: 'Anglais' },
-  ar: { drapeau: '🇸🇦', nom: 'Arabe' },
+  fr: { drapeau: '🇫🇷', nomKey: 'langue.fr' },
+  en: { drapeau: '🇬🇧', nomKey: 'langue.en' },
+  ar: { drapeau: '🇸🇦', nomKey: 'langue.ar' },
 } as const;
 
 /** Initiales à partir du nom (fallback avatar). */
@@ -62,12 +63,13 @@ export default function SettingsScreen() {
   const setTheme = useUserStore((s) => s.setTheme);
   const langue = LANGUES[language];
   const T = useTheme();
+  const tr = useT();
 
   const confirmLogout = () => {
-    Alert.alert('Se déconnecter', 'Veux-tu vraiment te déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
+    Alert.alert(tr('settings.logout'), tr('settings.logoutConfirm'), [
+      { text: tr('common.cancel'), style: 'cancel' },
       {
-        text: 'Se déconnecter',
+        text: tr('settings.logout'),
         style: 'destructive',
         onPress: async () => {
           await logout();
@@ -81,7 +83,7 @@ export default function SettingsScreen() {
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: T.headerBg, borderBottomColor: T.border }]}>
-        <Text style={[styles.headerTitle, { color: T.text }]}>Paramètres</Text>
+        <Text style={[styles.headerTitle, { color: T.text }]}>{tr('settings.title')}</Text>
         <View style={styles.logoPill}>
           <Otter size={42} />
         </View>
@@ -94,7 +96,7 @@ export default function SettingsScreen() {
             <Text style={styles.profileInitials}>{initials(name)}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.profileName, { color: T.text }]}>{name || 'Mon profil'}</Text>
+            <Text style={[styles.profileName, { color: T.text }]}>{name || tr('settings.profileFallback')}</Text>
             <Text style={[styles.profileEmail, { color: T.textSecondary }]}>{email || '—'}</Text>
             <View style={styles.chips}>
               <View style={styles.chipOrange}>
@@ -109,20 +111,20 @@ export default function SettingsScreen() {
         </View>
 
         {/* COMPTE */}
-        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>COMPTE</Text>
+        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionAccount')}</Text>
         <View style={[styles.card, { backgroundColor: T.cardBg }]}>
-          <Row iconBg="#6B4DFF" icon="user" title="Modifier le profil" subtitle="Nom, photo, bio" titleColor={T.text} subColor={T.textSecondary} onPress={() => router.push('/(app)/edit-profile')} />
+          <Row iconBg="#6B4DFF" icon="user" title={tr('settings.editProfile')} subtitle={tr('settings.editProfileSub')} titleColor={T.text} subColor={T.textSecondary} onPress={() => router.push('/(app)/edit-profile')} />
           <View style={[styles.divider, { backgroundColor: T.divider }]} />
-          <Row iconBg="#8A8F99" icon="lock" title="Mot de passe & sécurité" titleColor={T.text} subColor={T.textSecondary} onPress={() => router.push('/(app)/change-password')} />
+          <Row iconBg="#8A8F99" icon="lock" title={tr('settings.password')} titleColor={T.text} subColor={T.textSecondary} onPress={() => router.push('/(app)/change-password')} />
           <View style={[styles.divider, { backgroundColor: T.divider }]} />
           <View style={styles.row}>
             <View style={[styles.rowIcon, { backgroundColor: '#E0387E' }]}>
               <Feather name="mic" size={22} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.rowTitle, { color: T.text }]}>Voix & enregistrements</Text>
+              <Text style={[styles.rowTitle, { color: T.text }]}>{tr('settings.voice')}</Text>
               <Text style={[styles.rowSub, { color: T.textSecondary }]}>
-                {voiceEnabled ? 'Activé' : 'Désactivé'}
+                {voiceEnabled ? tr('settings.on') : tr('settings.off')}
               </Text>
             </View>
             <Toggle value={voiceEnabled} onChange={toggleVoice} />
@@ -130,71 +132,71 @@ export default function SettingsScreen() {
         </View>
 
         {/* NOTIFICATIONS */}
-        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>NOTIFICATIONS</Text>
+        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionNotifs')}</Text>
         <View style={[styles.card, { backgroundColor: T.cardBg }]}>
           <View style={styles.row}>
             <View style={[styles.rowIcon, { backgroundColor: '#FF4B4B' }]}>
               <Feather name="bell" size={22} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.rowTitle, { color: T.text }]}>Rappel quotidien</Text>
-              <Text style={[styles.rowSub, { color: T.textSecondary }]}>Tous les jours à 20:30</Text>
+              <Text style={[styles.rowTitle, { color: T.text }]}>{tr('settings.dailyReminder')}</Text>
+              <Text style={[styles.rowSub, { color: T.textSecondary }]}>{tr('settings.dailyReminderSub')}</Text>
             </View>
             <Toggle value={reminder} onChange={setReminder} />
           </View>
           <View style={[styles.divider, { backgroundColor: T.divider }]} />
           <Row
             iconBg="#6B4DFF" icon="sliders"
-            title="Gérer les notifications" subtitle="Série, ligues, verset du jour…"
+            title={tr('settings.manageNotifs')} subtitle={tr('settings.manageNotifsSub')}
             titleColor={T.text} subColor={T.textSecondary}
             onPress={() => router.push('/(app)/notifications')}
           />
         </View>
 
         {/* ABONNEMENT */}
-        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>ABONNEMENT</Text>
+        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionSubscription')}</Text>
         <Pressable style={styles.premiumCard} onPress={() => router.push('/(app)/subscription')}>
           <View style={styles.premiumIcon}>
             <Feather name="star" size={24} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.premiumTitle}>Passe à Tarteel Premium</Text>
-            <Text style={styles.premiumSub}>Sans pub · Vies illimitées · Stats avancées</Text>
+            <Text style={styles.premiumTitle}>{tr('settings.premiumTitle')}</Text>
+            <Text style={styles.premiumSub}>{tr('settings.premiumSub')}</Text>
           </View>
           <Feather name="chevron-right" size={22} color="#fff" />
         </Pressable>
 
         {/* CONFIDENTIALITÉ */}
-        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>CONFIDENTIALITÉ</Text>
+        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionPrivacy')}</Text>
         <View style={[styles.card, { backgroundColor: T.cardBg }]}>
           <Row
             iconBg="#2A9E1C" icon="shield"
-            title="Confidentialité & données" subtitle="Partage, profil, compte"
+            title={tr('settings.privacy')} subtitle={tr('settings.privacySub')}
             titleColor={T.text} subColor={T.textSecondary}
             onPress={() => router.push('/(app)/privacy')}
           />
         </View>
 
         {/* LANGUE */}
-        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>LANGUE</Text>
+        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionLanguage')}</Text>
         <View style={[styles.card, { backgroundColor: T.cardBg }]}>
           <Row
             iconBg="#2C9CE0" icon="globe"
-            title="Langue de l'application" subtitle="Interface et menus"
+            title={tr('settings.language')} subtitle={tr('settings.languageSub')}
             titleColor={T.text} subColor={T.textSecondary}
-            right={<Text style={styles.langueValue}>{langue.drapeau}  {langue.nom} ›</Text>}
+            right={<Text style={styles.langueValue}>{langue.drapeau}  {tr(langue.nomKey)} ›</Text>}
             onPress={() => router.push('/(app)/langue')}
           />
         </View>
 
         {/* APPARENCE */}
-        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>APPARENCE</Text>
+        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionAppearance')}</Text>
         <View style={[styles.card, { backgroundColor: T.cardBg }]}>
           {(
             [
-              { value: 'light',  label: 'Clair',   icon: 'sun'     },
-              { value: 'dark',   label: 'Sombre',  icon: 'moon'    },
-              { value: 'system', label: 'Système', icon: 'smartphone' },
+              { value: 'light',  label: tr('settings.themeLight'),  icon: 'sun'     },
+              { value: 'dark',   label: tr('settings.themeDark'),   icon: 'moon'    },
+              { value: 'system', label: tr('settings.themeSystem'), icon: 'smartphone' },
             ] as const
           ).map((opt, i, arr) => {
             const active = theme === opt.value;
@@ -216,7 +218,7 @@ export default function SettingsScreen() {
         {/* DÉCONNEXION */}
         <Pressable style={[styles.logoutBtn, { backgroundColor: T.cardBg }]} onPress={confirmLogout}>
           <Feather name="log-out" size={20} color="#E5484D" />
-          <Text style={styles.logoutText}>Se déconnecter</Text>
+          <Text style={styles.logoutText}>{tr('settings.logout')}</Text>
         </Pressable>
 
         <View style={{ height: 16 }} />

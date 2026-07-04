@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocales } from 'expo-localization';
 import {
   streakReward, PODIUM_REWARD, rollDailyChest, type DailyChestReward,
 } from '../constants/rewards';
@@ -124,6 +125,21 @@ interface UserState {
   logout: () => void;
 }
 
+/**
+ * Langue par défaut = langue du SYSTÈME (fr/en/ar supportées, sinon anglais).
+ * Ne joue qu'à l'installation : dès que l'utilisateur a un état persisté
+ * (ou choisit une langue dans Paramètres), c'est ce choix qui gagne.
+ */
+function systemLanguage(): 'fr' | 'en' | 'ar' {
+  try {
+    const code = getLocales()[0]?.languageCode;
+    if (code === 'fr' || code === 'ar') return code;
+    return 'en';
+  } catch {
+    return 'en';
+  }
+}
+
 const initialState = {
   name: '',
   email: '',
@@ -140,7 +156,7 @@ const initialState = {
   isPremium: false,
   level: 'debutant' as const,
   objectif: 'hifz' as const,
-  language: 'fr' as const,
+  language: systemLanguage() as 'fr' | 'en' | 'ar',
   theme: 'system' as const,
   streakGoal: null as number | null,
   lastChestDay: null as string | null,

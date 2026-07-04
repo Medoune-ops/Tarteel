@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { reviewRegainHeart } from '../../../lib/api/gems';
 import { useUserStore, MAX_HEARTS } from '../../../store/userStore';
+import { t } from '../../../lib/i18n';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat,
@@ -222,7 +223,7 @@ export default function FlashcardScreen() {
           if (!s.isPremium && s.hearts < MAX_HEARTS) {
             try {
               await reviewRegainHeart();
-              Alert.alert('Bien joué !', 'Ta révision t’a fait regagner 1 cœur ❤️');
+              Alert.alert(t('review.regainTitle'), t('review.regainMsg'));
             } catch {
               // limite quotidienne atteinte ou hors-ligne — pas bloquant
             }

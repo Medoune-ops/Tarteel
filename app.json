@@ -41,7 +41,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-audio"
+      "expo-audio",
+      "expo-localization"
     ],
     "_widgetPlugin_activateForEASBuild": [
       "expo-widget",
