@@ -8,8 +8,8 @@ import { syncWidgetData } from '../utils/widgetData';
 
 // ─── Constantes du système de cœurs ─────────────────────────────────────────
 export const MAX_HEARTS = 5;
-/** Temps de régénération d'UN cœur (4h, comme Duolingo). */
-export const HEART_REGEN_MS = 4 * 60 * 60 * 1000;
+/** Temps de régénération d'UN cœur (1h — aligné sur le backend). */
+export const HEART_REGEN_MS = 60 * 60 * 1000;
 
 interface UserState {
   /** Nom affiché de l'utilisateur. */
@@ -25,6 +25,12 @@ interface UserState {
   precision: number;
   /** Timestamp (ms) de la dernière perte de cœur — base de la régénération. null si plein. */
   lastHeartLossAt: number | null;
+  /** Solde de gemmes (source de vérité : serveur, hydraté depuis /me). */
+  gems: number;
+  /** Gels de streak en stock (achetés 200 gemmes ; illimités avec Premium). */
+  streakFreezes: number;
+  /** Fin du boost double XP (timestamp ms), null si aucun boost actif. */
+  doubleXpUntil: number | null;
   isPremium: boolean;
   level: 'debutant' | 'alphabet' | 'lent' | 'fluent';
   objectif: 'lire' | 'hifz' | 'tafsir' | 'complet';
@@ -102,6 +108,9 @@ interface UserState {
     isPremium: boolean;
     currentLesson: number;
     lastHeartLossAt: number | null;
+    gems?: number;
+    streakFreezes?: number;
+    doubleXpUntil?: number | null;
     sourates?: number;
     precision?: number;
     name?: string;
@@ -125,6 +134,9 @@ const initialState = {
   sourates: 0,
   precision: 0,
   lastHeartLossAt: null as number | null,
+  gems: 0,
+  streakFreezes: 0,
+  doubleXpUntil: null as number | null,
   isPremium: false,
   level: 'debutant' as const,
   objectif: 'hifz' as const,
@@ -276,6 +288,9 @@ export const useUserStore = create<UserState>()(
           lastHeartLossAt: next.lastHeartLossAt,
           isPremium: data.isPremium,
           currentLesson: data.currentLesson,
+          ...(data.gems          != null && { gems:          data.gems }),
+          ...(data.streakFreezes != null && { streakFreezes: data.streakFreezes }),
+          ...(data.doubleXpUntil !== undefined && { doubleXpUntil: data.doubleXpUntil }),
           ...(data.sourates  != null && { sourates:  data.sourates  }),
           ...(data.precision != null && { precision: data.precision }),
           ...(data.name   != null && { name:   data.name   }),

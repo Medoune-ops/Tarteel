@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Otter from '../../../components/Otter';
-import { useUserStore, HEART_REGEN_MS } from '../../../store/userStore';
+import { useUserStore } from '../../../store/userStore';
+import { refillHeartsWithGems } from '../../../lib/api/gems';
+import { ApiError } from '../../../lib/api/client';
+
+/** Coût serveur d'un refill complet (source de vérité : backend, 350 gemmes). */
+const REFILL_COST = 350;
 
 /** Formate un nombre de ms en "Xh Ymin". */
 function formatRemaining(ms: number): string {
@@ -21,8 +26,10 @@ export default function OutOfHeartsScreen() {
   const syncHearts = useUserStore((s) => s.syncHearts);
   const msUntilNextHeart = useUserStore((s) => s.msUntilNextHeart);
   const hearts = useUserStore((s) => s.hearts);
+  const gems = useUserStore((s) => s.gems);
 
   const [remaining, setRemaining] = useState(msUntilNextHeart());
+  const [refilling, setRefilling] = useState(false);
 
   // Tic chaque seconde : met à jour le compte à rebours et régénère si besoin.
   useEffect(() => {
@@ -38,6 +45,24 @@ export default function OutOfHeartsScreen() {
     if (hearts > 0) router.replace('/(app)/(tabs)/parcours');
   }, [hearts]);
 
+  /** Porte n°3 : refill instantané contre gemmes (débit jugé côté serveur). */
+  const onRefill = async () => {
+    if (refilling) return;
+    setRefilling(true);
+    try {
+      await refillHeartsWithGems();
+      router.replace('/(app)/(tabs)/parcours');
+    } catch (e) {
+      const msg =
+        e instanceof ApiError && e.code === 'INSUFFICIENT_GEMS'
+          ? `Il te faut ${REFILL_COST} gemmes — continue tes leçons pour en gagner !`
+          : 'Impossible de recharger pour le moment. Réessaie.';
+      Alert.alert('Recharge impossible', msg);
+    } finally {
+      setRefilling(false);
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <Pressable style={styles.close} onPress={() => router.replace('/(app)/(tabs)/parcours')} hitSlop={10}>
@@ -45,18 +70,28 @@ export default function OutOfHeartsScreen() {
       </Pressable>
 
       <View style={styles.otterWrap}>
-        <Otter size={120} />
+        <Otter size={104} />
         <View style={styles.brokenHeart}>
-          <Text style={{ fontSize: 34 }}>💔</Text>
+          <Text style={{ fontSize: 30 }}>💔</Text>
         </View>
       </View>
 
       <Text style={styles.title}>Plus de cœurs !</Text>
-      <Text style={styles.subtitle}>
-        Tu as fait trop d'erreurs. Attends qu'un cœur se régénère ou passe en Premium pour continuer sans limite.
-      </Text>
 
-      {/* Compte à rebours */}
+      {/* Porte n°1 — Réviser pour regagner (gratuit, toujours en premier). */}
+      <Pressable
+        style={styles.reviewBtn}
+        onPress={() => router.replace({ pathname: '/(app)/(tabs)/revisions', params: { regagner: '1' } })}
+      >
+        <Text style={{ fontSize: 22 }}>📖</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.reviewLabel}>Réviser pour regagner</Text>
+          <Text style={styles.reviewHint}>1 session de révision = +1 cœur (gratuit)</Text>
+        </View>
+        <Feather name="chevron-right" size={22} color="#2E7D32" />
+      </Pressable>
+
+      {/* Porte n°2 — Attendre (compte à rebours). */}
       <View style={styles.timerCard}>
         <Feather name="clock" size={22} color="#FF4B4B" />
         <View>
@@ -65,9 +100,25 @@ export default function OutOfHeartsScreen() {
         </View>
       </View>
 
+      {/* Porte n°3 — Refill gemmes. */}
+      <Pressable style={[styles.gemBtn, refilling && { opacity: 0.6 }]} onPress={onRefill} disabled={refilling}>
+        {refilling ? (
+          <ActivityIndicator color="#1CB0F6" />
+        ) : (
+          <>
+            <Text style={{ fontSize: 22 }}>💎</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gemLabel}>5 cœurs instantanés</Text>
+              <Text style={styles.gemHint}>Ton solde : {gems} 💎</Text>
+            </View>
+            <Text style={styles.gemCost}>{REFILL_COST}</Text>
+          </>
+        )}
+      </Pressable>
+
       <View style={{ flex: 1 }} />
 
-      {/* CTA Premium */}
+      {/* Porte n°4 — Premium (CTA doux, jamais agressif). */}
       <Pressable onPress={() => router.replace('/(app)/subscription')} style={{ width: '100%' }}>
         <LinearGradient colors={['#FFA53D', '#F0820C']} style={styles.premiumCta}>
           <Feather name="star" size={20} color="#fff" />
@@ -83,19 +134,33 @@ export default function OutOfHeartsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 28, paddingTop: 90, paddingBottom: 36, alignItems: 'center' },
+  screen: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 28, paddingTop: 78, paddingBottom: 36, alignItems: 'center' },
   close: { position: 'absolute', top: 54, right: 24 },
   otterWrap: { alignItems: 'center', justifyContent: 'center' },
   brokenHeart: { position: 'absolute', bottom: -6, right: -10 },
-  title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 32, color: '#1B2333', marginTop: 22 },
-  subtitle: { fontFamily: 'Nunito_600SemiBold', fontSize: 16, color: '#7A828F', textAlign: 'center', marginTop: 12, lineHeight: 24 },
+  title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#1B2333', marginTop: 14, marginBottom: 18 },
+  reviewBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%',
+    backgroundColor: '#EAF9EA', borderRadius: 18, paddingVertical: 16, paddingHorizontal: 20,
+    borderWidth: 1.5, borderColor: '#BCE5BD',
+  },
+  reviewLabel: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#2E7D32' },
+  reviewHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#4E8B52' },
   timerCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#FFF0F0', borderRadius: 18, paddingVertical: 18, paddingHorizontal: 24, marginTop: 28,
+    flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%',
+    backgroundColor: '#FFF0F0', borderRadius: 18, paddingVertical: 16, paddingHorizontal: 20, marginTop: 12,
     borderWidth: 1.5, borderColor: '#FFD9D9',
   },
   timerLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#C53A3A' },
-  timerValue: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#FF4B4B' },
+  timerValue: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#FF4B4B' },
+  gemBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%',
+    backgroundColor: '#EAF6FF', borderRadius: 18, paddingVertical: 16, paddingHorizontal: 20, marginTop: 12,
+    borderWidth: 1.5, borderColor: '#BFE3FB', minHeight: 72, justifyContent: 'center',
+  },
+  gemLabel: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#1077B4' },
+  gemHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#4A94C4' },
+  gemCost: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, color: '#1CB0F6' },
   premiumCta: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     height: 60, borderRadius: 18, borderBottomWidth: 4, borderBottomColor: '#C56400',

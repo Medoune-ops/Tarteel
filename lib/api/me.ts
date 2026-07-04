@@ -16,6 +16,9 @@ export interface MeResponse {
   isPremium: boolean;
   currentLesson: number;
   lastHeartLossAt: number | null;
+  gems?: number;
+  streakFreezes?: number;
+  doubleXpUntil?: number | null;
   sourates?: number;
   precision?: number;
   name?: string;

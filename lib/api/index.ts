@@ -1,0 +1,20 @@
+/** Point d'entrée de la couche API. Importer depuis `lib/api`. */
+export { API_URL, API_TIMEOUT_MS } from './config';
+export { apiFetch, ApiError } from './client';
+export { register, login, logout } from './auth';
+export type { RegisterInput, LoginInput } from './auth';
+export { fetchMe, updateProfile, updateSettings, fetchActivity, fetchLearnedSourates, saveOnboarding } from './me';
+export type { MeResponse, UpdateProfileInput, UpdateSettingsInput, OnboardingInput } from './me';
+export { completeLesson, answerStep } from './lesson';
+export type { CompleteLessonInput, AnswerInput, AnswerResult } from './lesson';
+export { fetchSections, fetchLesson, fetchVersets } from './content';
+export type { SourateVersets, Verset, VersetMot, SourateListItem } from './content';
+export { fetchMyLeague, joinLeague, getOrJoinLeague } from './leagues';
+export type { LeagueView, LeagueMember } from './leagues';
+export { fetchPodiums, claimPodium } from './rewards';
+export { fetchGems, refillHeartsWithGems, reviewRegainHeart, buyStreakFreeze, buyDoubleXp, buyGemPack } from './gems';
+export type { GemsStatus, GemLedgerEntry, GemPackId } from './gems';
+export type { PodiumEntry, LigueTier } from './rewards';
+export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';
+export { bootstrapSession } from './session';
+export { getDeviceId } from './tokens';

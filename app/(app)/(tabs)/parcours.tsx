@@ -574,7 +574,7 @@ const chestStyles = StyleSheet.create({
 export default function ParcoursScreen() {
   const router = useRouter();
   const T = useTheme();
-  const { streak, xp, hearts, isPremium, syncHearts } = useUserStore();
+  const { streak, xp, hearts, gems, isPremium, syncHearts } = useUserStore();
   const { width, height } = useWindowDimensions();
 
   // Parcours chargé depuis l'API (GET /sections), avec états de chargement.
@@ -633,6 +633,10 @@ export default function ParcoursScreen() {
         <View style={styles.stat}>
           <Feather name="zap" size={22} color="#E8A800" />
           <Text style={[styles.statText, { color: '#E8A800' }]}>{xp} XP</Text>
+        </View>
+        <View style={styles.stat}>
+          <Text style={{ fontSize: 20 }}>💎</Text>
+          <Text style={[styles.statText, { color: '#1CB0F6' }]}>{gems}</Text>
         </View>
         <View style={styles.stat}>
           <Feather name="heart" size={22} color="#FF4B4B" />

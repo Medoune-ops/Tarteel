@@ -1,5 +1,7 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { reviewRegainHeart } from '../../../lib/api/gems';
+import { useUserStore, MAX_HEARTS } from '../../../store/userStore';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat,
@@ -212,7 +214,21 @@ export default function FlashcardScreen() {
         choisi={choisi}
         onChoisir={setChoisi}
         onRestart={reset}
-        onQuitter={() => router.back()}
+        onQuitter={async () => {
+          // « Réviser pour regagner » : une session terminée = +1 cœur (max
+          // 2/jour, plafonné CÔTÉ SERVEUR). Best-effort : si la limite est
+          // atteinte / cœurs pleins / premium, le serveur refuse et on ignore.
+          const s = useUserStore.getState();
+          if (!s.isPremium && s.hearts < MAX_HEARTS) {
+            try {
+              await reviewRegainHeart();
+              Alert.alert('Bien joué !', 'Ta révision t’a fait regagner 1 cœur ❤️');
+            } catch {
+              // limite quotidienne atteinte ou hors-ligne — pas bloquant
+            }
+          }
+          router.back();
+        }}
       />
     );
   }
