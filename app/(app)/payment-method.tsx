@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useUserStore } from '../../store/userStore';
+import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
 import { PLANS } from './subscription';
 
 type MethodId = 'apple' | 'google' | 'card';
@@ -18,18 +18,27 @@ export default function PaymentMethodScreen() {
   const router = useRouter();
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
-  const setPremium = useUserStore((s) => s.setPremium);
 
   const [method, setMethod] = useState<MethodId>('apple');
+  const [paying, setPaying] = useState(false);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    if (paying) return;
     if (method === 'card') {
       router.push({ pathname: '/(app)/payment-card', params: { plan: plan.id } });
       return;
     }
-    // Apple Pay / Google Pay : confirmation immédiate (mock — pas de débit réel).
-    setPremium(true);
-    router.replace('/(app)/(tabs)/parcours');
+    // Apple Pay / Google Pay : l'entitlement est activé CÔTÉ SERVEUR
+    // (provider mock, pas de débit réel) — un flag local serait écrasé au
+    // prochain GET /me et les cœurs resteraient limités côté backend.
+    setPaying(true);
+    try {
+      await subscribePremium(plan.id as PremiumPlan);
+      router.replace('/(app)/(tabs)/parcours');
+    } catch {
+      Alert.alert('Paiement impossible', 'Réessaie dans un instant.');
+      setPaying(false);
+    }
   };
 
   return (
@@ -107,11 +116,17 @@ export default function PaymentMethodScreen() {
         </View>
 
         {/* CTA */}
-        <Pressable style={styles.cta} onPress={handleContinue}>
-          <Feather name={method === 'card' ? 'arrow-right' : 'lock'} size={18} color="#fff" />
-          <Text style={styles.ctaText}>
-            {method === 'card' ? 'Continuer' : 'Confirmer et démarrer l’essai'}
-          </Text>
+        <Pressable style={[styles.cta, paying && { opacity: 0.7 }]} onPress={handleContinue} disabled={paying}>
+          {paying ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Feather name={method === 'card' ? 'arrow-right' : 'lock'} size={18} color="#fff" />
+              <Text style={styles.ctaText}>
+                {method === 'card' ? 'Continuer' : 'Confirmer et démarrer l’essai'}
+              </Text>
+            </>
+          )}
         </Pressable>
         <Text style={styles.ctaNote}>
           <Feather name="shield" size={12} color="#8A8F99" />  Paiement sécurisé · Annulable à tout moment

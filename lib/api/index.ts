@@ -15,6 +15,8 @@ export { fetchMyLeague, joinLeague, getOrJoinLeague } from './leagues';
 export type { LeagueView, LeagueMember } from './leagues';
 export { fetchPodiums, claimPodium } from './rewards';
 export { fetchGems, refillHeartsWithGems, reviewRegainHeart, buyStreakFreeze, buyDoubleXp, buyGemPack } from './gems';
+export { subscribePremium, repairStreak } from './billing';
+export type { PremiumPlan, SubscribeResult } from './billing';
 export type { GemsStatus, GemLedgerEntry, GemPackId } from './gems';
 export type { PodiumEntry, LigueTier } from './rewards';
 export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';

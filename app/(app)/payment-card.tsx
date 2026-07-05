@@ -6,7 +6,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useUserStore } from '../../store/userStore';
+import { Alert } from 'react-native';
+import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
 import { PLANS } from './subscription';
 
 // ─── Helpers de formatage ────────────────────────────────────────────────────
@@ -29,7 +30,6 @@ export default function PaymentCardScreen() {
   const router = useRouter();
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
-  const setPremium = useUserStore((s) => s.setPremium);
 
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
@@ -43,14 +43,20 @@ export default function PaymentCardScreen() {
     expiry.length === 5 &&
     cvv.length >= 3;
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!valid || paying) return;
     setPaying(true);
-    // Mock d'appel paiement — à remplacer par Stripe/PaymentSheet au branchement back.
-    setTimeout(() => {
-      setPremium(true);
+    // Les champs carte sont décoratifs (provider mock, aucun débit) mais
+    // l'entitlement Premium est activé CÔTÉ SERVEUR — indispensable pour que
+    // cœurs illimités / XP ×2 s'appliquent et survivent au prochain GET /me.
+    // À remplacer par Stripe/PaymentSheet quand un vrai provider sera branché.
+    try {
+      await subscribePremium(plan.id as PremiumPlan);
       router.replace('/(app)/(tabs)/parcours');
-    }, 1200);
+    } catch {
+      Alert.alert('Paiement impossible', 'Réessaie dans un instant.');
+      setPaying(false);
+    }
   };
 
   return (
