@@ -1,12 +1,11 @@
 /**
- * Billing — Premium & gemmes. Le PROVIDER est mock côté backend (le paiement
- * réussit toujours, aucun débit réel), mais l'entitlement est réel : le
- * serveur active isPremium/premiumUntil, et c'est LUI qui applique cœurs
- * illimités + XP ×2. Sans cet appel, un `setPremium(true)` local serait
- * écrasé au prochain GET /me.
+ * Billing — activation de l'entitlement Premium côté SERVEUR.
  *
- * À brancher sur RevenueCat/Stripe plus tard : seul le backend change,
- * ce contrat reste identique.
+ * Le paiement lui-même est collecté AVANT, par le `PaymentProvider`
+ * (lib/payments.ts — point de branchement de notre future API de paiement) ;
+ * on transmet ici le `paymentToken` obtenu, que le backend vérifiera auprès
+ * du provider avant d'activer isPremium/premiumUntil. Tant que le provider
+ * est mock des deux côtés, le jeton est factice et accepté (dev only).
  */
 import { apiFetch } from './client';
 import { fetchMe } from './me';
@@ -20,10 +19,13 @@ export interface SubscribeResult {
 }
 
 /** POST /billing/subscribe — active Premium côté serveur puis rehydrate. */
-export async function subscribePremium(plan: PremiumPlan): Promise<SubscribeResult> {
+export async function subscribePremium(
+  plan: PremiumPlan,
+  paymentToken?: string,
+): Promise<SubscribeResult> {
   const res = await apiFetch<SubscribeResult>('/billing/subscribe', {
     method: 'POST',
-    json: { plan },
+    json: { plan, ...(paymentToken ? { paymentToken } : {}) },
   });
   await fetchMe(); // isPremium/hearts/xp désormais servis par le serveur
   return res;

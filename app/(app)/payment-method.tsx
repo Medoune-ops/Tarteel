@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
+import { getPaymentProvider } from '../../lib/payments';
 import { PLANS } from './subscription';
 
 type MethodId = 'apple' | 'google' | 'card';
@@ -28,12 +29,20 @@ export default function PaymentMethodScreen() {
       router.push({ pathname: '/(app)/payment-card', params: { plan: plan.id } });
       return;
     }
-    // Apple Pay / Google Pay : l'entitlement est activé CÔTÉ SERVEUR
-    // (provider mock, pas de débit réel) — un flag local serait écrasé au
-    // prochain GET /me et les cœurs resteraient limités côté backend.
+    // 1) Le PaymentProvider collecte le paiement (mock en dev — c'est LUI
+    //    qu'on remplacera par notre API de paiement, voir lib/payments.ts).
+    // 2) Le paymentToken obtenu est envoyé au serveur, qui vérifie puis
+    //    active l'entitlement (jamais de Premium local : il serait écrasé
+    //    au prochain GET /me).
     setPaying(true);
     try {
-      await subscribePremium(plan.id as PremiumPlan);
+      const payment = await getPaymentProvider().payPremium(plan.id as PremiumPlan, method);
+      if (!payment.ok) {
+        Alert.alert('Paiement impossible', payment.error ?? 'Réessaie dans un instant.');
+        setPaying(false);
+        return;
+      }
+      await subscribePremium(plan.id as PremiumPlan, payment.paymentToken);
       router.replace('/(app)/(tabs)/parcours');
     } catch {
       Alert.alert('Paiement impossible', 'Réessaie dans un instant.');

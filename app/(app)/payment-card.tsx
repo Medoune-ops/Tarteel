@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Alert } from 'react-native';
 import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
+import { getPaymentProvider } from '../../lib/payments';
 import { PLANS } from './subscription';
 
 // ─── Helpers de formatage ────────────────────────────────────────────────────
@@ -46,12 +47,18 @@ export default function PaymentCardScreen() {
   const handlePay = async () => {
     if (!valid || paying) return;
     setPaying(true);
-    // Les champs carte sont décoratifs (provider mock, aucun débit) mais
-    // l'entitlement Premium est activé CÔTÉ SERVEUR — indispensable pour que
-    // cœurs illimités / XP ×2 s'appliquent et survivent au prochain GET /me.
-    // À remplacer par Stripe/PaymentSheet quand un vrai provider sera branché.
+    // Les champs carte sont décoratifs tant que le PaymentProvider est mock :
+    // au branchement de notre API de paiement (lib/payments.ts), c'est elle
+    // qui collectera la carte (PaymentSheet) et fournira le paymentToken.
+    // L'entitlement, lui, est TOUJOURS activé côté serveur (jamais en local).
     try {
-      await subscribePremium(plan.id as PremiumPlan);
+      const payment = await getPaymentProvider().payPremium(plan.id as PremiumPlan, 'card');
+      if (!payment.ok) {
+        Alert.alert('Paiement impossible', payment.error ?? 'Réessaie dans un instant.');
+        setPaying(false);
+        return;
+      }
+      await subscribePremium(plan.id as PremiumPlan, payment.paymentToken);
       router.replace('/(app)/(tabs)/parcours');
     } catch {
       Alert.alert('Paiement impossible', 'Réessaie dans un instant.');
