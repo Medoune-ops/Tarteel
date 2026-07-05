@@ -37,6 +37,8 @@ interface UserState {
   objectif: 'lire' | 'hifz' | 'tafsir' | 'complet';
   /** Langue de l'interface (code ISO). */
   language: 'fr' | 'en' | 'ar';
+  /** Exercices vocaux activés (Settings → Voix & enregistrements, persisté serveur). */
+  voiceEnabled: boolean;
   /** Thème visuel. */
   theme: 'light' | 'dark' | 'system';
   /** Objectif de série fixé par l'utilisateur (null = aucun objectif en cours). */
@@ -121,6 +123,7 @@ interface UserState {
     level?: UserState['level'];
     objectif?: UserState['objectif'];
     dailyMinutes?: number;
+    voiceEnabled?: boolean;
   }) => void;
   logout: () => void;
 }
@@ -157,6 +160,7 @@ const initialState = {
   level: 'debutant' as const,
   objectif: 'hifz' as const,
   language: systemLanguage() as 'fr' | 'en' | 'ar',
+  voiceEnabled: true,
   theme: 'system' as const,
   streakGoal: null as number | null,
   lastChestDay: null as string | null,
@@ -318,6 +322,7 @@ export const useUserStore = create<UserState>()(
           ...(data.level        != null && { level:        data.level }),
           ...(data.objectif     != null && { objectif:     data.objectif }),
           ...(data.dailyMinutes != null && { dailyMinutes: data.dailyMinutes }),
+          ...(data.voiceEnabled != null && { voiceEnabled: data.voiceEnabled }),
         });
         syncWidgetData({
           streak: data.streak,

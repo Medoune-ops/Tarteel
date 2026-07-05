@@ -3,6 +3,8 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Linking, Alert } from 'r
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Toggle from '../../components/Toggle';
+import { deleteAccount } from '../../lib/api/me';
+import { t as tr } from '../../lib/i18n';
 
 const TOGGLES = [
   { id: 'usage',   iconBg: '#6B4DFF', icon: 'bar-chart-2' as const, title: "Partage des données d'usage", sub: 'Aide à améliorer Tarteel',          default: true  },
@@ -35,15 +37,24 @@ export default function PrivacyScreen() {
     Object.fromEntries(TOGGLES.map((t) => [t.id, t.default]))
   );
 
+  // Suppression RÉELLE : DELETE /me (cascade serveur), puis purge locale et
+  // retour à l'inscription. Double confirmation car irréversible.
   const supprimerCompte = () => {
-    Alert.alert(
-      'Supprimer le compte',
-      'Cette action est irréversible. Toutes tes données et ta progression seront définitivement effacées.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => {} },
-      ]
-    );
+    Alert.alert(tr('account.deleteTitle'), tr('account.deleteConfirm'), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      {
+        text: tr('account.deleteAction'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteAccount();
+            router.replace('/(onboarding)/signup');
+          } catch {
+            Alert.alert(tr('account.deleteError'));
+          }
+        },
+      },
+    ]);
   };
 
   return (

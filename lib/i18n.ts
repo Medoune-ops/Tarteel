@@ -66,7 +66,7 @@ const fr = {
   'settings.off': 'Désactivé',
   'settings.sectionNotifs': 'NOTIFICATIONS',
   'settings.dailyReminder': 'Rappel quotidien',
-  'settings.dailyReminderSub': 'Tous les jours à 20:30',
+  'settings.dailyReminderSub': 'Tous les jours à {h}h',
   'settings.manageNotifs': 'Gérer les notifications',
   'settings.manageNotifsSub': 'Série, ligues, verset du jour…',
   'settings.sectionSubscription': 'ABONNEMENT',
@@ -92,6 +92,21 @@ const fr = {
   'langue.en': 'Anglais',
   'langue.ar': 'Arabe',
   'langue.note': "La langue de récitation et du texte coranique reste l'arabe.",
+
+  // ─── Écran Notifications ───────────────────────────────────────────────────
+  'notif.title': 'Notifications & rappels',
+  'notif.streakAlert': 'Alerte de série',
+  'notif.streakAlertSub': 'Avant de perdre ton streak',
+  'notif.hourLabel': 'HEURE DU RAPPEL',
+  'notif.hourHint': 'Touche une heure pour la modifier',
+  'notif.saveError': "Impossible d'enregistrer. Réessaie.",
+
+  // ─── Confidentialité / compte ──────────────────────────────────────────────
+  'account.deleteTitle': 'Supprimer mon compte',
+  'account.deleteConfirm':
+    'Toute ta progression (XP, série, gemmes, leçons) sera définitivement effacée. Cette action est irréversible.',
+  'account.deleteAction': 'Supprimer définitivement',
+  'account.deleteError': 'Suppression impossible pour le moment. Réessaie.',
 };
 
 type Dict = typeof fr;
@@ -145,7 +160,7 @@ const en: Dict = {
   'settings.off': 'Off',
   'settings.sectionNotifs': 'NOTIFICATIONS',
   'settings.dailyReminder': 'Daily reminder',
-  'settings.dailyReminderSub': 'Every day at 8:30 PM',
+  'settings.dailyReminderSub': 'Every day at {h}:00',
   'settings.manageNotifs': 'Manage notifications',
   'settings.manageNotifsSub': 'Streak, leagues, verse of the day…',
   'settings.sectionSubscription': 'SUBSCRIPTION',
@@ -170,6 +185,19 @@ const en: Dict = {
   'langue.en': 'English',
   'langue.ar': 'Arabic',
   'langue.note': 'Recitation and Quranic text stay in Arabic.',
+
+  'notif.title': 'Notifications & reminders',
+  'notif.streakAlert': 'Streak alert',
+  'notif.streakAlertSub': 'Before you lose your streak',
+  'notif.hourLabel': 'REMINDER TIME',
+  'notif.hourHint': 'Tap an hour to change it',
+  'notif.saveError': "Couldn't save. Try again.",
+
+  'account.deleteTitle': 'Delete my account',
+  'account.deleteConfirm':
+    'All your progress (XP, streak, gems, lessons) will be permanently erased. This cannot be undone.',
+  'account.deleteAction': 'Delete permanently',
+  'account.deleteError': "Couldn't delete right now. Try again.",
 };
 
 // L'interface arabe n'est pas encore traduite → anglais en attendant.

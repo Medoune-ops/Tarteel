@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import Toggle from '../../components/Toggle';
 import { useUserStore } from '../../store/userStore';
 import { useTheme } from '../../utils/useTheme';
 import { logout, updateSettings } from '../../lib/api';
+import { fetchNotificationPrefs, updateNotificationPrefs } from '../../lib/api/notifications';
 import { useT } from '../../lib/i18n';
 
 const LANGUES = {
@@ -46,13 +47,29 @@ function Row({
 
 export default function SettingsScreen() {
   const router = useRouter();
+  // Rappel quotidien : préférence RÉELLE (serveur), chargée à l'ouverture.
   const [reminder, setReminder] = useState(true);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [reminderHour, setReminderHour] = useState(19);
+  useEffect(() => {
+    fetchNotificationPrefs()
+      .then((p) => {
+        setReminder(p.notifDailyReminder);
+        setReminderHour(p.reminderHour);
+      })
+      .catch(() => { /* hors-ligne : valeurs par défaut, resync au prochain passage */ });
+  }, []);
+  const toggleReminder = (v: boolean) => {
+    setReminder(v);
+    updateNotificationPrefs({ notifDailyReminder: v }).catch(() => setReminder(!v));
+  };
 
-  // Active/désactive la voix : optimistic local + persistance serveur best-effort.
+  // Voix : état hydraté depuis /me (store), optimistic + persistance serveur.
+  const voiceEnabled = useUserStore((s) => s.voiceEnabled);
   const toggleVoice = (v: boolean) => {
-    setVoiceEnabled(v);
-    updateSettings({ voiceEnabled: v }).catch(() => setVoiceEnabled(!v));
+    useUserStore.setState({ voiceEnabled: v });
+    updateSettings({ voiceEnabled: v }).catch(() =>
+      useUserStore.setState({ voiceEnabled: !v }),
+    );
   };
   const language = useUserStore((s) => s.language);
   const streak = useUserStore((s) => s.streak);
@@ -138,11 +155,14 @@ export default function SettingsScreen() {
             <View style={[styles.rowIcon, { backgroundColor: '#FF4B4B' }]}>
               <Feather name="bell" size={22} color="#fff" />
             </View>
-            <View style={{ flex: 1 }}>
+            {/* La zone texte ouvre l'écran Notifications (choix de l'heure). */}
+            <Pressable style={{ flex: 1 }} onPress={() => router.push('/(app)/notifications')}>
               <Text style={[styles.rowTitle, { color: T.text }]}>{tr('settings.dailyReminder')}</Text>
-              <Text style={[styles.rowSub, { color: T.textSecondary }]}>{tr('settings.dailyReminderSub')}</Text>
-            </View>
-            <Toggle value={reminder} onChange={setReminder} />
+              <Text style={[styles.rowSub, { color: T.textSecondary }]}>
+                {tr('settings.dailyReminderSub', { h: reminderHour })}
+              </Text>
+            </Pressable>
+            <Toggle value={reminder} onChange={toggleReminder} />
           </View>
           <View style={[styles.divider, { backgroundColor: T.divider }]} />
           <Row

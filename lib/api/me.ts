@@ -6,6 +6,7 @@
  * directement à `hydrateFromBackend`.
  */
 import { apiFetch } from './client';
+import { clearTokens } from './tokens';
 import { useUserStore } from '../../store/userStore';
 import type { SourateListItem } from './content';
 
@@ -28,6 +29,7 @@ export interface MeResponse {
   level?: 'debutant' | 'alphabet' | 'lent' | 'fluent';
   objectif?: 'lire' | 'hifz' | 'tafsir' | 'complet';
   dailyMinutes?: number;
+  voiceEnabled?: boolean;
 }
 
 export interface OnboardingInput {
@@ -108,4 +110,14 @@ export async function updateSettings(input: UpdateSettingsInput): Promise<MeResp
   const data = await apiFetch<MeResponse>('/me/settings', { method: 'PATCH', json: input });
   useUserStore.getState().hydrateFromBackend(data);
   return data;
+}
+
+/**
+ * `DELETE /me` — suppression DÉFINITIVE du compte côté serveur (cascade sur
+ * toute la progression). Efface ensuite les jetons locaux et vide le store.
+ */
+export async function deleteAccount(): Promise<void> {
+  await apiFetch('/me', { method: 'DELETE' });
+  await clearTokens();
+  useUserStore.getState().logout();
 }
