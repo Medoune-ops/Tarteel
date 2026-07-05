@@ -49,7 +49,8 @@
           "icon": "./assets/icon.png",
           "color": "#6B4DFF"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "_widgetPlugin_activateForEASBuild": [
       "expo-widget",
