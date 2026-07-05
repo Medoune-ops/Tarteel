@@ -107,6 +107,9 @@ const fr = {
     'Toute ta progression (XP, série, gemmes, leçons) sera définitivement effacée. Cette action est irréversible.',
   'account.deleteAction': 'Supprimer définitivement',
   'account.deleteError': 'Suppression impossible pour le moment. Réessaie.',
+  'account.passwordPrompt': 'Confirme avec ton mot de passe',
+  'account.passwordPlaceholder': 'Mot de passe',
+  'account.wrongPassword': 'Mot de passe incorrect.',
 };
 
 type Dict = typeof fr;
@@ -198,6 +201,9 @@ const en: Dict = {
     'All your progress (XP, streak, gems, lessons) will be permanently erased. This cannot be undone.',
   'account.deleteAction': 'Delete permanently',
   'account.deleteError': "Couldn't delete right now. Try again.",
+  'account.passwordPrompt': 'Confirm with your password',
+  'account.passwordPlaceholder': 'Password',
+  'account.wrongPassword': 'Wrong password.',
 };
 
 // L'interface arabe n'est pas encore traduite → anglais en attendant.

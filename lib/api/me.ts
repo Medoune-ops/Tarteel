@@ -114,10 +114,11 @@ export async function updateSettings(input: UpdateSettingsInput): Promise<MeResp
 
 /**
  * `DELETE /me` — suppression DÉFINITIVE du compte côté serveur (cascade sur
- * toute la progression). Efface ensuite les jetons locaux et vide le store.
+ * toute la progression). Le mot de passe est exigé par le serveur (un access
+ * token volé ne suffit pas). Efface ensuite les jetons locaux et vide le store.
  */
-export async function deleteAccount(): Promise<void> {
-  await apiFetch('/me', { method: 'DELETE' });
+export async function deleteAccount(password: string): Promise<void> {
+  await apiFetch('/me', { method: 'DELETE', json: { password } });
   await clearTokens();
   useUserStore.getState().logout();
 }
