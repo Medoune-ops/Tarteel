@@ -23,6 +23,8 @@ export interface MeResponse {
   sourates?: number;
   precision?: number;
   name?: string;
+  /** Pseudo public (ligues) ; null pour les comptes créés avant le champ. */
+  username?: string | null;
   email?: string;
   avatar?: string | null;
   onboardingDone?: boolean;

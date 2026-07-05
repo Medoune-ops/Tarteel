@@ -23,6 +23,8 @@ export interface RegisterInput {
   email: string;
   password: string;
   displayName: string;
+  /** Pseudo public (affiché dans les ligues) — le nom complet reste privé. */
+  username?: string;
 }
 
 export interface LoginInput {
