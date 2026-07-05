@@ -88,11 +88,18 @@ export interface UpdateProfileInput {
 }
 
 /**
- * `PATCH /me` — met à jour le profil (nom, avatar). Renvoie la forme plate de
- * /me ; on rehydrate le store pour rester en sync.
+ * `PATCH /me` — met à jour le profil. Renvoie la forme plate de /me ; on
+ * rehydrate le store pour rester en sync.
+ *
+ * ⚠ Mapping obligatoire : le store/front parle de `name`, mais le schéma
+ * backend (Zod `.strict()`, anti mass-assignment) n'accepte QUE `displayName`
+ * — envoyer `name` tel quel provoquait un 400 et rien ne s'enregistrait.
+ * `avatar` n'a pas encore de support serveur : on ne l'envoie pas.
  */
 export async function updateProfile(input: UpdateProfileInput): Promise<MeResponse> {
-  const data = await apiFetch<MeResponse>('/me', { method: 'PATCH', json: input });
+  const payload: { displayName?: string } = {};
+  if (input.name != null) payload.displayName = input.name;
+  const data = await apiFetch<MeResponse>('/me', { method: 'PATCH', json: payload });
   useUserStore.getState().hydrateFromBackend(data);
   return data;
 }
