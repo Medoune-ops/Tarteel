@@ -21,22 +21,35 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const T = useTheme();
   const storedName = useUserStore((s) => s.name);
+  const storedUsername = useUserStore((s) => s.username);
   const email = useUserStore((s) => s.email);
   const setProfile = useUserStore((s) => s.setProfile);
 
   const [name, setName] = useState(storedName);
+  const [username, setUsername] = useState(storedUsername ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dirty = name.trim() !== storedName.trim();
-  const canSave = dirty && name.trim().length > 0 && !loading;
+  // Pseudo public : mêmes règles que le backend (3–20, lettres/chiffres/._).
+  const pseudo = username.trim().toLowerCase();
+  const usernameDirty = pseudo !== (storedUsername ?? '');
+  const usernameValid = pseudo === '' || /^[a-z0-9._]{3,20}$/.test(pseudo);
+
+  const nameDirty = name.trim() !== storedName.trim();
+  const dirty = nameDirty || usernameDirty;
+  const canSave = dirty && name.trim().length > 0 && usernameValid && !loading;
 
   const save = async () => {
     if (!canSave) return;
     setLoading(true);
     setError(null);
     try {
-      await updateProfile({ name: name.trim() });
+      await updateProfile({
+        ...(nameDirty ? { name: name.trim() } : {}),
+        // Le pseudo ne peut pas être vidé (colonne unique) — on ne l'envoie
+        // que s'il est renseigné et modifié.
+        ...(usernameDirty && pseudo ? { username: pseudo } : {}),
+      });
       router.back();
     } catch (e) {
       // Hors-ligne / pas encore de backend : on garde la modif en local.
@@ -81,6 +94,27 @@ export default function EditProfileScreen() {
               onSubmitEditing={save}
             />
           </View>
+
+          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>NOM D'UTILISATEUR</Text>
+          <View style={[styles.input, { backgroundColor: T.cardBg }]}>
+            <Feather name="at-sign" size={19} color="#9AA0AA" />
+            <TextInput
+              style={[styles.inputText, { color: T.text }]}
+              value={username}
+              onChangeText={setUsername}
+              placeholder="ton_pseudo"
+              placeholderTextColor="#9AA0AA"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={save}
+            />
+          </View>
+          <Text style={[styles.note, { color: usernameValid ? T.textSecondary : '#E5484D' }]}>
+            {usernameValid
+              ? 'Affiché dans les ligues à la place de ton nom complet.'
+              : '3 à 20 caractères : lettres, chiffres, « . » ou « _ ».'}
+          </Text>
 
           <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>EMAIL</Text>
           <View style={[styles.input, styles.inputDisabled]}>

@@ -19,6 +19,8 @@ interface UserState {
   email: string;
   /** URL de l'avatar (null = initiales par défaut). */
   avatar: string | null;
+  /** Pseudo public (ligues) ; null pour les comptes créés avant le champ. */
+  username: string | null;
   streak: number;
   xp: number;
   hearts: number;
@@ -119,6 +121,7 @@ interface UserState {
     name?: string;
     email?: string;
     avatar?: string | null;
+    username?: string | null;
     onboardingDone?: boolean;
     level?: UserState['level'];
     objectif?: UserState['objectif'];
@@ -147,6 +150,7 @@ const initialState = {
   name: '',
   email: '',
   avatar: null as string | null,
+  username: null as string | null,
   streak: 0,
   xp: 0,
   hearts: MAX_HEARTS,
@@ -316,6 +320,7 @@ export const useUserStore = create<UserState>()(
           ...(data.name   != null && { name:   data.name   }),
           ...(data.email  != null && { email:  data.email  }),
           ...(data.avatar !== undefined && { avatar: data.avatar }),
+          ...(data.username !== undefined && { username: data.username }),
           // Onboarding/prefs : restaurés depuis le serveur pour ne PAS relancer
           // le setup à chaque reconnexion.
           ...(data.onboardingDone != null && { onboardingDone: data.onboardingDone }),

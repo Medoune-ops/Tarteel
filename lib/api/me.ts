@@ -87,6 +87,8 @@ export async function fetchLearnedSourates(): Promise<SourateListItem[]> {
 export interface UpdateProfileInput {
   name?: string;
   avatar?: string;
+  /** Pseudo public (ligues) — modifiable depuis Paramètres → Modifier le profil. */
+  username?: string;
 }
 
 /**
@@ -99,8 +101,9 @@ export interface UpdateProfileInput {
  * `avatar` n'a pas encore de support serveur : on ne l'envoie pas.
  */
 export async function updateProfile(input: UpdateProfileInput): Promise<MeResponse> {
-  const payload: { displayName?: string } = {};
+  const payload: { displayName?: string; username?: string } = {};
   if (input.name != null) payload.displayName = input.name;
+  if (input.username != null) payload.username = input.username;
   const data = await apiFetch<MeResponse>('/me', { method: 'PATCH', json: payload });
   useUserStore.getState().hydrateFromBackend(data);
   return data;
