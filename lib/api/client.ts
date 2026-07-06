@@ -149,8 +149,13 @@ function friendlyMessage(
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   /** Corps JSON (sérialisé automatiquement). */
   json?: unknown;
+  /** Corps multipart (upload audio/fichier). Exclusif avec `json` — le
+   *  Content-Type est laissé au runtime (boundary ajouté automatiquement). */
+  formData?: FormData;
   /** N'attache pas le Bearer token (login, register, reset…). */
   auth?: boolean;
+  /** Timeout spécifique (ms) — ex: upload audio + jugement Whisper. */
+  timeoutMs?: number;
   /** Usage interne : empêche une 2e tentative de refresh en boucle. */
   _retry?: boolean;
 }
@@ -200,10 +205,10 @@ export async function apiFetch<T = unknown>(
   path: string,
   options: ApiFetchOptions = {},
 ): Promise<T> {
-  const { json, auth = true, _retry = false, headers, ...rest } = options;
+  const { json, formData, auth = true, timeoutMs, _retry = false, headers, ...rest } = options;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs ?? API_TIMEOUT_MS);
 
   const finalHeaders: Record<string, string> = {
     Accept: 'application/json',
@@ -220,7 +225,7 @@ export async function apiFetch<T = unknown>(
     res = await fetch(`${API_URL}${path}`, {
       ...rest,
       headers: finalHeaders,
-      body: json !== undefined ? JSON.stringify(json) : undefined,
+      body: formData ?? (json !== undefined ? JSON.stringify(json) : undefined),
       signal: controller.signal,
     });
   } catch (err) {

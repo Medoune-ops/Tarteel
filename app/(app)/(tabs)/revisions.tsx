@@ -158,7 +158,7 @@ export default function RevisionsScreen() {
                   style={styles.urgentBtn}
                   onPress={() => router.push({
                     pathname: '/(app)/revision/flashcard',
-                    params: { sourateId: urgentes[0].id },
+                    params: { numero: urgentes[0].numero },
                   })}
                 >
                   <Text style={styles.urgentBtnText}>Commencer</Text>
@@ -184,7 +184,7 @@ export default function RevisionsScreen() {
               style={[styles.card, { backgroundColor: T.cardBg }]}
               onPress={() => router.push({
                 pathname: '/(app)/revision/flashcard',
-                params: { sourateId: s.id },
+                params: { numero: s.numero },
               })}
             >
               {/* Numéro */}
