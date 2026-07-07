@@ -14,8 +14,11 @@ import {
   type WrittenStep,
   type OrderingStep,
   type MatchingStep,
+  type VoiceStep,
 } from '../../../constants/lessonEngine';
-import { fetchLesson, answerStep, ApiError } from '../../../lib/api';
+import { fetchLesson, answerStep, reciteLessonStep, ApiError } from '../../../lib/api';
+import { useAudioRecorder, RecordingPresets } from 'expo-audio';
+import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../../../lib/audio/recorder';
 import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio, setRemotePlaybackRate, correctFeedback, wrongFeedback } from '../../../constants/sounds';
 import { getLetterSound } from '../../../constants/letterSounds';
 import * as Speech from 'expo-speech';
@@ -28,6 +31,7 @@ export default function LessonPlayScreen() {
   const router = useRouter();
   const { lessonId } = useLocalSearchParams<{ lessonId?: string }>();
   const isPremium = useUserStore((s) => s.isPremium);
+  const voiceEnabled = useUserStore((s) => s.voiceEnabled);
 
   // Leçon chargée depuis l'API (GET /lessons/:id). Les vrais cuid des steps
   // sont nécessaires pour le judging serveur.
@@ -38,10 +42,14 @@ export default function LessonPlayScreen() {
     if (!lessonId) { setLoadError(true); return; }
     let cancelled = false;
     fetchLesson(lessonId)
-      .then((l) => { if (!cancelled) setLesson(l); })
+      .then((l) => {
+        if (cancelled) return;
+        // « Voix & enregistrements » désactivé → on saute les étapes micro.
+        setLesson(voiceEnabled ? l : { ...l, steps: l.steps.filter((s) => s.type !== 'voice') });
+      })
       .catch(() => { if (!cancelled) setLoadError(true); });
     return () => { cancelled = true; };
-  }, [lessonId]);
+  }, [lessonId, voiceEnabled]);
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('answering');
@@ -92,8 +100,8 @@ export default function LessonPlayScreen() {
   const step = lesson.steps[index];
   const total = lesson.steps.length;
   const progress = index / total;
-  // Étapes notées côté serveur (written + ordering). Matching est client-side.
-  const scoredTotal = lesson.steps.filter((s) => s.type === 'written' || s.type === 'ordering').length;
+  // Étapes notées côté serveur (written + ordering + voice). Matching est client-side.
+  const scoredTotal = lesson.steps.filter((s) => s.type === 'written' || s.type === 'ordering' || s.type === 'voice').length;
 
   // Passe à l'étape suivante, ou termine la leçon → écran de fin.
   // L'XP/streak/cœurs sont désormais crédités par le backend (POST /lesson/complete),
@@ -168,6 +176,32 @@ export default function LessonPlayScreen() {
     }
   };
 
+  // Soumet l'enregistrement d'une étape 'voice' au jugement Whisper serveur.
+  // Même sémantique que written : le serveur décide et gère les cœurs.
+  const onSubmitVoice = async (st: VoiceStep, audioUri: string) => {
+    if (judging) return;
+    setJudging(true);
+    try {
+      const res = await reciteLessonStep(lesson.id, st.id, audioUri);
+      if (res.correct) {
+        setCorrectCount((c) => c + 1);
+        setPhase('correct');
+        correctFeedback();
+      } else {
+        setPhase('wrong');
+        wrongFeedback();
+      }
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) {
+        router.replace('/(app)/lesson/out-of-hearts');
+      } else {
+        setLoadError(true);
+      }
+    } finally {
+      setJudging(false);
+    }
+  };
+
   // "Continuer" après un feedback : si plus de cœurs → écran de blocage.
   const onContinueAfterFeedback = () => {
     const hearts = useUserStore.getState().hearts;
@@ -215,6 +249,15 @@ export default function LessonPlayScreen() {
         )}
         {step.type === 'matching' && (
           <MatchingView step={step} onContinue={goNext} />
+        )}
+        {step.type === 'voice' && (
+          <VoiceView
+            step={step}
+            phase={phase}
+            judging={judging}
+            onValidate={(uri) => onSubmitVoice(step, uri)}
+            onContinue={onContinueAfterFeedback}
+          />
         )}
       </Animated.View>
     </View>
@@ -788,6 +831,142 @@ const matchStyles = StyleSheet.create({
   textMatched: { color: '#2A9E1C' },
   successBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   successText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#2A9E1C' },
+});
+
+// ─── Étape RÉCITATION (micro → jugement Whisper serveur) ─────────────────────
+// L'utilisateur écoute la référence (si dispo), s'enregistre au micro
+// (expo-audio), réécoute s'il veut, puis valide → l'audio part au serveur qui
+// transcrit et juge. Faux = −1 cœur (géré serveur), comme un test écrit.
+type RecState = 'idle' | 'recording' | 'recorded';
+
+function VoiceView({
+  step, phase, judging, onValidate, onContinue,
+}: {
+  step: VoiceStep;
+  phase: Phase;
+  judging: boolean;
+  onValidate: (audioUri: string) => void;
+  onContinue: () => void;
+}) {
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recState, setRecState] = useState<RecState>('idle');
+  const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [micDenied, setMicDenied] = useState(false);
+  const answered = phase !== 'answering';
+
+  // Sécurité : couper l'enregistrement et rétablir le mode lecture en sortie.
+  useEffect(() => () => {
+    if (recorder.isRecording) recorder.stop().catch(() => {});
+    exitRecordingMode();
+  }, []);
+
+  const startRecording = async () => {
+    const granted = await ensureMicPermission();
+    if (!granted) { setMicDenied(true); return; }
+    setMicDenied(false);
+    stopRemoteAudio(); // coupe la référence si elle joue encore
+    await enterRecordingMode();
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+    setAudioUri(null);
+    setRecState('recording');
+  };
+
+  const stopRecording = async () => {
+    await recorder.stop();
+    await exitRecordingMode();
+    setAudioUri(recorder.uri);
+    setRecState('recorded');
+  };
+
+  const toggleRecording = () => {
+    if (judging || answered) return;
+    if (recState === 'recording') stopRecording();
+    else startRecording();
+  };
+
+  const recording = recState === 'recording';
+  const ready = recState === 'recorded' && !!audioUri;
+
+  return (
+    <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={[styles.tag, { backgroundColor: '#FFE8F0' }]}>
+          <Feather name="mic" size={15} color="#E0398B" />
+          <Text style={[styles.tagText, { color: '#E0398B' }]}>Récitation</Text>
+        </View>
+
+        <Text style={styles.consigne}>{step.consigne ?? 'Récite ce verset à voix haute'}</Text>
+
+        <View style={styles.verseCard}>
+          <Text style={styles.arabic}>{step.arabe}</Text>
+          {!!step.translitteration && <Text style={styles.translit}>{step.translitteration}</Text>}
+          {!!step.traduction && <Text style={styles.traduction}>{step.traduction}</Text>}
+        </View>
+
+        {/* Écouter la référence avant de s'enregistrer */}
+        {!!step.audioUrl && !recording && (
+          <Pressable style={voiceStyles.refBtn} onPress={() => playRemoteAudio(step.audioUrl)}>
+            <Feather name="volume-2" size={18} color="#6B4DFF" />
+            <Text style={voiceStyles.refLabel}>Écouter la récitation</Text>
+          </Pressable>
+        )}
+
+        {/* Bouton micro (toggle enregistrer / arrêter) */}
+        <Pressable
+          style={[voiceStyles.micBtn, recording && voiceStyles.micBtnRecording]}
+          onPress={toggleRecording}
+          disabled={judging || answered}
+        >
+          <Feather name={recording ? 'square' : 'mic'} size={38} color="#fff" />
+        </Pressable>
+        <Text style={styles.hint}>
+          {micDenied
+            ? 'Autorise le micro dans les réglages pour réciter'
+            : recording
+              ? 'Enregistrement… appuie pour arrêter'
+              : ready
+                ? 'Enregistré ! Valide, ou recommence'
+                : 'Appuie sur le micro et récite'}
+        </Text>
+
+        {/* Réécouter son enregistrement avant de valider */}
+        {ready && !answered && (
+          <Pressable style={voiceStyles.refBtn} onPress={() => playRemoteAudio(audioUri)}>
+            <Feather name="play" size={18} color="#6B4DFF" />
+            <Text style={voiceStyles.refLabel}>Réécouter mon enregistrement</Text>
+          </Pressable>
+        )}
+        <View style={{ height: 20 }} />
+      </ScrollView>
+
+      {!answered ? (
+        <Footer
+          label={judging ? 'Analyse de ta récitation…' : 'Valider'}
+          color={ready && !judging ? '#34C724' : '#C9CDD4'}
+          colorDark={ready && !judging ? '#2A9E1C' : '#B0B5BE'}
+          disabled={!ready || judging}
+          onPress={() => { if (audioUri) onValidate(audioUri); }}
+        />
+      ) : (
+        <FeedbackBar correct={phase === 'correct'} onContinue={onContinue} />
+      )}
+    </View>
+  );
+}
+
+const voiceStyles = StyleSheet.create({
+  micBtn: {
+    width: 96, height: 96, borderRadius: 48, backgroundColor: '#E0398B',
+    alignItems: 'center', justifyContent: 'center', marginTop: 26,
+    borderBottomWidth: 6, borderBottomColor: '#B02268',
+  },
+  micBtnRecording: { backgroundColor: '#FF4B4B', borderBottomColor: '#D43A3A' },
+  refBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16,
+    backgroundColor: '#EDE8FF', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10,
+  },
+  refLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#6B4DFF' },
 });
 
 // ─── Barre de feedback (correct / faux) ──────────────────────────────────────

@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
 import { getOrJoinLeague, type LeagueView, type LeagueMember } from '../../../lib/api';
+import { swrFetch } from '../../../lib/api/swr';
 
 // Style VISUEL du podium par rang (couleurs, hauteur de marche, anneau). Les
 // DONNÉES (nom, initiales, xp) viennent du backend ; seul l'habillage est ici.
@@ -90,7 +91,8 @@ export default function LiguesScreen() {
   const load = useCallback(async () => {
     setError(false);
     try {
-      setView(await getOrJoinLeague());
+      // SWR : classement affiché immédiatement depuis le cache, refresh en fond.
+      setView(await swrFetch('league', getOrJoinLeague, setView));
     } catch {
       setError(true);
     }

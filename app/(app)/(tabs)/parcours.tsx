@@ -1,11 +1,11 @@
-import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
   FadeInDown,
 } from 'react-native-reanimated';
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Rect, Path, Circle, Ellipse, Line } from 'react-native-svg';
 import DeviceStatusBar from '../../../components/StatusBar';
@@ -18,6 +18,7 @@ import {
   type ParcoursSection,
 } from '../../../constants/parcours';
 import { fetchSections } from '../../../lib/api';
+import { swrFetch } from '../../../lib/api/swr';
 import { fetchDailyChestAvailable, claimDailyChestApi } from '../../../lib/api/rewards';
 import { useT, t } from '../../../lib/i18n';
 import { playSound } from '../../../constants/sounds';
@@ -140,6 +141,32 @@ function Dashed({ color }: { color: string }) {
   return <View style={[styles.dashed, { borderColor: color }]} />;
 }
 
+/** Carte grise animée (pulsation) affichée pendant le chargement du parcours. */
+function SectionSkeleton({ theme }: { theme: ThemeColors }) {
+  const opacity = useSharedValue(0.5);
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.5, { duration: 700, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+    );
+  }, []);
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View style={[styles.skeletonCard, { backgroundColor: theme.lockedBg }, pulseStyle]}>
+      <View style={[styles.skeletonIcon, { backgroundColor: theme.lockedBorder }]} />
+      <View style={{ flex: 1, gap: 8 }}>
+        <View style={[styles.skeletonLine, { width: '40%', backgroundColor: theme.lockedBorder }]} />
+        <View style={[styles.skeletonLine, { width: '70%', backgroundColor: theme.lockedBorder }]} />
+        <View style={[styles.skeletonLine, { width: '90%', height: 7, backgroundColor: theme.lockedBorder }]} />
+      </View>
+    </Animated.View>
+  );
+}
+
 function CompletedNode({ align, icon, onPress }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen'; onPress: () => void }) {
   const renderIcon = () => {
     if (icon === 'star') return <IconStar size={52} />;
@@ -204,7 +231,9 @@ function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?
 }
 
 // ─── Panorama de La Mecque en arrière-plan ────────────────────────────────────
-function MeccaSkyline({ width, height, color, shadowColor, opacity }: { width: number; height: number; color: string; shadowColor: string; opacity: number }) {
+// memo : ~250 éléments SVG — on ne le re-rend JAMAIS tant que la taille/le
+// thème ne changent pas (sinon chaque setState de l'écran redessine tout).
+const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowColor, opacity }: { width: number; height: number; color: string; shadowColor: string; opacity: number }) {
   const c = color;       // couleur des traits
   const op = opacity;    // opacité globale
 
@@ -443,7 +472,7 @@ function MeccaSkyline({ width, height, color, shadowColor, opacity }: { width: n
       <Rect x={300} y={520} width={22} height={120} fill={c} opacity={0.3} />
     </Svg>
   );
-}
+});
 
 function alignStyle(align: 'left' | 'right' | 'center') {
   if (align === 'left') return { marginLeft: 120 };
@@ -460,8 +489,10 @@ function RenderNode({ node, onPress, theme }: { node: ParcoursNode; onPress: () 
   return <LockedNode align={node.align} icon={node.icon as 'note' | 'moon' | 'trophy' | 'kaaba' | 'crescent' | 'mosque'} theme={theme} />;
 }
 
-/** Carte de titre d'une section + ses nœuds reliés par des pointillés. */
-function SectionBlock({
+/** Carte de titre d'une section + ses nœuds reliés par des pointillés.
+ *  memo : chaque section contient ~10 nœuds animés — on ne re-rend que si
+ *  la section elle-même change (les données rafraîchies gardent le même id). */
+const SectionBlock = memo(function SectionBlock({
   section,
   index,
   onLessonPress,
@@ -479,6 +510,7 @@ function SectionBlock({
   return (
     <View style={styles.sectionWrap}>
       <Animated.View
+        style={{ width: '100%' }}
         entering={FadeInDown.delay(index * 130)
           .duration(550)
           .springify()
@@ -522,7 +554,7 @@ function SectionBlock({
       </View>
     </View>
   );
-}
+});
 
 /** Carte « coffre quotidien » — affichée une fois par jour, en haut du parcours.
  *  Tirage et plafond 1×/jour jugés CÔTÉ SERVEUR ; si les cœurs sont déjà
@@ -593,20 +625,45 @@ export default function ParcoursScreen() {
   const { streak, xp, hearts, gems, isPremium, syncHearts } = useUserStore();
   const { width, height } = useWindowDimensions();
 
-  // Parcours chargé depuis l'API (GET /sections), avec états de chargement.
-  const [sections, setSections] = useState<ParcoursSection[] | null>(null);
+  const [sections, setSections] = useState<ParcoursSection[]>([]);
   const [loadError, setLoadError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [canLoadMore, setCanLoadMore] = useState(true);
+  const ITEMS_PER_PAGE = 5;
+
+  // Liste complète triée (section active en tête) + nb de sections affichées.
+  const orderedRef = useRef<ParcoursSection[]>([]);
+  const shownRef = useRef(0);
+
+  /** Applique la liste complète en gardant le nb de sections déjà affichées. */
+  const applyAll = useCallback((all: ParcoursSection[]) => {
+    // La section active = celle qui contient la leçon en cours → en tête.
+    const activeIndex = all.findIndex((s) => s.nodes.some((n) => n.state === 'active'));
+    const ordered =
+      activeIndex > 0
+        ? [all[activeIndex], ...all.slice(0, activeIndex), ...all.slice(activeIndex + 1)]
+        : all;
+    orderedRef.current = ordered;
+    const count = Math.min(Math.max(shownRef.current, ITEMS_PER_PAGE), ordered.length);
+    shownRef.current = count;
+    setSections(ordered.slice(0, count));
+    setCanLoadMore(count < ordered.length);
+  }, []);
 
   const loadSections = useCallback(async () => {
     setLoadError(false);
     try {
-      setSections(await fetchSections());
+      // SWR : le cache est affiché immédiatement, le refresh arrive en fond.
+      const all = await swrFetch('sections', fetchSections, applyAll);
+      applyAll(all);
     } catch {
-      setLoadError(true);
+      // On ne montre l'erreur que si on n'a rien à afficher.
+      if (orderedRef.current.length === 0) setLoadError(true);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [applyAll]);
 
-  // Régénère les cœurs ET recharge le parcours (états des nœuds) à chaque focus.
   useFocusEffect(
     useCallback(() => {
       syncHearts();
@@ -614,7 +671,17 @@ export default function ParcoursScreen() {
     }, [syncHearts, loadSections]),
   );
 
-  const openLesson = (node: ParcoursNode) => {
+  // Pagination purement locale → instantanée (les données sont déjà en mémoire).
+  const handleLoadMore = useCallback(() => {
+    const ordered = orderedRef.current;
+    if (shownRef.current >= ordered.length) return;
+    shownRef.current = Math.min(shownRef.current + ITEMS_PER_PAGE, ordered.length);
+    setSections(ordered.slice(0, shownRef.current));
+    setCanLoadMore(shownRef.current < ordered.length);
+  }, []);
+
+  // useCallback : référence stable → les SectionBlock mémoïsés ne re-rendent pas.
+  const openLesson = useCallback((node: ParcoursNode) => {
     if (node.state === 'locked') return;            // leçon verrouillée
     if (!isPremium && hearts <= 0) {                // plus de cœurs → blocage
       router.push('/(app)/lesson/out-of-hearts');
@@ -624,11 +691,48 @@ export default function ParcoursScreen() {
       pathname: '/(app)/lesson/play',
       params: node.lessonId ? { lessonId: node.lessonId } : undefined,
     });
+  }, [isPremium, hearts, router]);
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: ParcoursSection; index: number }) => (
+      <SectionBlock
+        section={item}
+        index={index}
+        onLessonPress={openLesson}
+        theme={T}
+      />
+    ),
+    [openLesson, T],
+  );
+
+  const renderHeader = () => (
+    <>
+      <DailyChest />
+      {loadError && (
+        <View style={styles.centerState}>
+          <Feather name="wifi-off" size={32} color={T.textSecondary} />
+          <Text style={[styles.stateText, { color: T.textSecondary }]}>
+            {t('parcours.loadError')}
+          </Text>
+          <Pressable style={styles.retryBtn} onPress={loadSections}>
+            <Text style={styles.retryLabel}>{t('common.retry')}</Text>
+          </Pressable>
+        </View>
+      )}
+    </>
+  );
+
+  const renderFooter = () => {
+    if (!canLoadMore) return <View style={{ height: 40 }} />;
+    return (
+      <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+        <ActivityIndicator size="small" color="#6B4DFF" />
+      </View>
+    );
   };
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
-      {/* Panorama La Mecque en fond semi-transparent */}
       <MeccaSkyline
         width={width}
         height={height}
@@ -640,7 +744,6 @@ export default function ParcoursScreen() {
         <DeviceStatusBar />
       </View>
 
-      {/* Stats bar */}
       <View style={[styles.statsBar, { backgroundColor: T.cardBg }]}>
         <View style={styles.stat}>
           <Text style={{ fontSize: 22 }}>🔥</Text>
@@ -660,39 +763,32 @@ export default function ParcoursScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <DailyChest />
-
-        {sections == null && !loadError && (
-          <View style={styles.centerState}>
-            <ActivityIndicator size="large" color="#6B4DFF" />
-            <Text style={[styles.stateText, { color: T.textSecondary }]}>{t('parcours.loading')}</Text>
-          </View>
-        )}
-
-        {loadError && (
-          <View style={styles.centerState}>
-            <Feather name="wifi-off" size={32} color={T.textSecondary} />
-            <Text style={[styles.stateText, { color: T.textSecondary }]}>
-              {t('parcours.loadError')}
-            </Text>
-            <Pressable style={styles.retryBtn} onPress={loadSections}>
-              <Text style={styles.retryLabel}>{t('common.retry')}</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {sections?.map((section, index) => (
-          <SectionBlock
-            key={section.id}
-            section={section}
-            index={index}
-            onLessonPress={openLesson}
-            theme={T}
-          />
-        ))}
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      {isLoading && sections.length === 0 ? (
+        <View style={styles.scroll}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SectionSkeleton key={i} theme={T} />
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          data={sections}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.scroll}
+          ListHeaderComponent={renderHeader}
+          ListFooterComponent={renderFooter}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          scrollIndicatorInsets={{ bottom: 0 }}
+          showsVerticalScrollIndicator={false}
+          // Chaque section est très haute (~10 nœuds) : on rend peu d'items
+          // à la fois et on décharge ceux hors écran.
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={5}
+          removeClippedSubviews
+        />
+      )}
     </View>
   );
 }
@@ -706,7 +802,7 @@ const styles = StyleSheet.create({
   },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 21 },
-  scroll: { alignItems: 'center' },
+  scroll: { flexGrow: 1 },
   centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
   retryBtn: {
@@ -714,11 +810,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B4DFF',
   },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
-  sectionWrap: { width: '100%' },
+  sectionWrap: { width: '100%', alignItems: 'center' },
   sectionCard: {
     flexDirection: 'row', alignItems: 'center', gap: 16,
     marginHorizontal: 18, marginTop: 22,
     paddingHorizontal: 18, paddingVertical: 18, borderRadius: 24,
+    maxWidth: 520,
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18, shadowRadius: 18, elevation: 6,
   },
@@ -745,6 +842,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_700Bold', fontSize: 11,
     color: 'rgba(255,255,255,0.95)', marginTop: 5,
   },
+  skeletonCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 16,
+    marginHorizontal: 18, marginTop: 22,
+    paddingHorizontal: 18, paddingVertical: 18, borderRadius: 24,
+    width: '100%', maxWidth: 520, alignSelf: 'center',
+  },
+  skeletonIcon: { width: 56, height: 56, borderRadius: 18 },
+  skeletonLine: { height: 12, borderRadius: 6 },
   path: { alignItems: 'center', paddingVertical: 40, width: '100%' },
   nodeRow: { alignItems: 'center' },
   completed: {

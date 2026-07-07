@@ -10,16 +10,17 @@
  * Une leçon = une suite d'étapes (max 25) qui ALTERNENT librement entre :
  *   - 'discovery'  : Découverte — on montre le verset (AUCUN cœur en jeu)
  *   - 'written'    : Test écrit — QCM / association (1 faute = −1 cœur)
+ *   - 'voice'      : Récitation — enregistrement micro jugé par Whisper
+ *                    côté serveur (POST /lessons/:id/steps/:stepId/recite,
+ *                    1 échec = −1 cœur, même sémantique que 'written').
  *
- * ⚠️ Le type 'voice' est RETIRÉ jusqu'au branchement de Whisper côté backend.
- * La dernière étape est une 'discovery' du verset intégral (écoute + répétition
- * à voix basse). Quand Whisper sera prêt, réintroduire VoiceStep ici et dans
- * buildSampleLesson(), et ajouter VoiceView dans play.tsx.
+ * Si l'utilisateur a désactivé « Voix & enregistrements » (Settings), les
+ * étapes 'voice' sont filtrées côté client (cf. play.tsx).
  */
 
 export const MAX_LESSON_STEPS = 25;
 
-export type StepType = 'discovery' | 'written' | 'ordering' | 'matching';
+export type StepType = 'discovery' | 'written' | 'ordering' | 'matching' | 'voice';
 
 /** Un mot d'un verset avec sa propre récitation (lecteur mot par mot). */
 export interface StepMot {
@@ -86,7 +87,19 @@ export interface MatchingStep {
   paires: Array<{ id: string; arabe: string; traduction: string }>;
 }
 
-export type LessonStep = DiscoveryStep | WrittenStep | OrderingStep | MatchingStep;
+/** Étape Récitation : l'utilisateur récite au micro, jugement Whisper serveur. */
+export interface VoiceStep {
+  type: 'voice';
+  id: string;
+  consigne?: string;       // défaut : « Récite ce verset à voix haute »
+  arabe: string;           // texte attendu (affiché avant l'enregistrement)
+  translitteration?: string;
+  traduction?: string;
+  /** Récitation de référence à écouter avant de s'enregistrer. */
+  audioUrl?: string | null;
+}
+
+export type LessonStep = DiscoveryStep | WrittenStep | OrderingStep | MatchingStep | VoiceStep;
 
 /** Une leçon complète telle que renvoyée par l'API. */
 export interface Lesson {
@@ -153,13 +166,24 @@ function discoveryFull(): DiscoveryStep {
     translitteration: DEMO.versetTranslit,
     traduction: DEMO.versetTrad,
     audioUrl: null,
-    // ⚠️ Quand Whisper sera prêt : remplacer cette étape par VoiceStep.
+  };
+}
+
+/** Récitation finale du verset intégral — jugée par Whisper côté serveur. */
+function voiceFull(): VoiceStep {
+  return {
+    type: 'voice',
+    id: uid('voice-full'),
+    arabe: DEMO.versetArabe,
+    translitteration: DEMO.versetTranslit,
+    traduction: DEMO.versetTrad,
+    audioUrl: null,
   };
 }
 
 /**
  * Construit une leçon d'exemple : pour chaque mot, Découverte → Test écrit,
- * puis une Découverte du verset complet (écoute + répétition à voix basse).
+ * puis une Découverte du verset complet et une Récitation au micro.
  * Plafonné à MAX_LESSON_STEPS.
  */
 export function buildSampleLesson(): Lesson {
@@ -170,6 +194,7 @@ export function buildSampleLesson(): Lesson {
     steps.push(writtenFor(mot));
   }
   steps.push(discoveryFull());
+  steps.push(voiceFull());
   return {
     id: 'demo-lesson',
     titre: 'Al-Fatiha · Basmala',

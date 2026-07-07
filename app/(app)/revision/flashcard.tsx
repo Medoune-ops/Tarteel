@@ -1,7 +1,8 @@
 import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { reviewRegainHeart } from '../../../lib/api/gems';
-import { fetchVersets, submitRevisionReview, type SourateVersets } from '../../../lib/api';
+import { fetchVersets, reciteVerset, submitRevisionReview, type Verset as ApiVerset } from '../../../lib/api';
+import { swrFetch } from '../../../lib/api/swr';
 import { useUserStore, MAX_HEARTS } from '../../../store/userStore';
 import { t } from '../../../lib/i18n';
 import { Feather } from '@expo/vector-icons';
@@ -11,9 +12,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAudioRecorder, RecordingPresets } from 'expo-audio';
+import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../../../lib/audio/recorder';
 
 type Reponse = 'facile' | 'difficile' | 'oublie';
 type Phase = 'pret' | 'recitation' | 'fini';
+/** Sous-état pendant la récitation d'un verset. */
+type SubPhase = 'recording' | 'analyzing' | 'aide';
 
 const SCORES: Record<Reponse, { label: string; emoji: string; bg: string; pts: number }> = {
   facile:    { label: 'Facile',    emoji: '😊', bg: '#34C724', pts: 10 },
@@ -21,7 +26,7 @@ const SCORES: Record<Reponse, { label: string; emoji: string; bg: string; pts: n
   oublie:    { label: 'À revoir',  emoji: '😬', bg: '#FF6B6B', pts: 0  },
 };
 
-// ── Onde sonore animée (mock écoute micro) ──────────────────────────────────
+// ── Onde sonore animée (pendant l'enregistrement micro) ─────────────────────
 function WaveBar({ delay }: { delay: number }) {
   const h = useSharedValue(0.3);
   useEffect(() => {
@@ -123,80 +128,122 @@ function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, 
 
 export default function FlashcardScreen() {
   const router = useRouter();
-  const { numero } = useLocalSearchParams<{ numero: string }>();
+  // `numero` = numéro de sourate (1–114) — passé par l'écran Révisions.
+  const { numero } = useLocalSearchParams<{ numero?: string }>();
   const language = useUserStore((s) => s.language);
 
-  const [data, setData] = useState<SourateVersets | null>(null);
-  const [error, setError] = useState(false);
+  // ── Versets réels chargés depuis l'API (cachés en mémoire, cf. swr) ──
+  const [versets, setVersets] = useState<ApiVerset[] | null>(null);
+  const [meta, setMeta] = useState<{ nom: string; nomArabe: string } | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
-    if (!numero) { setError(true); return; }
-    setError(false);
+    if (!numero) { setLoadError(true); return; }
+    setLoadError(false);
     try {
-      setData(await fetchVersets(numero, language));
+      const data = await swrFetch(`versets:${numero}:${language}`, () => fetchVersets(numero, language));
+      setVersets(data.versets);
+      setMeta({ nom: data.sourate.nom, nomArabe: data.sourate.nomArabe });
     } catch {
-      setError(true);
+      setLoadError(true);
     }
   }, [numero, language]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useEffect(() => { load(); }, [load]);
+
+  // ── Enregistrement micro (expo-audio) ──
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const [phase, setPhase]       = useState<Phase>('pret');
-  const [position, setPosition] = useState(0);      // verset courant en cours de récitation
-  const [aideVisible, setAide]  = useState(false);  // la carte révèle-t-elle le verset ?
+  const [subPhase, setSubPhase] = useState<SubPhase>('recording');
+  const [position, setPosition] = useState(0);      // verset courant
   const [nbAides, setNbAides]   = useState(0);
   const [choisi, setChoisi]     = useState<Reponse | null>(null);
+  const [micDenied, setMicDenied] = useState(false);
 
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Empêche un double-appui sur « Terminer » d'envoyer deux fois la même
   // session (double POST /me/revisions/:numero/review).
   const quittingRef = useRef(false);
 
-  // ── Simulation de la récitation (mock reconnaissance vocale) ──
-  // Chaque verset : l'utilisateur récite ~2s. Aléatoirement il "bloque" →
-  // l'app affiche l'aide après un court délai, puis il reprend et on avance.
-  const lancerVerset = useCallback((i: number, total: number) => {
-    if (i >= total) {
+  // Sécurité : couper l'enregistrement + mode lecture en quittant l'écran.
+  useEffect(() => () => {
+    if (recorder.isRecording) recorder.stop().catch(() => {});
+    exitRecordingMode();
+  }, []);
+
+  /** Démarre l'enregistrement du verset courant. */
+  const startRecording = useCallback(async () => {
+    await enterRecordingMode();
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+  }, [recorder]);
+
+  const demarrer = async () => {
+    const granted = await ensureMicPermission();
+    if (!granted) { setMicDenied(true); return; }
+    setMicDenied(false);
+    setNbAides(0);
+    setPosition(0);
+    setSubPhase('recording');
+    setPhase('recitation');
+    await startRecording();
+  };
+
+  /** Passe au verset suivant (ou termine), en relançant l'enregistrement. */
+  const avancer = useCallback(async (i: number) => {
+    if (!versets || i + 1 >= versets.length) {
+      await exitRecordingMode();
       setPhase('fini');
       return;
     }
-    setPosition(i);
-    setAide(false);
+    setPosition(i + 1);
+    setSubPhase('recording');
+    await startRecording();
+  }, [versets, startRecording]);
 
-    // 45% de chance de bloquer sur ce verset
-    const bloque = Math.random() < 0.45;
-    if (bloque) {
-      // après 1.4s de récitation fluide, il hésite → l'app révèle le verset
-      timer.current = setTimeout(() => {
-        setAide(true);
-        setNbAides(n => n + 1);
-        // il relit avec l'aide ~1.8s puis reprend fluide → on masque et on avance
-        timer.current = setTimeout(() => {
-          setAide(false);
-          timer.current = setTimeout(() => lancerVerset(i + 1, total), 600);
-        }, 1800);
-      }, 1400);
-    } else {
-      // récitation fluide → la carte ne montre rien, on avance
-      timer.current = setTimeout(() => lancerVerset(i + 1, total), 2200);
+  /**
+   * « Verset suivant » : stoppe l'enregistrement du verset courant, l'envoie
+   * au serveur (Whisper) et agit selon le verdict :
+   *   fluide          → on avance directement ;
+   *   hesitant/oublie → on révèle le verset (aide), l'utilisateur reprend.
+   * Hors-ligne / erreur → on avance sans pénalité (best-effort).
+   */
+  const versetSuivant = async () => {
+    if (!versets || subPhase !== 'recording') return;
+    await recorder.stop();
+    const uri = recorder.uri;
+    const verset = versets[position];
+    setSubPhase('analyzing');
+    try {
+      if (!uri) throw new Error('no-recording');
+      const res = await reciteVerset(verset.id, uri);
+      if (res.verdict === 'fluide') {
+        await avancer(position);
+      } else {
+        setNbAides((n) => n + 1);
+        setSubPhase('aide');
+      }
+    } catch {
+      // best-effort : serveur indisponible → on ne bloque pas la révision
+      await avancer(position);
     }
-  }, []);
-
-  const demarrer = () => {
-    if (!data) return;
-    setPhase('recitation');
-    setNbAides(0);
-    lancerVerset(0, data.versets.length);
   };
 
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  /** Après l'aide : l'utilisateur a relu le verset, on continue. */
+  const reprendre = async () => { await avancer(position); };
+
+  const terminerTot = async () => {
+    if (recorder.isRecording) await recorder.stop().catch(() => {});
+    await exitRecordingMode();
+    setPhase('fini');
+  };
 
   const reset = () => {
-    if (timer.current) clearTimeout(timer.current);
-    setPhase('pret'); setPosition(0); setAide(false); setNbAides(0); setChoisi(null);
+    setPhase('pret'); setPosition(0); setNbAides(0); setChoisi(null); setSubPhase('recording');
   };
 
-  if (error) {
+  // ── États de chargement / erreur ──
+  if (loadError) {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <Feather name="wifi-off" size={34} color="#9AA0AA" />
@@ -205,13 +252,12 @@ export default function FlashcardScreen() {
           <Text style={styles.retryLabel}>Réessayer</Text>
         </Pressable>
         <Pressable onPress={() => router.back()}>
-          <Text style={styles.backLabel}>Retour</Text>
+          <Text style={styles.backLink}>Retour</Text>
         </Pressable>
       </View>
     );
   }
-
-  if (!data) {
+  if (!versets || !meta) {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <ActivityIndicator size="large" color="#6B4DFF" />
@@ -219,8 +265,6 @@ export default function FlashcardScreen() {
       </View>
     );
   }
-
-  const versets = data.versets;
 
   // ── Écran résultat ──
   if (phase === 'fini') {
@@ -240,7 +284,7 @@ export default function FlashcardScreen() {
           // Enregistre le résultat de la session (SRS) — best-effort, ne
           // bloque jamais la sortie de l'écran.
           try {
-            await submitRevisionReview(data.sourate.numero, choisi!);
+            await submitRevisionReview(Number(numero), choisi!);
           } catch {
             // hors-ligne ou sourate pas encore apprise — pas bloquant
           }
@@ -251,7 +295,7 @@ export default function FlashcardScreen() {
           const s = useUserStore.getState();
           if (!s.isPremium && s.hearts < MAX_HEARTS) {
             try {
-              await reviewRegainHeart(data.sourate.numero);
+              await reviewRegainHeart(Number(numero));
               Alert.alert(t('review.regainTitle'), t('review.regainMsg'));
             } catch {
               // limite quotidienne atteinte ou hors-ligne — pas bloquant
@@ -274,7 +318,7 @@ export default function FlashcardScreen() {
             <Feather name="x" size={22} color="#fff" />
           </Pressable>
           <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 8 }}>
-            <Text style={styles.headerNom} numberOfLines={1}>{data.sourate.nom} · {data.sourate.nomArabe}</Text>
+            <Text style={styles.headerNom} numberOfLines={1}>{meta.nom} · {meta.nomArabe}</Text>
           </View>
           <View style={{ width: 30 }} />
         </View>
@@ -294,44 +338,54 @@ export default function FlashcardScreen() {
             <Text style={styles.pretEmoji}>🎙️</Text>
             <Text style={styles.pretTitle}>Récite de mémoire</Text>
             <Text style={styles.pretDesc}>
-              Récite toute la sourate à voix haute. L'app t'écoute.{'\n'}
-              Si tu hésites, la carte t'affiche le verset.{'\n'}
-              Dès que tu reprends, elle se masque.
+              Récite chaque verset à voix haute, puis appuie sur{'\n'}
+              « Verset suivant ». L'app analyse ta récitation.{'\n'}
+              Si tu bloques, elle t'affiche le verset.
             </Text>
+            {micDenied && (
+              <Text style={styles.micDenied}>
+                ⚠️ Autorise le micro dans les réglages pour commencer
+              </Text>
+            )}
+          </View>
+        ) : subPhase === 'aide' ? (
+          // ── Carte d'aide (verdict serveur : hésitant / oublié) ──
+          <View style={styles.cardWrap}>
+            <Animated.View
+              key={versetCourant.id}
+              entering={FadeIn.duration(300)}
+              exiting={FadeOut.duration(300)}
+              style={styles.aideCard}
+            >
+              <View style={styles.aideBadge}>
+                <Feather name="help-circle" size={13} color="#F0820C" />
+                <Text style={styles.aideBadgeText}>Petit coup de pouce</Text>
+              </View>
+              <Text style={styles.aideArabe}>{versetCourant.texteArabe}</Text>
+              {!!versetCourant.translitteration && (
+                <Text style={styles.aideTranslit}>{versetCourant.translitteration.texte}</Text>
+              )}
+            </Animated.View>
+          </View>
+        ) : subPhase === 'analyzing' ? (
+          // ── Analyse serveur en cours ──
+          <View style={styles.cardWrap}>
+            <Animated.View key="analyzing" entering={FadeIn.duration(200)} style={styles.fluideCard}>
+              <ActivityIndicator size="large" color="#6B4DFF" />
+              <Text style={styles.fluideText}>Analyse de ta récitation…</Text>
+              <Text style={styles.fluideSub}>Un instant</Text>
+            </Animated.View>
           </View>
         ) : (
-          // ── Carte d'aide (visible seulement si l'utilisateur bloque) ──
+          // ── Enregistrement en cours → carte encourageante ──
           <View style={styles.cardWrap}>
-            {aideVisible ? (
-              <Animated.View
-                key={versetCourant.id}
-                entering={FadeIn.duration(300)}
-                exiting={FadeOut.duration(300)}
-                style={styles.aideCard}
-              >
-                <View style={styles.aideBadge}>
-                  <Feather name="help-circle" size={13} color="#F0820C" />
-                  <Text style={styles.aideBadgeText}>Petit coup de pouce</Text>
-                </View>
-                <Text style={styles.aideArabe}>{versetCourant.texteArabe}</Text>
-                {versetCourant.translitteration?.texte != null && (
-                  <Text style={styles.aideTranslit}>{versetCourant.translitteration.texte}</Text>
-                )}
-              </Animated.View>
-            ) : (
-              // Récitation fluide → carte vide encourageante
-              <Animated.View
-                key="fluide"
-                entering={FadeIn.duration(300)}
-                style={styles.fluideCard}
-              >
-                <View style={styles.wave}>
-                  {[0, 80, 160, 240, 320, 240, 160, 80, 0].map((d, i) => <WaveBar key={i} delay={d} />)}
-                </View>
-                <Text style={styles.fluideText}>Continue, tu gères ! 🌟</Text>
-                <Text style={styles.fluideSub}>L'app t'écoute…</Text>
-              </Animated.View>
-            )}
+            <Animated.View key="fluide" entering={FadeIn.duration(300)} style={styles.fluideCard}>
+              <View style={styles.wave}>
+                {[0, 80, 160, 240, 320, 240, 160, 80, 0].map((d, i) => <WaveBar key={i} delay={d} />)}
+              </View>
+              <Text style={styles.fluideText}>Récite le verset {position + 1} 🎙️</Text>
+              <Text style={styles.fluideSub}>L'app t'écoute…</Text>
+            </Animated.View>
           </View>
         )}
       </View>
@@ -343,11 +397,28 @@ export default function FlashcardScreen() {
             <Feather name="mic" size={22} color="#fff" />
             <Text style={styles.micBtnText}>Commencer la récitation</Text>
           </Pressable>
-        ) : (
-          <Pressable style={styles.finBtn} onPress={() => { if (timer.current) clearTimeout(timer.current); setPhase('fini'); }}>
-            <Feather name="check-circle" size={20} color="#6B4DFF" />
-            <Text style={styles.finBtnText}>J'ai terminé</Text>
+        ) : subPhase === 'aide' ? (
+          <Pressable style={styles.micBtn} onPress={reprendre}>
+            <Feather name="arrow-right" size={20} color="#fff" />
+            <Text style={styles.micBtnText}>J'ai relu, verset suivant</Text>
           </Pressable>
+        ) : (
+          <>
+            <Pressable
+              style={[styles.micBtn, subPhase === 'analyzing' && styles.btnDisabled]}
+              onPress={versetSuivant}
+              disabled={subPhase === 'analyzing'}
+            >
+              <Feather name="check" size={20} color="#fff" />
+              <Text style={styles.micBtnText}>
+                {subPhase === 'analyzing' ? 'Analyse…' : 'Verset suivant'}
+              </Text>
+            </Pressable>
+            <Pressable style={styles.finBtn} onPress={terminerTot}>
+              <Feather name="check-circle" size={20} color="#6B4DFF" />
+              <Text style={styles.finBtnText}>J'ai terminé</Text>
+            </Pressable>
+          </>
         )}
       </View>
     </View>
@@ -356,12 +427,11 @@ export default function FlashcardScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F4F5F9' },
-
   centerState: { alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
-  stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#7A828F', textAlign: 'center' },
-  retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#6B4DFF' },
+  stateText: { fontFamily: 'Nunito_700Bold', fontSize: 16, color: '#7A828F', textAlign: 'center' },
+  retryBtn: { marginTop: 6, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, backgroundColor: '#6B4DFF' },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
-  backLabel: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#6B4DFF' },
+  backLink: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#8A8F99', marginTop: 8 },
 
   // Header
   header: { paddingTop: 52, paddingBottom: 16, paddingHorizontal: 20 },
@@ -380,6 +450,7 @@ const styles = StyleSheet.create({
   pretEmoji: { fontSize: 64, marginBottom: 20 },
   pretTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 26, color: '#1B2333', marginBottom: 14 },
   pretDesc: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, color: '#7A828F', textAlign: 'center', lineHeight: 24 },
+  micDenied: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#E03434', textAlign: 'center', marginTop: 16 },
 
   // Carte
   cardWrap: { width: '100%', minHeight: 280, alignItems: 'center', justifyContent: 'center' },
@@ -398,12 +469,12 @@ const styles = StyleSheet.create({
   },
   aideBadgeText: { fontFamily: 'Nunito_700Bold', fontSize: 12, color: '#F0820C' },
   aideArabe: {
-    fontFamily: 'Nunito_800ExtraBold', fontSize: 27, color: '#1B2333',
-    textAlign: 'center', lineHeight: 46, writingDirection: 'rtl', marginBottom: 14,
+    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 30, color: '#1B2333',
+    textAlign: 'center', lineHeight: 52, writingDirection: 'rtl', marginBottom: 14,
   },
   aideTranslit: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#8A8F99', textAlign: 'center', lineHeight: 22 },
 
-  // Carte fluide
+  // Carte fluide / analyse
   fluideCard: { alignItems: 'center', gap: 14 },
   wave: { flexDirection: 'row', alignItems: 'center', height: 60, gap: 6 },
   waveBar: { width: 6, height: 50, borderRadius: 3, backgroundColor: '#6B4DFF' },
@@ -411,13 +482,14 @@ const styles = StyleSheet.create({
   fluideSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#B0B5BE' },
 
   // Bas
-  bottom: { paddingHorizontal: 22, paddingBottom: 38, paddingTop: 12 },
+  bottom: { paddingHorizontal: 22, paddingBottom: 38, paddingTop: 12, gap: 10 },
   micBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: '#6B4DFF', borderRadius: 18, paddingVertical: 18,
     borderBottomWidth: 4, borderBottomColor: '#4A30CC',
   },
   micBtnText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#fff' },
+  btnDisabled: { opacity: 0.55 },
   finBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: '#fff', borderRadius: 18, paddingVertical: 16,

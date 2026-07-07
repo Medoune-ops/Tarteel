@@ -6,6 +6,7 @@ import {
   streakReward, PODIUM_REWARD, rollDailyChest, type DailyChestReward,
 } from '../constants/rewards';
 import { syncWidgetData } from '../utils/widgetData';
+import { clearSwrCache } from '../lib/api/swr';
 
 // ─── Constantes du système de cœurs ─────────────────────────────────────────
 export const MAX_HEARTS = 5;
@@ -336,7 +337,10 @@ export const useUserStore = create<UserState>()(
         });
       },
 
-      logout: () => set({ ...initialState }),
+      logout: () => {
+        clearSwrCache(); // ne pas montrer les données d'un autre compte
+        set({ ...initialState });
+      },
     }),
     {
       name: 'tarteel-user',

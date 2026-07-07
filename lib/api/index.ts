@@ -19,6 +19,8 @@ export { subscribePremium, repairStreak } from './billing';
 export type { PremiumPlan, SubscribeResult } from './billing';
 export type { GemsStatus, GemLedgerEntry, GemPackId } from './gems';
 export type { PodiumEntry, LigueTier } from './rewards';
+export { reciteVerset, reciteLessonStep } from './revision';
+export type { ReciteVersetResult, ReciteStepResult } from './revision';
 export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';
 export { bootstrapSession } from './session';
 export { getDeviceId } from './tokens';
