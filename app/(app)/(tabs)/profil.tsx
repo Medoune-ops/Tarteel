@@ -8,6 +8,7 @@ import ProgressBar from '../../../components/ProgressBar';
 import { useUserStore } from '../../../store/userStore';
 import { useTheme } from '../../../utils/useTheme';
 import { fetchActivity } from '../../../lib/api';
+import { swrFetch } from '../../../lib/api/swr';
 
 type Badge = { emoji: string; bg: string; bgDark: string; border: string; label: string; route?: Href };
 
@@ -63,12 +64,13 @@ export default function ProfilScreen() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      fetchActivity(monthKey)
-        .then((days) => {
-          if (cancelled) return;
-          // "2026-06-07" → 7. On ne garde que le numéro de jour.
-          setActiveDays(new Set(days.map((d) => Number(d.slice(8, 10)))));
-        })
+      // "2026-06-07" → 7. On ne garde que le numéro de jour.
+      const apply = (days: string[]) => {
+        if (!cancelled) setActiveDays(new Set(days.map((d) => Number(d.slice(8, 10)))));
+      };
+      // SWR : calendrier affiché immédiatement depuis le cache, refresh en fond.
+      swrFetch(`activity:${monthKey}`, () => fetchActivity(monthKey), apply)
+        .then(apply)
         .catch(() => { /* hors-ligne : calendrier vide, pas d'erreur bloquante */ });
       return () => { cancelled = true; };
     }, [monthKey]),

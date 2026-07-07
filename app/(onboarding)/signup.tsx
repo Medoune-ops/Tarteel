@@ -99,6 +99,17 @@ export default function SignupScreen() {
       setError('Renseigne ton nom complet.');
       return;
     }
+    // Pseudo public (affiché dans les ligues) : 3–20 caractères, lettres,
+    // chiffres, point ou underscore. Mêmes règles que le backend.
+    const pseudo = username.trim().toLowerCase();
+    if (isSignup && !pseudo) {
+      setError("Renseigne ton nom d'utilisateur.");
+      return;
+    }
+    if (isSignup && !/^[a-z0-9._]{3,20}$/.test(pseudo)) {
+      setError("Nom d'utilisateur : 3 à 20 caractères, lettres, chiffres, « . » ou « _ ».");
+      return;
+    }
     if (!password) {
       setError('Renseigne ton mot de passe.');
       return;
@@ -116,7 +127,12 @@ export default function SignupScreen() {
     setLoading(true);
     try {
       if (isSignup) {
-        await register({ email: email.trim(), password, displayName: fullName.trim() });
+        await register({
+          email: email.trim(),
+          password,
+          displayName: fullName.trim(),
+          username: pseudo,
+        });
       } else {
         await login({ email: email.trim(), password });
       }

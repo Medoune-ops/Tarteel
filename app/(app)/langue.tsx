@@ -3,17 +3,19 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useUserStore } from '../../store/userStore';
 import { updateSettings } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 const LANGUES = [
-  { id: 'fr' as const, drapeau: '🇫🇷', nom: 'Français',  natif: 'Français' },
-  { id: 'en' as const, drapeau: '🇬🇧', nom: 'Anglais',   natif: 'English'  },
-  { id: 'ar' as const, drapeau: '🇸🇦', nom: 'Arabe',     natif: 'العربية'  },
+  { id: 'fr' as const, drapeau: '🇫🇷', nomKey: 'langue.fr' as const, natif: 'Français' },
+  { id: 'en' as const, drapeau: '🇬🇧', nomKey: 'langue.en' as const, natif: 'English'  },
+  { id: 'ar' as const, drapeau: '🇸🇦', nomKey: 'langue.ar' as const, natif: 'العربية'  },
 ];
 
 export default function LangueScreen() {
   const router = useRouter();
   const language = useUserStore((s) => s.language);
   const setLanguage = useUserStore((s) => s.setLanguage);
+  const tr = useT();
 
   // Change la langue immédiatement (optimistic) puis persiste côté serveur.
   // Hors-ligne / non connecté : on garde le choix local sans bloquer l'UI.
@@ -29,12 +31,12 @@ export default function LangueScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Text style={styles.back}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Langue</Text>
+        <Text style={styles.headerTitle}>{tr('langue.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionLabel}>LANGUE DE L'INTERFACE</Text>
+        <Text style={styles.sectionLabel}>{tr('langue.sectionLabel')}</Text>
         <View style={styles.card}>
           {LANGUES.map((l, i) => {
             const actif = language === l.id;
@@ -46,7 +48,7 @@ export default function LangueScreen() {
               >
                 <Text style={styles.drapeau}>{l.drapeau}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>{l.nom}</Text>
+                  <Text style={styles.rowTitle}>{tr(l.nomKey)}</Text>
                   <Text style={styles.rowSub}>{l.natif}</Text>
                 </View>
                 <View style={[styles.radio, actif && styles.radioActif]}>
@@ -57,9 +59,7 @@ export default function LangueScreen() {
           })}
         </View>
 
-        <Text style={styles.note}>
-          La langue de récitation et du texte coranique reste l'arabe.
-        </Text>
+        <Text style={styles.note}>{tr('langue.note')}</Text>
       </ScrollView>
     </View>
   );

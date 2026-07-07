@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchVersets, type SourateVersets, type Verset } from '../../../lib/api';
+import { swrFetch } from '../../../lib/api/swr';
 import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
 
@@ -29,7 +30,9 @@ export default function SourateReaderScreen() {
     if (!numero) { setError(true); return; }
     setError(false);
     try {
-      setData(await fetchVersets(numero, language));
+      // Le texte coranique ne change jamais → cache mémoire, affichage instantané
+      // quand on rouvre la même sourate dans la session.
+      setData(await swrFetch(`versets:${numero}:${language}`, () => fetchVersets(numero, language)));
     } catch {
       setError(true);
     }

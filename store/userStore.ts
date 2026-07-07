@@ -1,15 +1,17 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocales } from 'expo-localization';
 import {
   streakReward, PODIUM_REWARD, rollDailyChest, type DailyChestReward,
 } from '../constants/rewards';
 import { syncWidgetData } from '../utils/widgetData';
+import { clearSwrCache } from '../lib/api/swr';
 
 // ─── Constantes du système de cœurs ─────────────────────────────────────────
 export const MAX_HEARTS = 5;
-/** Temps de régénération d'UN cœur (4h, comme Duolingo). */
-export const HEART_REGEN_MS = 4 * 60 * 60 * 1000;
+/** Temps de régénération d'UN cœur (1h — aligné sur le backend). */
+export const HEART_REGEN_MS = 60 * 60 * 1000;
 
 interface UserState {
   /** Nom affiché de l'utilisateur. */
@@ -18,6 +20,8 @@ interface UserState {
   email: string;
   /** URL de l'avatar (null = initiales par défaut). */
   avatar: string | null;
+  /** Pseudo public (ligues) ; null pour les comptes créés avant le champ. */
+  username: string | null;
   streak: number;
   xp: number;
   hearts: number;
@@ -25,11 +29,19 @@ interface UserState {
   precision: number;
   /** Timestamp (ms) de la dernière perte de cœur — base de la régénération. null si plein. */
   lastHeartLossAt: number | null;
+  /** Solde de gemmes (source de vérité : serveur, hydraté depuis /me). */
+  gems: number;
+  /** Gels de streak en stock (achetés 200 gemmes ; illimités avec Premium). */
+  streakFreezes: number;
+  /** Fin du boost double XP (timestamp ms), null si aucun boost actif. */
+  doubleXpUntil: number | null;
   isPremium: boolean;
   level: 'debutant' | 'alphabet' | 'lent' | 'fluent';
   objectif: 'lire' | 'hifz' | 'tafsir' | 'complet';
   /** Langue de l'interface (code ISO). */
   language: 'fr' | 'en' | 'ar';
+  /** Exercices vocaux activés (Settings → Voix & enregistrements, persisté serveur). */
+  voiceEnabled: boolean;
   /** Thème visuel. */
   theme: 'light' | 'dark' | 'system';
   /** Objectif de série fixé par l'utilisateur (null = aucun objectif en cours). */
@@ -107,33 +119,58 @@ interface UserState {
     isPremium: boolean;
     currentLesson: number;
     lastHeartLossAt: number | null;
+    gems?: number;
+    streakFreezes?: number;
+    doubleXpUntil?: number | null;
     sourates?: number;
     precision?: number;
     name?: string;
     email?: string;
     avatar?: string | null;
+    username?: string | null;
     onboardingDone?: boolean;
     level?: UserState['level'];
     objectif?: UserState['objectif'];
     dailyMinutes?: number;
+    voiceEnabled?: boolean;
   }) => void;
   logout: () => void;
+}
+
+/**
+ * Langue par défaut = langue du SYSTÈME (fr/en/ar supportées, sinon anglais).
+ * Ne joue qu'à l'installation : dès que l'utilisateur a un état persisté
+ * (ou choisit une langue dans Paramètres), c'est ce choix qui gagne.
+ */
+function systemLanguage(): 'fr' | 'en' | 'ar' {
+  try {
+    const code = getLocales()[0]?.languageCode;
+    if (code === 'fr' || code === 'ar') return code;
+    return 'en';
+  } catch {
+    return 'en';
+  }
 }
 
 const initialState = {
   name: '',
   email: '',
   avatar: null as string | null,
+  username: null as string | null,
   streak: 0,
   xp: 0,
   hearts: MAX_HEARTS,
   sourates: 0,
   precision: 0,
   lastHeartLossAt: null as number | null,
+  gems: 0,
+  streakFreezes: 0,
+  doubleXpUntil: null as number | null,
   isPremium: false,
   level: 'debutant' as const,
   objectif: 'hifz' as const,
-  language: 'fr' as const,
+  language: systemLanguage() as 'fr' | 'en' | 'ar',
+  voiceEnabled: true,
   theme: 'system' as const,
   streakGoal: null as number | null,
   reminderHour: 19,
@@ -283,17 +320,22 @@ export const useUserStore = create<UserState>()(
           lastHeartLossAt: next.lastHeartLossAt,
           isPremium: data.isPremium,
           currentLesson: data.currentLesson,
+          ...(data.gems          != null && { gems:          data.gems }),
+          ...(data.streakFreezes != null && { streakFreezes: data.streakFreezes }),
+          ...(data.doubleXpUntil !== undefined && { doubleXpUntil: data.doubleXpUntil }),
           ...(data.sourates  != null && { sourates:  data.sourates  }),
           ...(data.precision != null && { precision: data.precision }),
           ...(data.name   != null && { name:   data.name   }),
           ...(data.email  != null && { email:  data.email  }),
           ...(data.avatar !== undefined && { avatar: data.avatar }),
+          ...(data.username !== undefined && { username: data.username }),
           // Onboarding/prefs : restaurés depuis le serveur pour ne PAS relancer
           // le setup à chaque reconnexion.
           ...(data.onboardingDone != null && { onboardingDone: data.onboardingDone }),
           ...(data.level        != null && { level:        data.level }),
           ...(data.objectif     != null && { objectif:     data.objectif }),
           ...(data.dailyMinutes != null && { dailyMinutes: data.dailyMinutes }),
+          ...(data.voiceEnabled != null && { voiceEnabled: data.voiceEnabled }),
         });
         syncWidgetData({
           streak: data.streak,
@@ -302,7 +344,10 @@ export const useUserStore = create<UserState>()(
         });
       },
 
-      logout: () => set({ ...initialState }),
+      logout: () => {
+        clearSwrCache(); // ne pas montrer les données d'un autre compte
+        set({ ...initialState });
+      },
     }),
     {
       name: 'tarteel-user',

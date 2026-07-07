@@ -1,8 +1,14 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Linking, Alert } from 'react-native';
+import {
+  View, Text, Pressable, ScrollView, StyleSheet, Linking, Alert,
+  Modal, TextInput, ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Toggle from '../../components/Toggle';
+import { deleteAccount } from '../../lib/api/me';
+import { ApiError } from '../../lib/api/client';
+import { t as tr } from '../../lib/i18n';
 
 const TOGGLES = [
   { id: 'usage',   iconBg: '#6B4DFF', icon: 'bar-chart-2' as const, title: "Partage des données d'usage", sub: 'Aide à améliorer Tarteel',          default: true  },
@@ -35,15 +41,38 @@ export default function PrivacyScreen() {
     Object.fromEntries(TOGGLES.map((t) => [t.id, t.default]))
   );
 
+  // Suppression RÉELLE : DELETE /me (cascade serveur), puis purge locale et
+  // retour à l'inscription. Le serveur exige le mot de passe (un token volé
+  // ne suffit pas) → confirmation, puis saisie du mot de passe dans un modal
+  // (Alert.prompt n'existe que sur iOS).
+  const [askPassword, setAskPassword] = useState(false);
+  const [password, setPassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   const supprimerCompte = () => {
-    Alert.alert(
-      'Supprimer le compte',
-      'Cette action est irréversible. Toutes tes données et ta progression seront définitivement effacées.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => {} },
-      ]
-    );
+    Alert.alert(tr('account.deleteTitle'), tr('account.deleteConfirm'), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      {
+        text: tr('account.deleteAction'),
+        style: 'destructive',
+        onPress: () => { setPassword(''); setAskPassword(true); },
+      },
+    ]);
+  };
+
+  const confirmerSuppression = async () => {
+    if (deleting || !password) return;
+    setDeleting(true);
+    try {
+      await deleteAccount(password);
+      setAskPassword(false);
+      router.replace('/(onboarding)/signup');
+    } catch (e) {
+      const wrongPass = e instanceof ApiError && e.status === 401;
+      Alert.alert(wrongPass ? tr('account.wrongPassword') : tr('account.deleteError'));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -94,12 +123,70 @@ export default function PrivacyScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Confirmation par mot de passe avant la suppression définitive. */}
+      <Modal visible={askPassword} transparent animationType="fade" onRequestClose={() => setAskPassword(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{tr('account.passwordPrompt')}</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={password}
+              onChangeText={setPassword}
+              placeholder={tr('account.passwordPlaceholder')}
+              placeholderTextColor="#9AA0AA"
+              secureTextEntry
+              autoFocus
+              autoCapitalize="none"
+            />
+            <View style={styles.modalBtns}>
+              <Pressable style={styles.modalCancel} onPress={() => setAskPassword(false)} disabled={deleting}>
+                <Text style={styles.modalCancelText}>{tr('common.cancel')}</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalDelete, (!password || deleting) && { opacity: 0.5 }]}
+                onPress={confirmerSuppression}
+                disabled={!password || deleting}
+              >
+                {deleting
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.modalDeleteText}>{tr('account.deleteAction')}</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  modalBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28,
+  },
+  modalCard: {
+    width: '100%', maxWidth: 420, backgroundColor: '#fff',
+    borderRadius: 20, padding: 22,
+  },
+  modalTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 19, color: '#1B2333', marginBottom: 14 },
+  modalInput: {
+    borderWidth: 1.5, borderColor: '#E3E5EA', borderRadius: 14,
+    paddingHorizontal: 16, paddingVertical: 12,
+    fontFamily: 'Nunito_600SemiBold', fontSize: 16, color: '#1B2333',
+  },
+  modalBtns: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  modalCancel: {
+    flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F0F1F4',
+  },
+  modalCancelText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#5A6270' },
+  modalDelete: {
+    flex: 1.4, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FF4B4B',
+  },
+  modalDeleteText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
   header: {
     backgroundColor: '#fff', paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
