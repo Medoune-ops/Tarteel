@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import Animated, { SlideInRight, SlideOutLeft, Easing } from 'react-native-reanimated';
+import Animated, {
+  SlideInRight, SlideOutLeft, Easing,
+  useSharedValue, useAnimatedStyle, withTiming,
+} from 'react-native-reanimated';
 import LessonHeader from '../../../components/LessonHeader';
 import { useUserStore } from '../../../store/userStore';
 import {
@@ -19,6 +22,8 @@ import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../.
 import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio, setRemotePlaybackRate, correctFeedback, wrongFeedback } from '../../../constants/sounds';
 import { getLetterSound } from '../../../constants/letterSounds';
 import * as Speech from 'expo-speech';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Phase = 'answering' | 'correct' | 'wrong';
 
@@ -412,6 +417,11 @@ function DiscoveryView({
   isFullVerse?: boolean;
 }) {
   const [noAudio, setNoAudio] = useState(false);
+  const playBtnScale = useSharedValue(1);
+  const playBtnAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: playBtnScale.value }],
+  }));
+
   return (
     <View style={styles.body}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -432,8 +442,14 @@ function DiscoveryView({
           <Text style={styles.traduction}>{step.traduction}</Text>
         </View>
 
-        <Pressable
-          style={[styles.playBtn, (!step.audioUrl && !step.ttsText && !step.letterKey) && styles.playBtnDisabled]}
+        <AnimatedPressable
+          style={[styles.playBtn, playBtnAnimStyle, (!step.audioUrl && !step.ttsText && !step.letterKey) && styles.playBtnDisabled]}
+          onPressIn={() => {
+            playBtnScale.value = withTiming(0.88, { duration: 80 });
+          }}
+          onPressOut={() => {
+            playBtnScale.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.back(2)) });
+          }}
           onPress={() => {
             const localSrc = getLetterSound(step.letterKey);
             if (localSrc != null) {
@@ -447,7 +463,7 @@ function DiscoveryView({
           }}
         >
           <Feather name="volume-2" size={40} color={(step.audioUrl || step.ttsText || step.letterKey) ? '#2A9E1C' : '#9AA0AA'} />
-        </Pressable>
+        </AnimatedPressable>
         <Text style={styles.hint}>
           {noAudio
             ? 'Audio indisponible pour cette étape'
