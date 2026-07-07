@@ -22,3 +22,5 @@ export type { PodiumEntry, LigueTier } from './rewards';
 export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';
 export { bootstrapSession } from './session';
 export { getDeviceId } from './tokens';
+export { fetchRevisions, submitRevisionReview } from './revision';
+export type { RevisionItem, RevisionQuality, RevisionEtat } from './revision';
