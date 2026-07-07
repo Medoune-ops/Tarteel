@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { reviewRegainHeart } from '../../../lib/api/gems';
-import { fetchVersets, reciteVerset, type Verset as ApiVerset } from '../../../lib/api';
+import { fetchVersets, reciteVerset, submitRevisionReview, type Verset as ApiVerset } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { useUserStore, MAX_HEARTS } from '../../../store/userStore';
 import { t } from '../../../lib/i18n';
@@ -161,6 +161,10 @@ export default function FlashcardScreen() {
   const [choisi, setChoisi]     = useState<Reponse | null>(null);
   const [micDenied, setMicDenied] = useState(false);
 
+  // Empêche un double-appui sur « Terminer » d'envoyer deux fois la même
+  // session (double POST /me/revisions/:numero/review).
+  const quittingRef = useRef(false);
+
   // Sécurité : couper l'enregistrement + mode lecture en quittant l'écran.
   useEffect(() => () => {
     if (recorder.isRecording) recorder.stop().catch(() => {});
@@ -275,13 +279,23 @@ export default function FlashcardScreen() {
         onChoisir={setChoisi}
         onRestart={reset}
         onQuitter={async () => {
+          if (quittingRef.current) return;
+          quittingRef.current = true;
+          // Enregistre le résultat de la session (SRS) — best-effort, ne
+          // bloque jamais la sortie de l'écran.
+          try {
+            await submitRevisionReview(Number(numero), choisi!);
+          } catch {
+            // hors-ligne ou sourate pas encore apprise — pas bloquant
+          }
           // « Réviser pour regagner » : une session terminée = +1 cœur (max
-          // 2/jour, plafonné CÔTÉ SERVEUR). Best-effort : si la limite est
+          // 2/jour, plafonné CÔTÉ SERVEUR, qui vérifie que la session
+          // ci-dessus a bien été enregistrée). Best-effort : si la limite est
           // atteinte / cœurs pleins / premium, le serveur refuse et on ignore.
           const s = useUserStore.getState();
           if (!s.isPremium && s.hearts < MAX_HEARTS) {
             try {
-              await reviewRegainHeart();
+              await reviewRegainHeart(Number(numero));
               Alert.alert(t('review.regainTitle'), t('review.regainMsg'));
             } catch {
               // limite quotidienne atteinte ou hors-ligne — pas bloquant

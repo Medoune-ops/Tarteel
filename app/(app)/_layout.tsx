@@ -15,6 +15,8 @@ export default function AppLayout() {
       <Stack.Screen name="streak-goal" />
       <Stack.Screen name="podiums" />
       <Stack.Screen name="subscription" />
+      <Stack.Screen name="hearts" />
+      <Stack.Screen name="referral" />
       <Stack.Screen name="payment-method" />
       <Stack.Screen name="payment-card" />
       <Stack.Screen name="revision" />
