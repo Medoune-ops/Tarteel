@@ -6,7 +6,9 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useUserStore } from '../../store/userStore';
+import { Alert } from 'react-native';
+import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
+import { getPaymentProvider } from '../../lib/payments';
 import { PLANS } from './subscription';
 
 // ─── Helpers de formatage ────────────────────────────────────────────────────
@@ -29,7 +31,6 @@ export default function PaymentCardScreen() {
   const router = useRouter();
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
-  const setPremium = useUserStore((s) => s.setPremium);
 
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
@@ -43,14 +44,26 @@ export default function PaymentCardScreen() {
     expiry.length === 5 &&
     cvv.length >= 3;
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!valid || paying) return;
     setPaying(true);
-    // Mock d'appel paiement — à remplacer par Stripe/PaymentSheet au branchement back.
-    setTimeout(() => {
-      setPremium(true);
+    // Les champs carte sont décoratifs tant que le PaymentProvider est mock :
+    // au branchement de notre API de paiement (lib/payments.ts), c'est elle
+    // qui collectera la carte (PaymentSheet) et fournira le paymentToken.
+    // L'entitlement, lui, est TOUJOURS activé côté serveur (jamais en local).
+    try {
+      const payment = await getPaymentProvider().payPremium(plan.id as PremiumPlan, 'card');
+      if (!payment.ok) {
+        Alert.alert('Paiement impossible', payment.error ?? 'Réessaie dans un instant.');
+        setPaying(false);
+        return;
+      }
+      await subscribePremium(plan.id as PremiumPlan, payment.paymentToken);
       router.replace('/(app)/(tabs)/parcours');
-    }, 1200);
+    } catch {
+      Alert.alert('Paiement impossible', 'Réessaie dans un instant.');
+      setPaying(false);
+    }
   };
 
   return (

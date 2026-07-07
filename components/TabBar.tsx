@@ -2,19 +2,21 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../utils/useTheme';
+import { useT, type I18nKey } from '../lib/i18n';
 
-const META: Record<string, { label: string; icon: keyof typeof Feather.glyphMap; activeColor: string }> = {
-  parcours: { label: 'Apprendre', icon: 'home', activeColor: '#2A9E1C' },
-  revisions: { label: 'Révisions', icon: 'book', activeColor: '#6B4DFF' },
-  ligues: { label: 'Ligues', icon: 'award', activeColor: '#E07A0C' },
-  coran: { label: 'Coran', icon: 'book-open', activeColor: '#6B4DFF' },
-  profil: { label: 'Profil', icon: 'user', activeColor: '#6B4DFF' },
+const META: Record<string, { labelKey: I18nKey; icon: keyof typeof Feather.glyphMap; activeColor: string }> = {
+  parcours: { labelKey: 'tabs.parcours', icon: 'home', activeColor: '#2A9E1C' },
+  revisions: { labelKey: 'tabs.revisions', icon: 'book', activeColor: '#6B4DFF' },
+  ligues: { labelKey: 'tabs.ligues', icon: 'award', activeColor: '#E07A0C' },
+  coran: { labelKey: 'tabs.coran', icon: 'book-open', activeColor: '#6B4DFF' },
+  profil: { labelKey: 'tabs.profil', icon: 'user', activeColor: '#6B4DFF' },
 };
 
 const ORDER = ['parcours', 'revisions', 'ligues', 'coran', 'profil'];
 
 export default function TabBar({ state, navigation }: BottomTabBarProps) {
   const T = useTheme();
+  const tr = useT();
   return (
     <View style={[styles.bar, { backgroundColor: T.tabBarBg, borderTopColor: T.tabBarBorder }]}>
       {ORDER.map((name) => {
@@ -44,7 +46,7 @@ export default function TabBar({ state, navigation }: BottomTabBarProps) {
                   : { opacity: T.isDark ? 0.85 : 0.55 },
               ]}
             >
-              {meta.label}
+              {tr(meta.labelKey)}
             </Text>
           </Pressable>
         );

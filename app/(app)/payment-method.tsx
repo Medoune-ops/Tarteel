@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useUserStore } from '../../store/userStore';
+import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
+import { getPaymentProvider } from '../../lib/payments';
 import { PLANS } from './subscription';
 
 type MethodId = 'apple' | 'google' | 'card';
@@ -18,18 +19,35 @@ export default function PaymentMethodScreen() {
   const router = useRouter();
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
-  const setPremium = useUserStore((s) => s.setPremium);
 
   const [method, setMethod] = useState<MethodId>('apple');
+  const [paying, setPaying] = useState(false);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    if (paying) return;
     if (method === 'card') {
       router.push({ pathname: '/(app)/payment-card', params: { plan: plan.id } });
       return;
     }
-    // Apple Pay / Google Pay : confirmation immédiate (mock — pas de débit réel).
-    setPremium(true);
-    router.replace('/(app)/(tabs)/parcours');
+    // 1) Le PaymentProvider collecte le paiement (mock en dev — c'est LUI
+    //    qu'on remplacera par notre API de paiement, voir lib/payments.ts).
+    // 2) Le paymentToken obtenu est envoyé au serveur, qui vérifie puis
+    //    active l'entitlement (jamais de Premium local : il serait écrasé
+    //    au prochain GET /me).
+    setPaying(true);
+    try {
+      const payment = await getPaymentProvider().payPremium(plan.id as PremiumPlan, method);
+      if (!payment.ok) {
+        Alert.alert('Paiement impossible', payment.error ?? 'Réessaie dans un instant.');
+        setPaying(false);
+        return;
+      }
+      await subscribePremium(plan.id as PremiumPlan, payment.paymentToken);
+      router.replace('/(app)/(tabs)/parcours');
+    } catch {
+      Alert.alert('Paiement impossible', 'Réessaie dans un instant.');
+      setPaying(false);
+    }
   };
 
   return (
@@ -107,11 +125,17 @@ export default function PaymentMethodScreen() {
         </View>
 
         {/* CTA */}
-        <Pressable style={styles.cta} onPress={handleContinue}>
-          <Feather name={method === 'card' ? 'arrow-right' : 'lock'} size={18} color="#fff" />
-          <Text style={styles.ctaText}>
-            {method === 'card' ? 'Continuer' : 'Confirmer et démarrer l’essai'}
-          </Text>
+        <Pressable style={[styles.cta, paying && { opacity: 0.7 }]} onPress={handleContinue} disabled={paying}>
+          {paying ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Feather name={method === 'card' ? 'arrow-right' : 'lock'} size={18} color="#fff" />
+              <Text style={styles.ctaText}>
+                {method === 'card' ? 'Continuer' : 'Confirmer et démarrer l’essai'}
+              </Text>
+            </>
+          )}
         </Pressable>
         <Text style={styles.ctaNote}>
           <Feather name="shield" size={12} color="#8A8F99" />  Paiement sécurisé · Annulable à tout moment

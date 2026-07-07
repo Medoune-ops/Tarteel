@@ -11,6 +11,7 @@ import Confetti from '../../../components/Confetti';
 import { playSound } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
 import { completeLesson } from '../../../lib/api';
+import { invalidate } from '../../../lib/api/swr';
 
 const LEVEL_TARGET = 0.62; // 62 %
 
@@ -58,7 +59,14 @@ export default function FinishScreen() {
       totalAnswers: total,
       durationMs: durationMs || undefined,
     })
-      .then(() => setXpGained(useUserStore.getState().xp - xpBefore))
+      .then(() => {
+        setXpGained(useUserStore.getState().xp - xpBefore);
+        // Leçon validée → parcours, classement et calendrier d'activité ont
+        // changé : forcer un vrai re-fetch au prochain affichage.
+        invalidate('sections');
+        invalidate('league');
+        invalidate(`activity:${new Date().toISOString().slice(0, 7)}`);
+      })
       .catch(() => { /* hors-ligne : la progression reste locale, resync au prochain /me */ });
   }, []);
 

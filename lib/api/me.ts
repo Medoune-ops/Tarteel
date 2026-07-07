@@ -6,6 +6,7 @@
  * directement à `hydrateFromBackend`.
  */
 import { apiFetch } from './client';
+import { clearTokens } from './tokens';
 import { useUserStore } from '../../store/userStore';
 import type { SourateListItem } from './content';
 
@@ -16,15 +17,21 @@ export interface MeResponse {
   isPremium: boolean;
   currentLesson: number;
   lastHeartLossAt: number | null;
+  gems?: number;
+  streakFreezes?: number;
+  doubleXpUntil?: number | null;
   sourates?: number;
   precision?: number;
   name?: string;
+  /** Pseudo public (ligues) ; null pour les comptes créés avant le champ. */
+  username?: string | null;
   email?: string;
   avatar?: string | null;
   onboardingDone?: boolean;
   level?: 'debutant' | 'alphabet' | 'lent' | 'fluent';
   objectif?: 'lire' | 'hifz' | 'tafsir' | 'complet';
   dailyMinutes?: number;
+  voiceEnabled?: boolean;
 }
 
 export interface OnboardingInput {
@@ -80,14 +87,24 @@ export async function fetchLearnedSourates(): Promise<SourateListItem[]> {
 export interface UpdateProfileInput {
   name?: string;
   avatar?: string;
+  /** Pseudo public (ligues) — modifiable depuis Paramètres → Modifier le profil. */
+  username?: string;
 }
 
 /**
- * `PATCH /me` — met à jour le profil (nom, avatar). Renvoie la forme plate de
- * /me ; on rehydrate le store pour rester en sync.
+ * `PATCH /me` — met à jour le profil. Renvoie la forme plate de /me ; on
+ * rehydrate le store pour rester en sync.
+ *
+ * ⚠ Mapping obligatoire : le store/front parle de `name`, mais le schéma
+ * backend (Zod `.strict()`, anti mass-assignment) n'accepte QUE `displayName`
+ * — envoyer `name` tel quel provoquait un 400 et rien ne s'enregistrait.
+ * `avatar` n'a pas encore de support serveur : on ne l'envoie pas.
  */
 export async function updateProfile(input: UpdateProfileInput): Promise<MeResponse> {
-  const data = await apiFetch<MeResponse>('/me', { method: 'PATCH', json: input });
+  const payload: { displayName?: string; username?: string } = {};
+  if (input.name != null) payload.displayName = input.name;
+  if (input.username != null) payload.username = input.username;
+  const data = await apiFetch<MeResponse>('/me', { method: 'PATCH', json: payload });
   useUserStore.getState().hydrateFromBackend(data);
   return data;
 }
@@ -138,4 +155,13 @@ export async function updateNotificationPrefs(
     method: 'PATCH',
     json: input,
   });
+/**
+ * `DELETE /me` — suppression DÉFINITIVE du compte côté serveur (cascade sur
+ * toute la progression). Le mot de passe est exigé par le serveur (un access
+ * token volé ne suffit pas). Efface ensuite les jetons locaux et vide le store.
+ */
+export async function deleteAccount(password: string): Promise<void> {
+  await apiFetch('/me', { method: 'DELETE', json: { password } });
+  await clearTokens();
+  useUserStore.getState().logout();
 }
