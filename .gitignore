@@ -49,3 +49,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Backend (dépôt git séparé, gardé en local, non publié sur GitHub)
+/Tarteelback/

@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
  import Animated, {
+import Animated, {
   SlideInRight, SlideOutLeft, Easing,
   useSharedValue, useAnimatedStyle, withTiming,
 } from 'react-native-reanimated';
