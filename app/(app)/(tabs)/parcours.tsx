@@ -245,6 +245,7 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
       viewBox="0 0 400 700"
       preserveAspectRatio="xMidYMax meet"
       style={StyleSheet.absoluteFillObject}
+      pointerEvents="none"
       opacity={op}
     >
       {/* ══ CIEL — croissants lunaires et étoiles ══ */}
