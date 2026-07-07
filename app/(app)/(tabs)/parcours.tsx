@@ -245,6 +245,7 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
       viewBox="0 0 400 700"
       preserveAspectRatio="xMidYMax meet"
       style={StyleSheet.absoluteFillObject}
+      pointerEvents="none"
       opacity={op}
     >
       {/* ══ CIEL — croissants lunaires et étoiles ══ */}
@@ -757,10 +758,10 @@ export default function ParcoursScreen() {
           <Text style={{ fontSize: 20 }}>💎</Text>
           <Text style={[styles.statText, { color: '#1CB0F6' }]}>{gems}</Text>
         </View>
-        <View style={styles.stat}>
+        <Pressable style={styles.stat} onPress={() => router.push('/(app)/hearts')} hitSlop={8}>
           <Feather name="heart" size={22} color="#FF4B4B" />
           <Text style={[styles.statText, { color: '#FF4B4B' }]}>{isPremium ? '∞' : hearts}</Text>
-        </View>
+        </Pressable>
       </View>
 
       {isLoading && sections.length === 0 ? (

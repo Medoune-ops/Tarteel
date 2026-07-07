@@ -39,3 +39,16 @@ export async function repairStreak(): Promise<{ streak: number }> {
   await fetchMe();
   return res;
 }
+
+/**
+ * POST /billing/hearts — achète un refill complet des cœurs avec de l'argent
+ * (paiement mock), puis rehydrate le store depuis le serveur.
+ */
+export async function buyHearts(paymentToken?: string): Promise<{ hearts: number }> {
+  const res = await apiFetch<{ hearts: number }>('/billing/hearts', {
+    method: 'POST',
+    json: paymentToken ? { paymentToken } : {},
+  });
+  await fetchMe(); // cœurs désormais servis par le serveur
+  return res;
+}

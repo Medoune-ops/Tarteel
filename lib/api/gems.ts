@@ -51,11 +51,15 @@ export async function refillHeartsWithGems() {
   return res;
 }
 
-/** POST /me/hearts/review-regain — session de révision terminée → +1 cœur (max 2/j). */
-export async function reviewRegainHeart() {
+/**
+ * POST /me/hearts/review-regain — session de révision terminée → +1 cœur
+ * (max 2/j). Le serveur vérifie qu'une session récente existe vraiment pour
+ * cette sourate (POST /me/revisions/:numero/review) avant d'accorder le cœur.
+ */
+export async function reviewRegainHeart(numero: number) {
   const res = await apiFetch<{ hearts: number; reviewHeartsRemaining: number }>(
     '/me/hearts/review-regain',
-    { method: 'POST' },
+    { method: 'POST', json: { numero } },
   );
   await fetchMe();
   return res;

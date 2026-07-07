@@ -1,0 +1,229 @@
+import { useEffect, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import DeviceStatusBar from '../../components/StatusBar';
+import { useTheme } from '../../utils/useTheme';
+import { useUserStore, MAX_HEARTS } from '../../store/userStore';
+import { refillHeartsWithGems } from '../../lib/api/gems';
+import { buyHearts } from '../../lib/api';
+import { ApiError } from '../../lib/api/client';
+
+/** Coût serveur d'un refill complet en gemmes (source de vérité : backend). */
+const REFILL_GEM_COST = 350;
+
+/** Formate un nombre de ms en "Xh Ymin" / "Y min". */
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return 'bientôt';
+  const totalMin = Math.ceil(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}min`;
+  return `${m} min`;
+}
+
+function OptionCard({
+  emoji, title, hint, cta, tint, onPress, disabled, loading, cardBg, textColor,
+}: {
+  emoji: string; title: string; hint: string; cta?: string; tint: string;
+  onPress: () => void; disabled?: boolean; loading?: boolean; cardBg: string; textColor: string;
+}) {
+  return (
+    <Pressable
+      style={[styles.card, { backgroundColor: cardBg, borderColor: tint + '55' }, disabled && { opacity: 0.5 }]}
+      onPress={onPress}
+      disabled={disabled || loading}
+    >
+      <View style={[styles.cardIcon, { backgroundColor: tint + '1A' }]}>
+        <Text style={{ fontSize: 24 }}>{emoji}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.cardTitle, { color: textColor }]}>{title}</Text>
+        <Text style={styles.cardHint}>{hint}</Text>
+      </View>
+      {loading ? (
+        <ActivityIndicator color={tint} />
+      ) : cta ? (
+        <View style={[styles.cardCta, { backgroundColor: tint }]}>
+          <Text style={styles.cardCtaText}>{cta}</Text>
+        </View>
+      ) : (
+        <Feather name="chevron-right" size={22} color={tint} />
+      )}
+    </Pressable>
+  );
+}
+
+export default function HeartsScreen() {
+  const router = useRouter();
+  const T = useTheme();
+  const hearts = useUserStore((s) => s.hearts);
+  const gems = useUserStore((s) => s.gems);
+  const isPremium = useUserStore((s) => s.isPremium);
+  const syncHearts = useUserStore((s) => s.syncHearts);
+  const msUntilNextHeart = useUserStore((s) => s.msUntilNextHeart);
+
+  const [remaining, setRemaining] = useState(msUntilNextHeart());
+  const [refilling, setRefilling] = useState(false);
+  const [buying, setBuying] = useState(false);
+
+  const full = hearts >= MAX_HEARTS;
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      syncHearts();
+      setRemaining(useUserStore.getState().msUntilNextHeart());
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  /** Convertir des gemmes en cœurs (débit jugé côté serveur). */
+  const onRefillGems = async () => {
+    if (refilling || full) return;
+    setRefilling(true);
+    try {
+      await refillHeartsWithGems();
+      Alert.alert('Cœurs rechargés', 'Tes cœurs sont de nouveau au maximum !');
+    } catch (e) {
+      const msg =
+        e instanceof ApiError && e.code === 'INSUFFICIENT_GEMS'
+          ? `Il te faut ${REFILL_GEM_COST} gemmes pour recharger.`
+          : "Impossible de recharger pour l'instant. Réessaie.";
+      Alert.alert('Oups', msg);
+    } finally {
+      setRefilling(false);
+    }
+  };
+
+  /** Acheter un refill complet avec de l'argent (paiement mock). */
+  const onBuyMoney = async () => {
+    if (buying || full) return;
+    setBuying(true);
+    try {
+      await buyHearts();
+      Alert.alert('Cœurs rechargés', 'Merci ! Tes cœurs sont au maximum.');
+    } catch (e) {
+      const msg =
+        e instanceof ApiError && e.status !== 0
+          ? e.message
+          : 'Le paiement a échoué. Réessaie.';
+      Alert.alert('Paiement', msg);
+    } finally {
+      setBuying(false);
+    }
+  };
+
+  return (
+    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
+      <DeviceStatusBar />
+
+      {/* Header */}
+      <LinearGradient colors={['#FF6B6B', '#FF4B4B']} style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={10}>
+          <Feather name="arrow-left" size={24} color="#fff" />
+        </Pressable>
+        <View style={styles.heartBig}>
+          <Feather name="heart" size={40} color="#fff" />
+          <Text style={styles.heartCount}>{isPremium ? '∞' : `${hearts}/${MAX_HEARTS}`}</Text>
+        </View>
+        <Text style={styles.headerTitle}>Mes cœurs</Text>
+        <Text style={styles.headerSub}>
+          {isPremium
+            ? 'Premium : cœurs illimités 💫'
+            : full
+              ? 'Tes cœurs sont au maximum 🎉'
+              : `Prochain cœur dans ${formatRemaining(remaining)}`}
+        </Text>
+      </LinearGradient>
+
+      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        {isPremium ? (
+          <View style={styles.premiumNote}>
+            <Text style={{ fontSize: 40 }}>💫</Text>
+            <Text style={[styles.premiumTitle, { color: T.text }]}>Tu es Premium</Text>
+            <Text style={styles.premiumHint}>Tes cœurs ne s'épuisent jamais. Profite de tes leçons !</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={[styles.sectionTitle, { color: T.text }]}>Obtenir des cœurs</Text>
+
+            <OptionCard
+              emoji="💎" tint="#1CB0F6" cardBg={T.cardBg} textColor={T.text}
+              title="Convertir mes gemmes"
+              hint={`${REFILL_GEM_COST} gemmes → cœurs pleins · tu as ${gems} 💎`}
+              cta={String(REFILL_GEM_COST)}
+              onPress={onRefillGems}
+              loading={refilling}
+              disabled={full || gems < REFILL_GEM_COST}
+            />
+
+            <OptionCard
+              emoji="💳" tint="#F0820C" cardBg={T.cardBg} textColor={T.text}
+              title="Acheter avec de l'argent"
+              hint="Recharge instantanée de tous tes cœurs"
+              cta="Acheter"
+              onPress={onBuyMoney}
+              loading={buying}
+              disabled={full}
+            />
+
+            <OptionCard
+              emoji="📖" tint="#34C724" cardBg={T.cardBg} textColor={T.text}
+              title="Réviser pour des cœurs"
+              hint="Termine une session de révision (+1 cœur, max 2/jour)"
+              onPress={() => router.push({ pathname: '/(app)/(tabs)/revisions', params: { regagner: '1' } })}
+              disabled={full}
+            />
+
+            <OptionCard
+              emoji="👥" tint="#6B4DFF" cardBg={T.cardBg} textColor={T.text}
+              title="Parrainer des amis"
+              hint="Gagne des cœurs quand un ami rejoint avec ton code"
+              onPress={() => router.push('/(app)/referral')}
+            />
+
+            <Pressable onPress={() => router.push('/(app)/subscription')} style={styles.premiumCtaWrap}>
+              <LinearGradient colors={['#FFA53D', '#F0820C']} style={styles.premiumCta}>
+                <Feather name="star" size={18} color="#fff" />
+                <Text style={styles.premiumCtaText}>Passer Premium · cœurs illimités</Text>
+              </LinearGradient>
+            </Pressable>
+          </>
+        )}
+        <View style={{ height: 24 }} />
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  header: { paddingTop: 16, paddingBottom: 26, paddingHorizontal: 22, alignItems: 'center' },
+  back: { position: 'absolute', top: 16, left: 18, padding: 4, zIndex: 2 },
+  heartBig: { alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  heartCount: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, color: '#fff', marginTop: 6 },
+  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 26, color: '#fff', marginTop: 8 },
+  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  body: { padding: 18 },
+  sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginBottom: 12, marginTop: 4 },
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 1.5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  cardIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16 },
+  cardHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12.5, color: '#8A8F99', marginTop: 3 },
+  cardCta: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 },
+  cardCtaText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#fff' },
+  premiumCtaWrap: { marginTop: 8 },
+  premiumCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    height: 56, borderRadius: 18, borderBottomWidth: 4, borderBottomColor: '#C56400',
+  },
+  premiumCtaText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#fff' },
+  premiumNote: { alignItems: 'center', gap: 8, paddingVertical: 40 },
+  premiumTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22 },
+  premiumHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#8A8F99', textAlign: 'center', paddingHorizontal: 30 },
+});
