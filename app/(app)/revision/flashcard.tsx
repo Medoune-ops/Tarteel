@@ -148,6 +148,9 @@ export default function FlashcardScreen() {
   const [choisi, setChoisi]     = useState<Reponse | null>(null);
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Empêche un double-appui sur « Terminer » d'envoyer deux fois la même
+  // session (double POST /me/revisions/:numero/review).
+  const quittingRef = useRef(false);
 
   // ── Simulation de la récitation (mock reconnaissance vocale) ──
   // Chaque verset : l'utilisateur récite ~2s. Aléatoirement il "bloque" →
@@ -232,6 +235,8 @@ export default function FlashcardScreen() {
         onChoisir={setChoisi}
         onRestart={reset}
         onQuitter={async () => {
+          if (quittingRef.current) return;
+          quittingRef.current = true;
           // Enregistre le résultat de la session (SRS) — best-effort, ne
           // bloque jamais la sortie de l'écran.
           try {
