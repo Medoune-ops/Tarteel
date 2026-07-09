@@ -21,7 +21,7 @@ function streakGoalLabel(streak: number, goal: number | null): string {
 
 function buildBadges(streak: number, streakGoal: number | null, sourates: number): Badge[] {
   return [
-    { emoji: '✍️', bg: '#E8E4FF', bgDark: '#241F3D', border: '#6B4DFF', label: 'Alphabet'    },
+    { emoji: '🎧', bg: '#E8E4FF', bgDark: '#241F3D', border: '#6B4DFF', label: 'Lecture libre', route: '/(app)/lecture-libre' },
     { emoji: '🔥', bg: '#FFE8E8', bgDark: '#3A1F26', border: '#FF4B4B', label: streakGoalLabel(streak, streakGoal), route: '/(app)/streak-goal' },
     { emoji: '🎵', bg: '#F0E8FF', bgDark: '#2A2140', border: '#8A5CF0', label: 'Tajwid'      },
     { emoji: '📖', bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: `${sourates} Sourate${sourates > 1 ? 's' : ''}`, route: '/(app)/sourates' },
