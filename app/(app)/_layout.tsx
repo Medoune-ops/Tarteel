@@ -12,6 +12,8 @@ export default function AppLayout() {
       <Stack.Screen name="langue" />
       <Stack.Screen name="sourates" />
       <Stack.Screen name="sourate/[numero]" />
+      <Stack.Screen name="lecture-libre" />
+      <Stack.Screen name="lecture/[numero]" />
       <Stack.Screen name="streak-goal" />
       <Stack.Screen name="podiums" />
       <Stack.Screen name="subscription" />
