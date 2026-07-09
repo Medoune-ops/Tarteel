@@ -55,6 +55,15 @@ async function press(r: TestRenderer.ReactTestRenderer, label: string) {
   await act(async () => { await target.props.onPress(); });
 }
 
+/** Saisit `text` dans la barre de recherche (TextInput = seul champ onChangeText). */
+async function type(r: TestRenderer.ReactTestRenderer, text: string) {
+  const input = r.root
+    .findAll((n: ReactTestInstance) => typeof n.props?.onChangeText === 'function')
+    .at(0);
+  if (!input) throw new Error('Barre de recherche introuvable');
+  await act(async () => { input.props.onChangeText(text); });
+}
+
 describe('Écran « Lecture libre » (catalogue des sourates)', () => {
   beforeEach(() => {
     mockPush.mockClear();
@@ -103,5 +112,43 @@ describe('Écran « Lecture libre » (catalogue des sourates)', () => {
       .find((n) => n.props.hitSlop != null);
     await act(async () => { backBtn?.props.onPress(); });
     expect(mockBack).toHaveBeenCalled();
+  });
+
+  // ── Barre de recherche ──
+
+  it("n'affiche plus l'ancien texte d'intro", async () => {
+    const r = await renderScreen();
+    expect(textOf(r.root)).not.toContain('Choisis une sourate');
+  });
+
+  it('la recherche par nom filtre les sourates (dès les premières lettres)', async () => {
+    const r = await renderScreen();
+    await type(r, 'baq');
+    const all = textOf(r.root);
+    expect(all).toContain('Al-Baqara');
+    expect(all).not.toContain('Al-Fatiha');
+    expect(all).not.toContain('An-Nas');
+  });
+
+  it('la recherche ignore les accents (requête "nâs" trouve An-Nas)', async () => {
+    const r = await renderScreen();
+    await type(r, 'nâs');
+    const all = textOf(r.root);
+    expect(all).toContain('An-Nas');
+    expect(all).not.toContain('Al-Fatiha');
+  });
+
+  it('la recherche par numéro fonctionne', async () => {
+    const r = await renderScreen();
+    await type(r, '114');
+    const all = textOf(r.root);
+    expect(all).toContain('An-Nas');
+    expect(all).not.toContain('Al-Fatiha');
+  });
+
+  it('affiche « Aucune sourate trouvée » quand rien ne correspond', async () => {
+    const r = await renderScreen();
+    await type(r, 'zzzzz');
+    expect(textOf(r.root)).toContain('Aucune sourate trouvée');
   });
 });
