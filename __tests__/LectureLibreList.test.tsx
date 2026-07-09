@@ -9,7 +9,7 @@ const mockSourates = [
   { id: 'b', numero: 2, nom: 'Al-Baqara', nomArabe: 'البقرة', nombreVersets: 286, hizb: 1, revelation: 'madinah' },
   { id: 'c', numero: 114, nom: 'An-Nas', nomArabe: 'الناس', nombreVersets: 6, hizb: 60, revelation: 'makkah' },
 ];
-const mockFetchAll = jest.fn(() => Promise.resolve(mockSourates));
+const mockFetchAll = jest.fn((..._a: unknown[]) => Promise.resolve(mockSourates));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: mockBack }),
