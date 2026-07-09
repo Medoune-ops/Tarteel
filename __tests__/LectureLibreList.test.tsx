@@ -77,6 +77,14 @@ describe('Écran « Lecture libre » (catalogue des sourates)', () => {
     expect(all).toContain('286 versets');
   });
 
+  it('affiche le NOM de chaque sourate (pour la reconnaître)', async () => {
+    const r = await renderScreen();
+    const all = textOf(r.root);
+    expect(all).toContain('Al-Fatiha');
+    expect(all).toContain('Al-Baqara');
+    expect(all).toContain('An-Nas');
+  });
+
   it('charge le catalogue complet via fetchAllSourates', async () => {
     await renderScreen();
     expect(mockFetchAll).toHaveBeenCalledTimes(1);
