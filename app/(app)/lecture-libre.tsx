@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,8 +8,9 @@ import { swrFetch } from '../../lib/api/swr';
 import { useTheme } from '../../utils/useTheme';
 
 // « Lecture libre » — catalogue COMPLET des 114 sourates du Coran (en arabe),
-// indépendant de la progression du parcours. Chaque ligne ouvre le lecteur
-// audio qui récite la sourate en entier, sans arrêt, jusqu'à la fin.
+// indépendant de la progression du parcours. Chaque ligne affiche le nom de la
+// sourate (pour la reconnaître) et ouvre le lecteur audio qui la récite en
+// entier, sans arrêt, jusqu'à la fin. Liste en défilement infini (FlatList).
 export default function LectureLibreScreen() {
   const router = useRouter();
   const T = useTheme();
@@ -28,6 +29,31 @@ export default function LectureLibreScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const renderRow = useCallback(
+    ({ item, index }: { item: SourateSummary; index: number }) => (
+      <Pressable
+        style={({ pressed }) => [
+          styles.row,
+          index > 0 && [styles.divider, { borderTopColor: T.divider }],
+          pressed && { opacity: 0.6 },
+        ]}
+        onPress={() => router.push(`/(app)/lecture/${item.numero}` as never)}
+      >
+        <View style={styles.numBadge}>
+          <Text style={styles.numText}>{item.numero}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          {/* Nom de la sourate — permet de la reconnaître d'un coup d'œil. */}
+          <Text style={[styles.nom, { color: T.text }]}>{item.nom}</Text>
+          <Text style={[styles.arabe, { color: T.text }]}>{item.nomArabe}</Text>
+          <Text style={[styles.versets, { color: T.textTertiary }]}>{item.nombreVersets} versets</Text>
+        </View>
+        <Feather name="play-circle" size={26} color="#6B4DFF" />
+      </Pressable>
+    ),
+    [T, router],
+  );
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
@@ -55,34 +81,25 @@ export default function LectureLibreScreen() {
           <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement des sourates…</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.intro, { color: T.textSecondary }]}>
-            Choisis une sourate pour l'écouter en entier 🔊
-          </Text>
-          <View style={[styles.list, { backgroundColor: T.cardBg }]}>
-            {sourates.map((s, i) => (
-              <Pressable
-                key={s.numero}
-                style={({ pressed }) => [
-                  styles.row,
-                  i > 0 && [styles.divider, { borderTopColor: T.divider }],
-                  pressed && { opacity: 0.6 },
-                ]}
-                onPress={() => router.push(`/(app)/lecture/${s.numero}` as never)}
-              >
-                <View style={styles.numBadge}>
-                  <Text style={styles.numText}>{s.numero}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.arabe, { color: T.text }]}>{s.nomArabe}</Text>
-                  <Text style={[styles.versets, { color: T.textTertiary }]}>{s.nombreVersets} versets</Text>
-                </View>
-                <Feather name="play-circle" size={26} color="#6B4DFF" />
-              </Pressable>
-            ))}
-          </View>
-          <View style={{ height: 24 }} />
-        </ScrollView>
+        <FlatList
+          data={sourates}
+          keyExtractor={(s) => String(s.numero)}
+          renderItem={renderRow}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          ListHeaderComponent={
+            <Text style={[styles.intro, { color: T.textSecondary }]}>
+              Choisis une sourate pour l'écouter en entier 🔊
+            </Text>
+          }
+          ListFooterComponent={<View style={{ height: 24 }} />}
+          // Défilement infini fluide : la liste virtualise les lignes et n'en
+          // rend qu'un écran à la fois, puis d'autres au fil du défilement.
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={11}
+          removeClippedSubviews
+        />
       )}
     </View>
   );
@@ -103,17 +120,14 @@ const styles = StyleSheet.create({
 
   content: { paddingHorizontal: 18, paddingTop: 16 },
   intro: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, textAlign: 'center', marginBottom: 14 },
-  list: {
-    borderRadius: 18, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 14, elevation: 2,
-  },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
   divider: { borderTopWidth: 1 },
   numBadge: {
     width: 40, height: 40, borderRadius: 12, backgroundColor: '#EDE8FF',
     alignItems: 'center', justifyContent: 'center',
   },
   numText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, color: '#6B4DFF' },
-  arabe: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 26, textAlign: 'right', writingDirection: 'rtl' },
-  versets: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: 1 },
+  nom: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16 },
+  arabe: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 24, marginTop: 2, writingDirection: 'rtl' },
+  versets: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: 2 },
 });
