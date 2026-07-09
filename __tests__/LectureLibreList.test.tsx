@@ -9,7 +9,7 @@ const mockSourates = [
   { id: 'b', numero: 2, nom: 'Al-Baqara', nomArabe: 'البقرة', nombreVersets: 286, hizb: 1, revelation: 'madinah' },
   { id: 'c', numero: 114, nom: 'An-Nas', nomArabe: 'الناس', nombreVersets: 6, hizb: 60, revelation: 'makkah' },
 ];
-const mockFetchAll = jest.fn((..._a: unknown[]) => Promise.resolve(mockSourates));
+const mockFetchSourates = jest.fn((..._a: unknown[]) => Promise.resolve(mockSourates));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: mockBack }),
@@ -20,7 +20,7 @@ jest.mock('expo-router', () => ({
   },
 }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
-jest.mock('../lib/api', () => ({ fetchAllSourates: (...a: unknown[]) => mockFetchAll(...a) }));
+jest.mock('../lib/api', () => ({ fetchSourates: (...a: unknown[]) => mockFetchSourates(...a) }));
 // swrFetch → appelle simplement le fetcher (pas de cache en test).
 jest.mock('../lib/api/swr', () => ({
   swrFetch: (_key: string, fetcher: () => Promise<unknown>) => fetcher(),
@@ -59,7 +59,7 @@ describe('Écran « Lecture libre » (catalogue des sourates)', () => {
   beforeEach(() => {
     mockPush.mockClear();
     mockBack.mockClear();
-    mockFetchAll.mockClear();
+    mockFetchSourates.mockClear();
   });
 
   afterEach(() => {
@@ -85,9 +85,9 @@ describe('Écran « Lecture libre » (catalogue des sourates)', () => {
     expect(all).toContain('An-Nas');
   });
 
-  it('charge le catalogue complet via fetchAllSourates', async () => {
+  it('charge le catalogue complet via fetchSourates', async () => {
     await renderScreen();
-    expect(mockFetchAll).toHaveBeenCalledTimes(1);
+    expect(mockFetchSourates).toHaveBeenCalledTimes(1);
   });
 
   it('ouvre le lecteur de la sourate au clic sur une ligne', async () => {

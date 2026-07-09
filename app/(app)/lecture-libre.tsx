@@ -3,7 +3,7 @@ import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator } from '
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { fetchAllSourates, type SourateSummary } from '../../lib/api';
+import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { useTheme } from '../../utils/useTheme';
 
@@ -15,14 +15,14 @@ export default function LectureLibreScreen() {
   const router = useRouter();
   const T = useTheme();
 
-  const [sourates, setSourates] = useState<SourateSummary[] | null>(null);
+  const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     setError(false);
     try {
       // Le catalogue ne change jamais → SWR (affichage instantané au retour).
-      setSourates(await swrFetch('sourates:all', fetchAllSourates, setSourates));
+      setSourates(await swrFetch('sourates:all', fetchSourates, setSourates));
     } catch {
       setError(true);
     }
@@ -31,7 +31,7 @@ export default function LectureLibreScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const renderRow = useCallback(
-    ({ item, index }: { item: SourateSummary; index: number }) => (
+    ({ item, index }: { item: SourateListItem; index: number }) => (
       <Pressable
         style={({ pressed }) => [
           styles.row,
