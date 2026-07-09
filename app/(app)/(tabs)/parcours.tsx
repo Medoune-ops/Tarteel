@@ -1,5 +1,5 @@
 import { View, Text, Pressable, StyleSheet, useWindowDimensions, Alert, ActivityIndicator, FlatList } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
@@ -622,9 +622,11 @@ const chestStyles = StyleSheet.create({
 
 export default function ParcoursScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const T = useTheme();
   const { streak, xp, hearts, gems, isPremium, syncHearts } = useUserStore();
   const { width, height } = useWindowDimensions();
+  const listRef = useRef<FlatList<ParcoursSection>>(null);
 
   const [sections, setSections] = useState<ParcoursSection[]>([]);
   const [loadError, setLoadError] = useState(false);
@@ -671,6 +673,16 @@ export default function ParcoursScreen() {
       loadSections();
     }, [syncHearts, loadSections]),
   );
+
+  // Retap sur l'onglet "Apprendre" alors qu'il est déjà actif → on ramène
+  // l'utilisateur en haut de la liste (la section en cours est en position 0).
+  useEffect(() => {
+    // @ts-expect-error événement custom émis par TabBar (pas dans le core event map)
+    const unsubscribe = navigation.addListener('scrollToActive', () => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Pagination purement locale → instantanée (les données sont déjà en mémoire).
   const handleLoadMore = useCallback(() => {
@@ -772,6 +784,7 @@ export default function ParcoursScreen() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={sections}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
