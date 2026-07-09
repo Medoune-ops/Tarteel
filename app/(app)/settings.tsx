@@ -78,7 +78,6 @@ export default function SettingsScreen() {
   const email = useUserStore((s) => s.email);
   const theme = useUserStore((s) => s.theme);
   const setTheme = useUserStore((s) => s.setTheme);
-  const reminderHour = useUserStore((s) => s.reminderHour);
   const langue = LANGUES[language];
   const T = useTheme();
   const tr = useT();
@@ -156,13 +155,6 @@ export default function SettingsScreen() {
             <View style={[styles.rowIcon, { backgroundColor: '#FF4B4B' }]}>
               <Feather name="bell" size={22} color="#fff" />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.rowTitle, { color: T.text }]}>Rappel quotidien</Text>
-              <Text style={[styles.rowSub, { color: T.textSecondary }]}>
-                Tous les jours à {String(reminderHour).padStart(2, '0')} : 00
-              </Text>
-            </View>
-            <Toggle value={reminder} onChange={setReminder} />
             {/* La zone texte ouvre l'écran Notifications (choix de l'heure). */}
             <Pressable style={{ flex: 1 }} onPress={() => router.push('/(app)/notifications')}>
               <Text style={[styles.rowTitle, { color: T.text }]}>{tr('settings.dailyReminder')}</Text>
