@@ -3,9 +3,9 @@ import TestRenderer, { act, type ReactTestInstance } from 'react-test-renderer';
 
 // ── Mocks ──
 const mockBack = jest.fn();
-const mockPlayAsync = jest.fn(() => Promise.resolve());
+const mockPlayAsync = jest.fn((..._a: unknown[]) => Promise.resolve());
 const mockStop = jest.fn();
-const mockActivateKeepAwake = jest.fn(() => Promise.resolve());
+const mockActivateKeepAwake = jest.fn((..._a: unknown[]) => Promise.resolve());
 const mockDeactivateKeepAwake = jest.fn();
 const mockVersets = {
   sourate: { id: 'a', numero: 1, nom: 'Al-Fatiha', nomArabe: 'الفاتحة', nombreVersets: 2, hizb: 1, revelation: 'makkah' },
@@ -15,7 +15,7 @@ const mockVersets = {
     { id: 'v2', numero: 2, texteArabe: 'الْحَمْدُ لِلَّهِ', audioUrl: 'https://cdn/2.mp3', traduction: null, translitteration: null, mots: [] },
   ],
 };
-const mockFetchVersets = jest.fn(() => Promise.resolve(mockVersets));
+const mockFetchVersets = jest.fn((..._a: unknown[]) => Promise.resolve(mockVersets));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ back: mockBack }),

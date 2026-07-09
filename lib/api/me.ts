@@ -155,6 +155,8 @@ export async function updateNotificationPrefs(
     method: 'PATCH',
     json: input,
   });
+}
+
 /**
  * `DELETE /me` — suppression DÉFINITIVE du compte côté serveur (cascade sur
  * toute la progression). Le mot de passe est exigé par le serveur (un access
