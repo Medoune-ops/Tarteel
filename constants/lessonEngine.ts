@@ -11,7 +11,7 @@
  *   - 'discovery'  : Découverte — on montre le verset (AUCUN cœur en jeu)
  *   - 'written'    : Test écrit — QCM / association (1 faute = −1 cœur)
  *   - 'voice'      : Récitation — enregistrement micro jugé par Whisper
- *                    côté serveur (POST /lessons/:id/steps/:stepId/recite,
+ *                    côté serveur (POST /lessons/:id/steps/:stepId/answer-voice,
  *                    1 échec = −1 cœur, même sémantique que 'written').
  *
  * Si l'utilisateur a désactivé « Voix & enregistrements » (Settings), les

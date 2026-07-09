@@ -55,6 +55,7 @@ export async function refillHeartsWithGems() {
  * POST /me/hearts/review-regain — session de révision terminée → +1 cœur
  * (max 2/j). Le serveur vérifie qu'une session récente existe vraiment pour
  * cette sourate (POST /me/revisions/:numero/review) avant d'accorder le cœur.
+ * `numero` = numéro de la sourate (1–114) dont la session vient d'être terminée.
  */
 export async function reviewRegainHeart(numero: number) {
   const res = await apiFetch<{ hearts: number; reviewHeartsRemaining: number }>(
