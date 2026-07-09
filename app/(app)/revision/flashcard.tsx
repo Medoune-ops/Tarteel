@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { reviewRegainHeart } from '../../../lib/api/gems';
-import { fetchVersets, reciteVerset, submitRevisionReview, type Verset as ApiVerset } from '../../../lib/api';
+import { fetchVersets, reciteVerset, reviewSourate, type Verset as ApiVerset } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { useUserStore, MAX_HEARTS } from '../../../store/userStore';
 import { t } from '../../../lib/i18n';
@@ -12,13 +12,24 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAudioRecorder, RecordingPresets } from 'expo-audio';
+import { useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
 import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../../../lib/audio/recorder';
 
 type Reponse = 'facile' | 'difficile' | 'oublie';
 type Phase = 'pret' | 'recitation' | 'fini';
 /** Sous-état pendant la récitation d'un verset. */
 type SubPhase = 'recording' | 'analyzing' | 'aide';
+
+/** Options d'enregistrement avec le metering (niveau audio) activé pour la VAD. */
+const RECORDING_OPTIONS = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
+
+// ── Détection d'activité vocale (VAD) par silence, basée sur le metering ────
+/** En dessous de ce niveau (dB), on considère que l'utilisateur s'est tu. */
+const SILENCE_DB = -35;
+/** Silence court = fin naturelle d'un verset → on l'envoie au serveur. */
+const SEGMENT_SILENCE_MS = 1400;
+/** Silence long = l'utilisateur bloque → on affiche l'aide automatiquement. */
+const BLOCK_SILENCE_MS = 3000;
 
 const SCORES: Record<Reponse, { label: string; emoji: string; bg: string; pts: number }> = {
   facile:    { label: 'Facile',    emoji: '😊', bg: '#34C724', pts: 10 },
@@ -50,10 +61,14 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 }
 
 // ── Écran résultat ──────────────────────────────────────────────────────────
-function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, onQuitter }: {
+function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, onQuitter, apprise }: {
   aides: number; total: number; suggestion: Reponse;
   choisi: Reponse | null; onChoisir: (r: Reponse) => void;
   onRestart: () => void; onQuitter: () => void;
+  /** Sourate pas encore apprise dans le parcours : pas de suivi SRS (le
+   *  backend refuse POST /me/revisions/:id/review pour une sourate non
+   *  apprise) — entraînement libre, juste le score de fluidité Whisper. */
+  apprise: boolean;
 }) {
   const verdict = SCORES[suggestion];
   const fluidite = Math.max(0, Math.round(((total - aides) / total) * 100));
@@ -82,42 +97,50 @@ function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, 
       </LinearGradient>
 
       <View style={styles.resultBottom}>
-        <Text style={styles.confirmTitle}>L'app pense : <Text style={{ color: verdict.bg }}>{verdict.label}</Text></Text>
-        <Text style={styles.confirmSub}>Et toi, comment tu t'es senti ?</Text>
-        <View style={styles.btnsRow}>
-          {(['oublie', 'difficile', 'facile'] as Reponse[]).map((rep) => {
-            const s = SCORES[rep];
-            const isSuggestion = rep === suggestion;
-            return (
-              <Pressable
-                key={rep}
-                style={[
-                  styles.repBtn, { backgroundColor: s.bg },
-                  isSuggestion && styles.repBtnSuggested,
-                  choisi === rep && styles.repBtnSelected,
-                ]}
-                onPress={() => onChoisir(rep)}
-              >
-                {isSuggestion && (
-                  <View style={styles.suggestPip}>
-                    <Feather name="star" size={9} color="#fff" />
-                  </View>
-                )}
-                <Text style={styles.repBtnEmoji}>{s.emoji}</Text>
-                <Text style={styles.repBtnLabel}>{s.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {apprise ? (
+          <>
+            <Text style={styles.confirmTitle}>L'app pense : <Text style={{ color: verdict.bg }}>{verdict.label}</Text></Text>
+            <Text style={styles.confirmSub}>Et toi, comment tu t'es senti ?</Text>
+            <View style={styles.btnsRow}>
+              {(['oublie', 'difficile', 'facile'] as Reponse[]).map((rep) => {
+                const s = SCORES[rep];
+                const isSuggestion = rep === suggestion;
+                return (
+                  <Pressable
+                    key={rep}
+                    style={[
+                      styles.repBtn, { backgroundColor: s.bg },
+                      isSuggestion && styles.repBtnSuggested,
+                      choisi === rep && styles.repBtnSelected,
+                    ]}
+                    onPress={() => onChoisir(rep)}
+                  >
+                    {isSuggestion && (
+                      <View style={styles.suggestPip}>
+                        <Feather name="star" size={9} color="#fff" />
+                      </View>
+                    )}
+                    <Text style={styles.repBtnEmoji}>{s.emoji}</Text>
+                    <Text style={styles.repBtnLabel}>{s.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        ) : (
+          <Text style={styles.confirmSub}>
+            Entraînement libre — termine cette sourate dans le parcours pour suivre sa révision (SRS).
+          </Text>
+        )}
 
         <Pressable style={styles.restartBtn} onPress={onRestart}>
           <Feather name="refresh-cw" size={16} color="#6B4DFF" />
           <Text style={styles.restartTxt}>Réciter à nouveau</Text>
         </Pressable>
         <Pressable
-          style={[styles.quitBtn, !choisi && styles.quitBtnDisabled]}
+          style={[styles.quitBtn, apprise && !choisi && styles.quitBtnDisabled]}
           onPress={onQuitter}
-          disabled={!choisi}
+          disabled={apprise && !choisi}
         >
           <Text style={styles.quitTxt}>Terminer</Text>
         </Pressable>
@@ -128,8 +151,10 @@ function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, 
 
 export default function FlashcardScreen() {
   const router = useRouter();
-  // `numero` = numéro de sourate (1–114) — passé par l'écran Révisions.
-  const { numero } = useLocalSearchParams<{ numero?: string }>();
+  // `numero` = numéro de sourate (1–114) ; `apprise` ('1'/'0') vient de l'écran
+  // Révisions — une sourate non apprise n'a pas de suivi SRS (voir ResultScreen).
+  const { numero, apprise: appriseParam } = useLocalSearchParams<{ numero?: string; apprise?: string }>();
+  const apprise = appriseParam !== '0';
   const language = useUserStore((s) => s.language);
 
   // ── Versets réels chargés depuis l'API (cachés en mémoire, cf. swr) ──
@@ -151,8 +176,9 @@ export default function FlashcardScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Enregistrement micro (expo-audio) ──
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // ── Enregistrement micro (expo-audio) — écoute continue avec détection de silence (VAD) ──
+  const recorder = useAudioRecorder(RECORDING_OPTIONS);
+  const recorderState = useAudioRecorderState(recorder, 200);
 
   const [phase, setPhase]       = useState<Phase>('pret');
   const [subPhase, setSubPhase] = useState<SubPhase>('recording');
@@ -165,9 +191,30 @@ export default function FlashcardScreen() {
   // session (double POST /me/revisions/:numero/review).
   const quittingRef = useRef(false);
 
+  // Refs pour la machine à états du silence — évite les closures obsolètes
+  // dans les timers, et permet de les annuler dès que le son reprend.
+  const segmentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const positionRef = useRef(0);
+  const subPhaseRef = useRef<SubPhase>('recording');
+  const versetsRef = useRef<ApiVerset[] | null>(null);
+  useEffect(() => { positionRef.current = position; }, [position]);
+  useEffect(() => { subPhaseRef.current = subPhase; }, [subPhase]);
+  useEffect(() => { versetsRef.current = versets; }, [versets]);
+
+  const clearSilenceTimers = () => {
+    if (segmentTimer.current) { clearTimeout(segmentTimer.current); segmentTimer.current = null; }
+    if (blockTimer.current) { clearTimeout(blockTimer.current); blockTimer.current = null; }
+  };
+
   // Sécurité : couper l'enregistrement + mode lecture en quittant l'écran.
+  // L'objet natif du recorder peut déjà être détruit au démontage (expo-audio) :
+  // toute lecture de ses propriétés doit donc être protégée par un try/catch.
   useEffect(() => () => {
-    if (recorder.isRecording) recorder.stop().catch(() => {});
+    clearSilenceTimers();
+    try {
+      if (recorder.isRecording) recorder.stop().catch(() => {});
+    } catch {}
     exitRecordingMode();
   }, []);
 
@@ -191,7 +238,7 @@ export default function FlashcardScreen() {
 
   /** Passe au verset suivant (ou termine), en relançant l'enregistrement. */
   const avancer = useCallback(async (i: number) => {
-    if (!versets || i + 1 >= versets.length) {
+    if (!versetsRef.current || i + 1 >= versetsRef.current.length) {
       await exitRecordingMode();
       setPhase('fini');
       return;
@@ -199,46 +246,104 @@ export default function FlashcardScreen() {
     setPosition(i + 1);
     setSubPhase('recording');
     await startRecording();
-  }, [versets, startRecording]);
+  }, [startRecording]);
 
   /**
-   * « Verset suivant » : stoppe l'enregistrement du verset courant, l'envoie
-   * au serveur (Whisper) et agit selon le verdict :
-   *   fluide          → on avance directement ;
-   *   hesitant/oublie → on révèle le verset (aide), l'utilisateur reprend.
+   * Fin de silence court détectée pendant l'écoute : on considère que le
+   * verset courant est terminé. Coupe l'enregistrement, l'envoie au serveur
+   * (best-effort), puis enchaîne sans attendre l'utilisateur :
+   *   fluide          → verset suivant, ré-écoute immédiate ;
+   *   hesitant/oublie → laisse tourner le silence long vers l'aide (on ne
+   *                     coupe pas la parole si l'utilisateur reprend vite).
    * Hors-ligne / erreur → on avance sans pénalité (best-effort).
    */
-  const versetSuivant = async () => {
-    if (!versets || subPhase !== 'recording') return;
-    await recorder.stop();
-    const uri = recorder.uri;
-    const verset = versets[position];
+  const analyserSegment = useCallback(async () => {
+    const i = positionRef.current;
+    const verset = versetsRef.current?.[i];
+    if (!verset || !recorder.isRecording) return;
+    let uri: string | null = null;
+    try {
+      await recorder.stop();
+      uri = recorder.uri;
+    } catch { /* recorder déjà arrêté/détruit */ }
     setSubPhase('analyzing');
     try {
       if (!uri) throw new Error('no-recording');
       const res = await reciteVerset(verset.id, uri);
       if (res.verdict === 'fluide') {
-        await avancer(position);
+        await avancer(i);
       } else {
         setNbAides((n) => n + 1);
         setSubPhase('aide');
       }
     } catch {
-      // best-effort : serveur indisponible → on ne bloque pas la révision
-      await avancer(position);
+      await avancer(i);
     }
-  };
+  }, [recorder, avancer]);
 
-  /** Après l'aide : l'utilisateur a relu le verset, on continue. */
-  const reprendre = async () => { await avancer(position); };
+  /** Silence long : l'utilisateur bloque → on révèle le verset automatiquement. */
+  const declencherAide = useCallback(() => {
+    if (subPhaseRef.current !== 'recording') return;
+    setNbAides((n) => n + 1);
+    setSubPhase('aide');
+  }, []);
+
+  // VAD : surveille le niveau audio (metering, en dB) pour détecter le silence.
+  // Un silence COURT coupe et envoie le verset au serveur ; un silence LONG
+  // (l'utilisateur ne reprend pas) déclenche l'aide automatiquement.
+  useEffect(() => {
+    if (phase !== 'recitation' || subPhase !== 'recording' || !recorderState.isRecording) {
+      clearSilenceTimers();
+      return;
+    }
+    const silencieux = (recorderState.metering ?? 0) < SILENCE_DB;
+    if (silencieux) {
+      if (!segmentTimer.current) {
+        segmentTimer.current = setTimeout(() => { analyserSegment(); }, SEGMENT_SILENCE_MS);
+      }
+      if (!blockTimer.current) {
+        blockTimer.current = setTimeout(() => { declencherAide(); }, BLOCK_SILENCE_MS);
+      }
+    } else {
+      clearSilenceTimers();
+    }
+  }, [recorderState.metering, recorderState.isRecording, phase, subPhase, analyserSegment, declencherAide]);
+
+  /**
+   * Après l'aide (silence long ou verdict serveur négatif) : l'utilisateur a
+   * relu le verset à voix haute. On réécoute le MÊME verset (pas le suivant),
+   * pas la relecture silencieuse.
+   */
+  const reprendEnCours = useRef(false);
+  const reprendreEcoute = useCallback(async () => {
+    if (reprendEnCours.current) return;
+    reprendEnCours.current = true;
+    try {
+      setSubPhase('recording');
+      await startRecording();
+    } finally {
+      reprendEnCours.current = false;
+    }
+  }, [startRecording]);
+
+  // Dès que l'aide est affichée, on relance immédiatement l'écoute du même
+  // verset : dès que l'utilisateur recommence à parler, la VAD ci-dessus
+  // détectera la fin de son silence et l'enverra au serveur normalement.
+  useEffect(() => {
+    if (phase === 'recitation' && subPhase === 'aide' && !recorderState.isRecording) {
+      reprendreEcoute();
+    }
+  }, [phase, subPhase, recorderState.isRecording, reprendreEcoute]);
 
   const terminerTot = async () => {
+    clearSilenceTimers();
     if (recorder.isRecording) await recorder.stop().catch(() => {});
     await exitRecordingMode();
     setPhase('fini');
   };
 
   const reset = () => {
+    clearSilenceTimers();
     setPhase('pret'); setPosition(0); setNbAides(0); setChoisi(null); setSubPhase('recording');
   };
 
@@ -278,16 +383,21 @@ export default function FlashcardScreen() {
         choisi={choisi}
         onChoisir={setChoisi}
         onRestart={reset}
+        apprise={apprise}
         onQuitter={async () => {
           if (quittingRef.current) return;
           quittingRef.current = true;
-          // Enregistre le résultat de la session (SRS) — best-effort, ne
-          // bloque jamais la sortie de l'écran.
-          try {
-            await submitRevisionReview(Number(numero), choisi!);
-          } catch {
-            // hors-ligne ou sourate pas encore apprise — pas bloquant
+          // Enregistre l'auto-évaluation de l'utilisateur (SRS serveur : score,
+          // état, prochaine révision recalculés). Best-effort : une panne
+          // réseau ici ne doit pas bloquer la sortie de l'écran.
+          if (choisi) {
+            try {
+              await reviewSourate(Number(numero), choisi);
+            } catch {
+              // hors-ligne / erreur serveur — pas bloquant, l'utilisateur sort quand même
+            }
           }
+
           // « Réviser pour regagner » : une session terminée = +1 cœur (max
           // 2/jour, plafonné CÔTÉ SERVEUR, qui vérifie que la session
           // ci-dessus a bien été enregistrée). Best-effort : si la limite est
@@ -338,9 +448,9 @@ export default function FlashcardScreen() {
             <Text style={styles.pretEmoji}>🎙️</Text>
             <Text style={styles.pretTitle}>Récite de mémoire</Text>
             <Text style={styles.pretDesc}>
-              Récite chaque verset à voix haute, puis appuie sur{'\n'}
-              « Verset suivant ». L'app analyse ta récitation.{'\n'}
-              Si tu bloques, elle t'affiche le verset.
+              Récite la sourate à voix haute, verset après verset.{'\n'}
+              L'app t'écoute et enchaîne toute seule.{'\n'}
+              Si tu bloques, elle t'affiche le verset automatiquement.
             </Text>
             {micDenied && (
               <Text style={styles.micDenied}>
@@ -365,6 +475,7 @@ export default function FlashcardScreen() {
               {!!versetCourant.translitteration && (
                 <Text style={styles.aideTranslit}>{versetCourant.translitteration.texte}</Text>
               )}
+              <Text style={styles.aideHint}>Relis-le à voix haute, l'app t'écoute…</Text>
             </Animated.View>
           </View>
         ) : subPhase === 'analyzing' ? (
@@ -397,28 +508,11 @@ export default function FlashcardScreen() {
             <Feather name="mic" size={22} color="#fff" />
             <Text style={styles.micBtnText}>Commencer la récitation</Text>
           </Pressable>
-        ) : subPhase === 'aide' ? (
-          <Pressable style={styles.micBtn} onPress={reprendre}>
-            <Feather name="arrow-right" size={20} color="#fff" />
-            <Text style={styles.micBtnText}>J'ai relu, verset suivant</Text>
-          </Pressable>
         ) : (
-          <>
-            <Pressable
-              style={[styles.micBtn, subPhase === 'analyzing' && styles.btnDisabled]}
-              onPress={versetSuivant}
-              disabled={subPhase === 'analyzing'}
-            >
-              <Feather name="check" size={20} color="#fff" />
-              <Text style={styles.micBtnText}>
-                {subPhase === 'analyzing' ? 'Analyse…' : 'Verset suivant'}
-              </Text>
-            </Pressable>
-            <Pressable style={styles.finBtn} onPress={terminerTot}>
-              <Feather name="check-circle" size={20} color="#6B4DFF" />
-              <Text style={styles.finBtnText}>J'ai terminé</Text>
-            </Pressable>
-          </>
+          <Pressable style={styles.finBtn} onPress={terminerTot}>
+            <Feather name="check-circle" size={20} color="#6B4DFF" />
+            <Text style={styles.finBtnText}>J'ai terminé</Text>
+          </Pressable>
         )}
       </View>
     </View>
@@ -473,6 +567,7 @@ const styles = StyleSheet.create({
     textAlign: 'center', lineHeight: 52, writingDirection: 'rtl', marginBottom: 14,
   },
   aideTranslit: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#8A8F99', textAlign: 'center', lineHeight: 22 },
+  aideHint: { fontFamily: 'Nunito_700Bold', fontSize: 12, color: '#F0820C', textAlign: 'center', marginTop: 14 },
 
   // Carte fluide / analyse
   fluideCard: { alignItems: 'center', gap: 14 },
