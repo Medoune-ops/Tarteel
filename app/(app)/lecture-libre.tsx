@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { useState, useCallback, useMemo } from 'react';
+import { View, Text, Pressable, TextInput, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,16 +7,23 @@ import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { useTheme } from '../../utils/useTheme';
 
+// Minuscules + suppression des accents → recherche tolérante ("fatiha" trouve
+// "Al-Fâtiha", "nas" trouve "An-Nâs"…).
+function normalize(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 // « Lecture libre » — catalogue COMPLET des 114 sourates du Coran (en arabe),
-// indépendant de la progression du parcours. Chaque ligne affiche le nom de la
-// sourate (pour la reconnaître) et ouvre le lecteur audio qui la récite en
-// entier, sans arrêt, jusqu'à la fin. Liste en défilement infini (FlatList).
+// indépendant de la progression du parcours. Une barre de recherche filtre les
+// sourates dès la première lettre (par nom, numéro ou nom arabe). Chaque ligne
+// ouvre le lecteur audio qui récite la sourate en entier, sans arrêt.
 export default function LectureLibreScreen() {
   const router = useRouter();
   const T = useTheme();
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     setError(false);
@@ -29,6 +36,19 @@ export default function LectureLibreScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Filtrage live : nom (sans accents), numéro (préfixe) ou nom arabe.
+  const filtered = useMemo(() => {
+    if (!sourates) return [];
+    const q = normalize(query.trim());
+    if (!q) return sourates;
+    return sourates.filter(
+      (s) =>
+        normalize(s.nom).includes(q) ||
+        String(s.numero).startsWith(q) ||
+        s.nomArabe.includes(query.trim()),
+    );
+  }, [sourates, query]);
 
   const renderRow = useCallback(
     ({ item, index }: { item: SourateListItem; index: number }) => (
@@ -81,25 +101,50 @@ export default function LectureLibreScreen() {
           <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement des sourates…</Text>
         </View>
       ) : (
-        <FlatList
-          data={sourates}
-          keyExtractor={(s) => String(s.numero)}
-          renderItem={renderRow}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-          ListHeaderComponent={
-            <Text style={[styles.intro, { color: T.textSecondary }]}>
-              Choisis une sourate pour l'écouter en entier 🔊
-            </Text>
-          }
-          ListFooterComponent={<View style={{ height: 24 }} />}
-          // Défilement infini fluide : la liste virtualise les lignes et n'en
-          // rend qu'un écran à la fois, puis d'autres au fil du défilement.
-          initialNumToRender={12}
-          maxToRenderPerBatch={12}
-          windowSize={11}
-          removeClippedSubviews
-        />
+        <>
+          {/* Barre de recherche */}
+          <View style={[styles.searchBar, { backgroundColor: T.inputBg, borderColor: T.border }]}>
+            <Feather name="search" size={18} color={T.textTertiary} />
+            <TextInput
+              style={[styles.searchInput, { color: T.text }]}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Rechercher une sourate…"
+              placeholderTextColor={T.textTertiary}
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {query.length > 0 && (
+              <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                <Feather name="x" size={18} color={T.textTertiary} />
+              </Pressable>
+            )}
+          </View>
+
+          <FlatList
+            data={filtered}
+            keyExtractor={(s) => String(s.numero)}
+            renderItem={renderRow}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <Text style={{ fontSize: 34 }}>🔍</Text>
+                <Text style={[styles.emptyText, { color: T.textSecondary }]}>Aucune sourate trouvée.</Text>
+              </View>
+            }
+            ListFooterComponent={<View style={{ height: 24 }} />}
+            // Défilement infini fluide : la liste virtualise les lignes et n'en
+            // rend qu'un écran à la fois, puis d'autres au fil du défilement.
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            windowSize={11}
+            removeClippedSubviews
+          />
+        </>
       )}
     </View>
   );
@@ -118,8 +163,16 @@ const styles = StyleSheet.create({
   retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#6B4DFF' },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
 
-  content: { paddingHorizontal: 18, paddingTop: 16 },
-  intro: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, textAlign: 'center', marginBottom: 14 },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: 18, marginTop: 14, marginBottom: 2,
+    paddingHorizontal: 14, height: 48, borderRadius: 14, borderWidth: 1,
+  },
+  searchInput: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 15, paddingVertical: 0 },
+
+  content: { paddingHorizontal: 18, paddingTop: 12 },
+  emptyBox: { alignItems: 'center', paddingVertical: 48, gap: 12 },
+  emptyText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
   divider: { borderTopWidth: 1 },
   numBadge: {
