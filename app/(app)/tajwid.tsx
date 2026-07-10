@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +36,15 @@ export default function TajwidScreen() {
 
   const onPlay = useCallback(async (index: number) => {
     if (!sourates || starting != null) return;
+    // En Expo Go, le module audio natif est absent : on explique au lieu de
+    // planter, mais la page (liste + récitateurs) reste entièrement visible.
+    if (!AUDIO_AVAILABLE) {
+      Alert.alert(
+        'Écoute audio',
+        "L'écoute du Coran nécessite un development build (npx expo run:android). Indisponible dans Expo Go.",
+      );
+      return;
+    }
     setStarting(sourates[index]!.numero);
     try {
       const lite = sourates.map((s) => ({ numero: s.numero, nom: s.nom, nomArabe: s.nomArabe }));
@@ -88,14 +97,7 @@ export default function TajwidScreen() {
         <Text style={styles.headerSub}>Continue même écran éteint 🌙</Text>
       </LinearGradient>
 
-      {!AUDIO_AVAILABLE ? (
-        <View style={styles.stateBox}>
-          <Text style={{ fontSize: 40 }}>🎧</Text>
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>
-            L'écoute audio du Coran nécessite un development build (indisponible dans Expo Go).
-          </Text>
-        </View>
-      ) : error ? (
+      {error ? (
         <View style={styles.stateBox}>
           <Feather name="wifi-off" size={32} color={T.textTertiary} />
           <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger les sourates.</Text>
@@ -110,6 +112,17 @@ export default function TajwidScreen() {
         </View>
       ) : (
         <>
+          {/* Bannière Expo Go : la page est visible, seule l'écoute réelle
+              nécessite un development build. */}
+          {!AUDIO_AVAILABLE && (
+            <View style={styles.notice}>
+              <Feather name="info" size={16} color="#8A5CF0" />
+              <Text style={styles.noticeText}>
+                Aperçu · l'écoute audio nécessite un development build
+              </Text>
+            </View>
+          )}
+
           {/* Choix du récitateur */}
           <View style={styles.reciterWrap}>
             <Text style={[styles.reciterLabel, { color: T.textSecondary }]}>Récitateur</Text>
@@ -167,6 +180,12 @@ const styles = StyleSheet.create({
   retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#8A5CF0' },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
 
+  notice: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#EFE8FF', marginHorizontal: 18, marginTop: 14,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12,
+  },
+  noticeText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 12.5, color: '#6B4D9A' },
   reciterWrap: { paddingTop: 14 },
   reciterLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, letterSpacing: 0.5, marginLeft: 18, marginBottom: 8, textTransform: 'uppercase' },
   reciterRow: { paddingHorizontal: 18, gap: 8 },
