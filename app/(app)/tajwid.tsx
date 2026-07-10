@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/reciters';
 import { playSurates, AUDIO_AVAILABLE } from '../../constants/trackPlayer';
+import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
 
 // « Écoute du Coran » (badge Tajwid) — catalogue des 114 sourates en audio
 // complet. On choisit un récitateur puis une sourate : la lecture démarre et se
@@ -34,8 +35,11 @@ export default function TajwidScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  // Ordre d'affichage : Al-Fatiha en tête, puis décroissant (114 → 2).
+  const ordered = useMemo(() => (sourates ? fatihaFirstThenDesc(sourates) : []), [sourates]);
+
   const onPlay = useCallback(async (index: number) => {
-    if (!sourates || starting != null) return;
+    if (ordered.length === 0 || starting != null) return;
     // En Expo Go, le module audio natif est absent : on explique au lieu de
     // planter, mais la page (liste + récitateurs) reste entièrement visible.
     if (!AUDIO_AVAILABLE) {
@@ -45,9 +49,10 @@ export default function TajwidScreen() {
       );
       return;
     }
-    setStarting(sourates[index]!.numero);
+    setStarting(ordered[index]!.numero);
     try {
-      const lite = sourates.map((s) => ({ numero: s.numero, nom: s.nom, nomArabe: s.nomArabe }));
+      // La file suit l'ordre AFFICHÉ (sourate suivante = suivante à l'écran).
+      const lite = ordered.map((s) => ({ numero: s.numero, nom: s.nom, nomArabe: s.nomArabe }));
       await playSurates(lite, reciterById(reciterId), index);
       router.push('/(app)/coran-player');
     } catch {
@@ -55,7 +60,7 @@ export default function TajwidScreen() {
     } finally {
       setStarting(null);
     }
-  }, [sourates, reciterId, starting, router]);
+  }, [ordered, reciterId, starting, router]);
 
   const renderRow = useCallback(
     ({ item, index }: { item: SourateListItem; index: number }) => (
@@ -150,7 +155,7 @@ export default function TajwidScreen() {
           </View>
 
           <FlatList
-            data={sourates}
+            data={ordered}
             keyExtractor={(s) => String(s.numero)}
             renderItem={renderRow}
             showsVerticalScrollIndicator={false}

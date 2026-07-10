@@ -94,6 +94,14 @@ describe('Écran « Lecture libre » (catalogue des sourates)', () => {
     expect(all).toContain('An-Nas');
   });
 
+  it('ordonne : Al-Fatiha en tête, puis décroissant (114 → 2)', async () => {
+    const r = await renderScreen();
+    const all = textOf(r.root);
+    // Al-Fatiha (1) avant An-Nas (114) avant Al-Baqara (2).
+    expect(all.indexOf('Al-Fatiha')).toBeLessThan(all.indexOf('An-Nas'));
+    expect(all.indexOf('An-Nas')).toBeLessThan(all.indexOf('Al-Baqara'));
+  });
+
   it('charge le catalogue complet via fetchSourates', async () => {
     await renderScreen();
     expect(mockFetchSourates).toHaveBeenCalledTimes(1);
