@@ -17,6 +17,8 @@ export default function AppLayout() {
       <Stack.Screen name="streak-goal" />
       <Stack.Screen name="streak" />
       <Stack.Screen name="gems" />
+      <Stack.Screen name="tajwid" />
+      <Stack.Screen name="coran-player" />
       <Stack.Screen name="podiums" />
       <Stack.Screen name="subscription" />
       <Stack.Screen name="hearts" />
