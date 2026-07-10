@@ -3,11 +3,13 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import TrackPlayer, { useActiveTrack, useProgress, useIsPlaying, RepeatMode } from 'react-native-track-player';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { RECITERS, reciterById } from '../../constants/reciters';
-import { changeReciter, getCurrentReciterId, getCurrentSourates } from '../../constants/trackPlayer';
+import {
+  useActiveTrack, useProgress, useIsPlaying, RepeatMode, audioControls,
+  changeReciter, getCurrentReciterId, getCurrentSourates,
+} from '../../constants/trackPlayer';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 
@@ -35,19 +37,19 @@ export default function CoranPlayerScreen() {
 
   // Boucle : RepeatMode.Track = répète la sourate ; sinon Queue = enchaîne.
   useEffect(() => {
-    TrackPlayer.setRepeatMode(looping ? RepeatMode.Track : RepeatMode.Queue).catch(() => {});
+    audioControls.setRepeatMode(looping ? RepeatMode.Track : RepeatMode.Queue);
   }, [looping]);
 
   const applySpeed = (rate: number) => {
     setSpeed(rate);
-    TrackPlayer.setRate(rate).catch(() => {});
+    audioControls.setRate(rate);
   };
 
   const onChangeReciter = async (id: string) => {
     if (id === reciterId) return;
     setReciterId(id);
     await changeReciter(reciterById(id));
-    TrackPlayer.setRate(speed).catch(() => {}); // conserve la vitesse choisie
+    audioControls.setRate(speed); // conserve la vitesse choisie
   };
 
   // Nom arabe de la sourate courante (via la file mémorisée).
@@ -96,16 +98,16 @@ export default function CoranPlayerScreen() {
 
             {/* Contrôles principaux */}
             <View style={styles.controls}>
-              <Pressable onPress={() => TrackPlayer.skipToPrevious().catch(() => {})} hitSlop={10}>
+              <Pressable onPress={() => audioControls.skipToPrevious()} hitSlop={10}>
                 <Feather name="skip-back" size={30} color={T.text} />
               </Pressable>
               <Pressable
                 style={styles.playBtn}
-                onPress={() => (playing ? TrackPlayer.pause() : TrackPlayer.play())}
+                onPress={() => (playing ? audioControls.pause() : audioControls.play())}
               >
                 <Feather name={playing ? 'pause' : 'play'} size={32} color="#fff" />
               </Pressable>
-              <Pressable onPress={() => TrackPlayer.skipToNext().catch(() => {})} hitSlop={10}>
+              <Pressable onPress={() => audioControls.skipToNext()} hitSlop={10}>
                 <Feather name="skip-forward" size={30} color={T.text} />
               </Pressable>
             </View>
