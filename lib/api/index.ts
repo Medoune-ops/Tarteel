@@ -21,7 +21,7 @@ export { fetchReferral, redeemReferral } from './referral';
 export type { ReferralInfo } from './referral';
 export type { GemsStatus, GemLedgerEntry, GemPackId } from './gems';
 export type { PodiumEntry, LigueTier } from './rewards';
-export { reciteVerset, reciteLessonStep, fetchRevisions, reviewSourate, fetchLettreRevisions, reviewLettre } from './revision';
+export { reciteVerset, reciteLessonStep, fetchRevisions, reviewSourate, fetchLettreRevisions, reviewLettre, reciteLettreStep } from './revision';
 export type { ReciteVersetResult, ReciteStepResult, SourateRevisionView, RevisionQuality, LettreRevisionView } from './revision';
 export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';
 export { bootstrapSession } from './session';

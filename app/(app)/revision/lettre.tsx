@@ -2,10 +2,12 @@ import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-nati
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import * as Speech from 'expo-speech';
-import { fetchLesson, reviewLettre, type RevisionQuality } from '../../../lib/api';
+import { useAudioRecorder, RecordingPresets } from 'expo-audio';
+import { fetchLesson, reviewLettre, reciteLettreStep, type RevisionQuality } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
+import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../../../lib/audio/recorder';
 import { playRemoteAudio, stopRemoteAudio } from '../../../constants/sounds';
 import { getLetterSound } from '../../../constants/letterSounds';
 import type { DiscoveryStep } from '../../../constants/lessonEngine';
@@ -13,12 +15,21 @@ import { useTheme } from '../../../utils/useTheme';
 import DeviceStatusBar from '../../../components/StatusBar';
 
 type Reponse = 'facile' | 'difficile' | 'oublie';
+/** État de la carte courante pendant la session vocale. */
+type CardPhase = 'idle' | 'recording' | 'analyzing' | 'correct' | 'wrong';
 
 const SCORES: Record<Reponse, { label: string; emoji: string; bg: string }> = {
   facile:    { label: 'Facile',    emoji: '😊', bg: '#34C724' },
   difficile: { label: 'Difficile', emoji: '😅', bg: '#F6B100' },
   oublie:    { label: 'À revoir',  emoji: '😬', bg: '#FF6B6B' },
 };
+
+/** Verdict SRS calculé depuis le taux de réussite Whisper de la session. */
+function qualityFromRatio(ratio: number): Reponse {
+  if (ratio >= 0.8) return 'facile';
+  if (ratio >= 0.4) return 'difficile';
+  return 'oublie';
+}
 
 /** Joue l'audio d'une carte : mp3 local de lettre > TTS arabe > URL distante. */
 function playCard(step: DiscoveryStep) {
@@ -29,11 +40,12 @@ function playCard(step: DiscoveryStep) {
 }
 
 /**
- * Révision d'une leçon d'alphabet/harakat : les lettres/syllabes de la leçon
- * défilent en flashcards (arabe affiché → l'utilisateur se teste → tap pour
- * révéler nom/son + audio), puis auto-évaluation finale qui recalcule le SRS
- * côté serveur (POST /me/revisions/lettres/:id/review). Pas de dictée vocale :
- * contrairement aux versets, ces leçons n'ont pas d'endpoint /recite.
+ * Révision vocale d'une leçon d'alphabet/harakat : chaque lettre/syllabe
+ * s'affiche, l'utilisateur la PRONONCE au micro, Whisper (serveur) juge.
+ * Faux → la bonne prononciation est montrée et jouée. À la fin, le verdict
+ * SRS est appliqué automatiquement depuis le taux de réussite réel
+ * (POST /me/revisions/lettres/:id/review). Si le micro est refusé, on
+ * retombe sur des flashcards à révéler + auto-évaluation manuelle.
  */
 export default function LettreRevisionScreen() {
   const router = useRouter();
@@ -44,58 +56,117 @@ export default function LettreRevisionScreen() {
   const [cards, setCards] = useState<DiscoveryStep[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [index, setIndex] = useState(0);
-  const [revealed, setRevealed] = useState(false);
+  const [phase, setPhase] = useState<CardPhase>('idle');
+  const [successes, setSuccesses] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [micDenied, setMicDenied] = useState(false);
 
-  const [choisi, setChoisi] = useState<Reponse | null>(null);
+  // ── Fin de session : application du SRS ──
+  const [applied, setApplied] = useState<Reponse | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  // Empêche la double application (double effet / double tap réessayer).
+  const applyingRef = useRef(false);
+
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const load = useCallback(async () => {
     if (!lessonId) { setLoadError(true); return; }
     setLoadError(false);
     try {
       const lesson = await swrFetch(`lesson:${lessonId}`, () => fetchLesson(lessonId));
-      const discoveries = lesson.steps.filter((s): s is DiscoveryStep => s.type === 'discovery');
-      setCards(discoveries);
+      setCards(lesson.steps.filter((s): s is DiscoveryStep => s.type === 'discovery'));
     } catch {
       setLoadError(true);
     }
   }, [lessonId]);
 
   useEffect(() => { load(); }, [load]);
-  // Coupe l'audio en quittant l'écran.
-  useEffect(() => () => { stopRemoteAudio(); Speech.stop(); }, []);
 
-  const reveal = useCallback(() => {
+  // Micro : demandé à l'entrée ; refus → mode flashcard manuel (fallback).
+  useEffect(() => {
+    ensureMicPermission().then((granted) => setMicDenied(!granted));
+  }, []);
+
+  // Sécurité : couper enregistrement + audio en quittant l'écran.
+  useEffect(() => () => {
+    try {
+      if (recorder.isRecording) recorder.stop().catch(() => {});
+    } catch {}
+    exitRecordingMode();
+    stopRemoteAudio();
+    Speech.stop();
+  }, []);
+
+  /** Démarre l'enregistrement de la prononciation. */
+  const startRecording = useCallback(async () => {
+    stopRemoteAudio();
+    Speech.stop();
+    await enterRecordingMode();
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+    setPhase('recording');
+  }, [recorder]);
+
+  /** Arrête l'enregistrement et envoie au judging Whisper. */
+  const stopAndJudge = useCallback(async () => {
     if (!cards) return;
-    setRevealed(true);
-    playCard(cards[index]);
-  }, [cards, index]);
+    const card = cards[index];
+    let uri: string | null = null;
+    try {
+      await recorder.stop();
+      uri = recorder.uri;
+    } catch { /* recorder déjà arrêté/détruit */ }
+    setPhase('analyzing');
+    try {
+      if (!uri) throw new Error('no-recording');
+      const res = await reciteLettreStep(card.id, uri);
+      if (res.verdict === 'fluide') {
+        setSuccesses((n) => n + 1);
+        setPhase('correct');
+        playCard(card); // renforce la bonne prononciation
+      } else {
+        setPhase('wrong');
+        playCard(card); // fait entendre la bonne prononciation
+      }
+    } catch {
+      // Réseau/ASR indisponible : on ne pénalise pas — on laisse réessayer.
+      setPhase('idle');
+    }
+  }, [cards, index, recorder]);
 
   const next = useCallback(() => {
     if (!cards) return;
     stopRemoteAudio();
     Speech.stop();
     if (index + 1 >= cards.length) setFinished(true);
-    else { setIndex(index + 1); setRevealed(false); }
+    else { setIndex(index + 1); setPhase('idle'); }
   }, [cards, index]);
 
-  const choisir = useCallback(async (rep: Reponse) => {
-    if (saving || !lessonId) return;
-    setChoisi(rep);
+  /** Applique le verdict SRS (auto en mode vocal, choisi en mode manuel). */
+  const applyReview = useCallback(async (rep: Reponse) => {
+    if (applyingRef.current || !lessonId) return;
+    applyingRef.current = true;
     setSaving(true);
     setSaveError(false);
     try {
       await reviewLettre(lessonId, rep as RevisionQuality);
-      router.back();
+      setApplied(rep);
     } catch {
       setSaveError(true);
-      setChoisi(null);
     } finally {
+      applyingRef.current = false;
       setSaving(false);
     }
-  }, [lessonId, saving, router]);
+  }, [lessonId]);
+
+  // Mode vocal : le verdict est appliqué automatiquement à la fin de session.
+  const autoQuality = cards && cards.length > 0 ? qualityFromRatio(successes / cards.length) : 'oublie';
+  useEffect(() => {
+    if (finished && !micDenied && !applied && !saving && !saveError) {
+      applyReview(autoQuality);
+    }
+  }, [finished, micDenied, applied, saving, saveError, autoQuality, applyReview]);
 
   // ── États chargement / erreur ──
   if (loadError) {
@@ -130,52 +201,102 @@ export default function LettreRevisionScreen() {
     );
   }
 
-  // ── Fin de session : auto-évaluation → SRS ──
+  // ── Écran de fin ──
   if (finished) {
+    const pct = Math.round((successes / cards.length) * 100);
+    const verdict = SCORES[applied ?? autoQuality];
     return (
       <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
-        <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.header}>
-          <Text style={styles.headerEmoji}>🎉</Text>
+        <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.resultGrad}>
+          <Text style={styles.headerEmoji}>{micDenied ? '📖' : verdict.emoji}</Text>
           <Text style={styles.headerTitle}>{titre ?? 'Révision'}</Text>
-          <Text style={styles.headerSub}>{cards.length} cartes revues</Text>
+          {!micDenied && (
+            <>
+              <View style={styles.resultCircle}>
+                <Text style={styles.resultPct}>{pct}%</Text>
+                <Text style={styles.resultSub}>Prononciation</Text>
+              </View>
+              <Text style={styles.headerSub}>{successes}/{cards.length} cartes réussies</Text>
+            </>
+          )}
         </LinearGradient>
+
         <View style={styles.body}>
-          <Text style={[styles.question, { color: T.text }]}>Comment tu t'es senti ?</Text>
-          {saveError && <Text style={styles.errorText}>Une erreur est survenue, réessaie.</Text>}
-          <View style={styles.btnsCol}>
-            {(['oublie', 'difficile', 'facile'] as Reponse[]).map((rep) => {
-              const s = SCORES[rep];
-              const loading = saving && choisi === rep;
-              return (
-                <Pressable
-                  key={rep}
-                  style={[styles.repBtn, { backgroundColor: s.bg }, saving && choisi !== rep && { opacity: 0.5 }]}
-                  onPress={() => choisir(rep)}
-                  disabled={saving}
-                >
-                  <Text style={styles.repBtnEmoji}>{s.emoji}</Text>
-                  <Text style={styles.repBtnLabel}>{s.label}</Text>
-                  {loading && <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 8 }} />}
-                </Pressable>
-              );
-            })}
-          </View>
+          {micDenied ? (
+            // Fallback manuel : micro refusé → auto-évaluation classique.
+            <>
+              <Text style={[styles.question, { color: T.text }]}>Comment tu t'es senti ?</Text>
+              {saveError && <Text style={styles.errorText}>Une erreur est survenue, réessaie.</Text>}
+              <View style={styles.btnsCol}>
+                {(['oublie', 'difficile', 'facile'] as Reponse[]).map((rep) => {
+                  const s = SCORES[rep];
+                  return (
+                    <Pressable
+                      key={rep}
+                      style={[styles.repBtn, { backgroundColor: s.bg }, saving && { opacity: 0.6 }]}
+                      onPress={async () => { await applyReview(rep); if (!applyingRef.current) router.back(); }}
+                      disabled={saving || applied != null}
+                    >
+                      <Text style={styles.repBtnEmoji}>{s.emoji}</Text>
+                      <Text style={styles.repBtnLabel}>{s.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : (
+            // Mode vocal : verdict appliqué automatiquement depuis le score réel.
+            <>
+              {saving && (
+                <View style={styles.center}>
+                  <ActivityIndicator size="small" color="#6B4DFF" />
+                  <Text style={[styles.stateText, { color: T.textSecondary }]}>Mise à jour de ta maîtrise…</Text>
+                </View>
+              )}
+              {applied && (
+                <View style={styles.center}>
+                  <View style={[styles.verdictPill, { backgroundColor: verdict.bg }]}>
+                    <Text style={styles.repBtnEmoji}>{verdict.emoji}</Text>
+                    <Text style={styles.repBtnLabel}>{verdict.label}</Text>
+                  </View>
+                  <Text style={[styles.stateText, { color: T.textSecondary }]}>
+                    Verdict appliqué d'après ta prononciation réelle.
+                  </Text>
+                </View>
+              )}
+              {saveError && (
+                <View style={styles.center}>
+                  <Text style={styles.errorText}>Impossible d'enregistrer le résultat.</Text>
+                  <Pressable style={styles.retryBtn} onPress={() => applyReview(autoQuality)}>
+                    <Text style={styles.retryLabel}>Réessayer</Text>
+                  </Pressable>
+                </View>
+              )}
+            </>
+          )}
+
           <Pressable
             style={styles.restartBtn}
-            onPress={() => { setIndex(0); setRevealed(false); setFinished(false); }}
+            onPress={() => { setIndex(0); setPhase('idle'); setSuccesses(0); setFinished(false); setApplied(null); setSaveError(false); }}
             disabled={saving}
           >
             <Feather name="refresh-cw" size={16} color="#6B4DFF" />
-            <Text style={styles.restartTxt}>Revoir les cartes</Text>
+            <Text style={styles.restartTxt}>Recommencer</Text>
           </Pressable>
+          {applied != null && (
+            <Pressable style={styles.quitBtn} onPress={() => router.back()}>
+              <Text style={styles.quitTxt}>Terminer</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     );
   }
 
-  // ── Flashcard courante ──
+  // ── Carte courante ──
   const card = cards[index];
+  const showAnswer = phase === 'correct' || phase === 'wrong';
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
@@ -191,15 +312,23 @@ export default function LettreRevisionScreen() {
 
       <View style={styles.cardZone}>
         <Text style={[styles.consigne, { color: T.textSecondary }]}>
-          {revealed ? 'Tu avais bon ?' : 'Comment se lit cette lettre ?'}
+          {phase === 'idle' && (micDenied ? 'Comment se lit cette lettre ?' : 'Prononce cette lettre à voix haute')}
+          {phase === 'recording' && 'Je t\'écoute…'}
+          {phase === 'analyzing' && 'Analyse de ta prononciation…'}
+          {phase === 'correct' && 'Bien prononcé !'}
+          {phase === 'wrong' && 'Écoute la bonne prononciation'}
         </Text>
 
-        <Pressable
-          style={[styles.flashcard, { backgroundColor: T.cardBg }]}
-          onPress={revealed ? undefined : reveal}
+        <View
+          style={[
+            styles.flashcard,
+            { backgroundColor: T.cardBg },
+            phase === 'correct' && styles.cardOk,
+            phase === 'wrong' && styles.cardKo,
+          ]}
         >
           <Text style={[styles.arabe, { color: T.text }]}>{card.arabe}</Text>
-          {revealed ? (
+          {showAnswer && (
             <>
               <Text style={styles.translit}>{card.translitteration}</Text>
               <Text style={[styles.traduction, { color: T.textSecondary }]}>{card.traduction}</Text>
@@ -207,22 +336,44 @@ export default function LettreRevisionScreen() {
                 <Feather name="volume-2" size={26} color="#2A9E1C" />
               </Pressable>
             </>
-          ) : (
-            <Text style={[styles.tapHint, { color: T.textSecondary }]}>Appuie pour révéler</Text>
           )}
-        </Pressable>
+          {phase === 'analyzing' && <ActivityIndicator size="small" color="#6B4DFF" style={{ marginTop: 8 }} />}
+        </View>
       </View>
 
       <View style={styles.footer}>
-        {revealed ? (
+        {micDenied ? (
+          // Fallback sans micro : révéler puis passer.
+          showAnswer ? (
+            <Pressable style={styles.nextBtn} onPress={next}>
+              <Text style={styles.nextLabel}>{index + 1 >= cards.length ? 'Terminer' : 'Suivant'}</Text>
+              <Feather name="arrow-right" size={18} color="#fff" />
+            </Pressable>
+          ) : (
+            <Pressable style={[styles.nextBtn, { backgroundColor: '#6B4DFF', borderBottomColor: '#4A30CC' }]} onPress={() => { setPhase('wrong'); playCard(card); }}>
+              <Text style={styles.nextLabel}>Révéler</Text>
+              <Feather name="eye" size={18} color="#fff" />
+            </Pressable>
+          )
+        ) : phase === 'idle' ? (
+          <Pressable style={[styles.micBtn, { backgroundColor: '#6B4DFF' }]} onPress={startRecording}>
+            <Feather name="mic" size={26} color="#fff" />
+            <Text style={styles.nextLabel}>Appuie et prononce</Text>
+          </Pressable>
+        ) : phase === 'recording' ? (
+          <Pressable style={[styles.micBtn, { backgroundColor: '#FF4B4B' }]} onPress={stopAndJudge}>
+            <Feather name="square" size={22} color="#fff" />
+            <Text style={styles.nextLabel}>J'ai fini</Text>
+          </Pressable>
+        ) : phase === 'analyzing' ? (
+          <View style={[styles.micBtn, { backgroundColor: '#9AA0AA' }]}>
+            <ActivityIndicator size="small" color="#fff" />
+            <Text style={styles.nextLabel}>Analyse…</Text>
+          </View>
+        ) : (
           <Pressable style={styles.nextBtn} onPress={next}>
             <Text style={styles.nextLabel}>{index + 1 >= cards.length ? 'Terminer' : 'Suivant'}</Text>
             <Feather name="arrow-right" size={18} color="#fff" />
-          </Pressable>
-        ) : (
-          <Pressable style={[styles.nextBtn, { backgroundColor: '#6B4DFF' }]} onPress={reveal}>
-            <Text style={styles.nextLabel}>Révéler</Text>
-            <Feather name="eye" size={18} color="#fff" />
           </Pressable>
         )}
       </View>
@@ -243,16 +394,17 @@ const styles = StyleSheet.create({
   progText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13 },
 
   cardZone: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 20 },
-  consigne: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17 },
+  consigne: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17, textAlign: 'center' },
   flashcard: {
     width: '100%', maxWidth: 380, borderRadius: 28, paddingVertical: 44, paddingHorizontal: 24,
     alignItems: 'center', gap: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 20, elevation: 4,
   },
+  cardOk: { borderWidth: 3, borderColor: '#34C724' },
+  cardKo: { borderWidth: 3, borderColor: '#FF6B6B' },
   arabe: { fontSize: 84, lineHeight: 120, textAlign: 'center' },
   translit: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#6B4DFF' },
   traduction: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, textAlign: 'center' },
-  tapHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: 8 },
   audioBtn: {
     marginTop: 8, width: 56, height: 56, borderRadius: 28,
     backgroundColor: 'rgba(52,199,36,0.12)', alignItems: 'center', justifyContent: 'center',
@@ -264,15 +416,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#34C724', borderRadius: 16, paddingVertical: 16,
     borderBottomWidth: 4, borderBottomColor: '#2A9E1C',
   },
+  micBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    borderRadius: 16, paddingVertical: 16,
+  },
   nextLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#fff' },
 
-  header: { paddingTop: 16, paddingBottom: 32, paddingHorizontal: 24, alignItems: 'center' },
-  headerEmoji: { fontSize: 40, marginBottom: 8 },
+  resultGrad: { paddingTop: 16, paddingBottom: 30, paddingHorizontal: 24, alignItems: 'center', gap: 6 },
+  headerEmoji: { fontSize: 40, marginBottom: 4 },
   headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff', textAlign: 'center' },
-  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.85)' },
+  resultCircle: {
+    width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center', marginVertical: 8,
+  },
+  resultPct: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#fff' },
+  resultSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.85)' },
+
   body: { flex: 1, padding: 24, justifyContent: 'center' },
   question: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, textAlign: 'center', marginBottom: 24 },
-  errorText: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#FF4B4B', textAlign: 'center', marginBottom: 16 },
+  errorText: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#FF4B4B', textAlign: 'center', marginBottom: 8 },
   btnsCol: { gap: 12 },
   repBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -280,9 +443,18 @@ const styles = StyleSheet.create({
   },
   repBtnEmoji: { fontSize: 22 },
   repBtnLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#fff' },
+  verdictPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 20, paddingHorizontal: 24, paddingVertical: 12,
+  },
   restartBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    marginTop: 20, paddingVertical: 12,
+    marginTop: 24, paddingVertical: 12,
   },
   restartTxt: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#6B4DFF' },
+  quitBtn: {
+    marginTop: 4, backgroundColor: '#34C724', borderRadius: 16, paddingVertical: 15,
+    alignItems: 'center', borderBottomWidth: 4, borderBottomColor: '#2A9E1C',
+  },
+  quitTxt: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#fff' },
 });
