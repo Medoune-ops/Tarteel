@@ -228,7 +228,16 @@ export default function LiguesScreen() {
                   </View>
                 </View>
                 {/* nom + xp */}
-                <Text style={[styles.podName, first && { color: '#8A5A0C' }]} numberOfLines={1}>{p.name}</Text>
+                <Text
+                  style={[
+                    styles.podName,
+                    { color: T.text },
+                    first && { color: '#8A5A0C' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {p.name}
+                </Text>
                 <View style={[styles.podXpPill, first && { backgroundColor: '#fff' }]}>
                   <Feather name="zap" size={11} color={st.accent} />
                   <Text style={[styles.podXp, { color: st.accent }]}>{p.weeklyXp}</Text>
@@ -368,7 +377,7 @@ const styles = StyleSheet.create({
   podAvatarText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, color: '#fff' },
   medal: { position: 'absolute', bottom: -8, width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
   medalText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 13, color: '#fff' },
-  podName: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, color: '#1B2333', maxWidth: '100%' },
+  podName: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, maxWidth: '100%' },
   podXpPill: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 5, marginBottom: 8, backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   podXp: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12 },
   // marche 3D
