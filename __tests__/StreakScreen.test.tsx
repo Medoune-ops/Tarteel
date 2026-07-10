@@ -12,6 +12,7 @@ const mockTransactions = [
 ];
 let mockGems = { gems: 500, streakFreezes: 1, doubleXpUntil: null, doubleXpActive: false, transactions: mockTransactions };
 const mockFetchGems = jest.fn((..._a: unknown[]) => Promise.resolve(mockGems));
+const mockRepairStreak = jest.fn((..._a: unknown[]) => Promise.resolve({ streak: 7 }));
 const mockStoreState: Record<string, unknown> = { streak: 7, streakGoal: null, streakFreezes: 1 };
 
 jest.mock('expo-router', () => ({
@@ -23,7 +24,13 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('../components/StatusBar', () => () => null);
-jest.mock('../lib/api', () => ({ fetchGems: (...a: unknown[]) => mockFetchGems(...a) }));
+jest.mock('../lib/api', () => ({
+  fetchGems: (...a: unknown[]) => mockFetchGems(...a),
+  repairStreak: (...a: unknown[]) => mockRepairStreak(...a),
+}));
+jest.mock('../lib/api/client', () => ({
+  ApiError: class ApiError extends Error { status = 0; code = ''; },
+}));
 jest.mock('../utils/useTheme', () => ({
   useTheme: () => ({
     pageBg: '#fff', cardBg: '#fff', text: '#000', textSecondary: '#666', textTertiary: '#999', divider: '#eee', isDark: false,
@@ -63,6 +70,7 @@ describe('Écran « Ma série » (historique des flammes)', () => {
     mockPush.mockClear();
     mockBack.mockClear();
     mockFetchGems.mockClear();
+    mockRepairStreak.mockClear();
     mockStoreState.streakGoal = null;
     mockGems = { gems: 500, streakFreezes: 1, doubleXpUntil: null, doubleXpActive: false, transactions: mockTransactions };
   });
@@ -95,6 +103,12 @@ describe('Écran « Ma série » (historique des flammes)', () => {
     const r = await renderScreen();
     await press(r, 'Fixer un objectif de série');
     expect(mockPush).toHaveBeenCalledWith('/(app)/streak-goal');
+  });
+
+  it('« Restaurer ma série » (payer) appelle repairStreak', async () => {
+    const r = await renderScreen();
+    await press(r, 'Restaurer ma série');
+    expect(mockRepairStreak).toHaveBeenCalled();
   });
 
   it('affiche un état vide quand aucun évènement de série', async () => {
