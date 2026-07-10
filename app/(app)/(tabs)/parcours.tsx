@@ -1,5 +1,5 @@
 import { View, Text, Pressable, StyleSheet, useWindowDimensions, Alert, ActivityIndicator, FlatList } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
@@ -622,9 +622,11 @@ const chestStyles = StyleSheet.create({
 
 export default function ParcoursScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const T = useTheme();
   const { streak, xp, hearts, gems, isPremium, syncHearts } = useUserStore();
   const { width, height } = useWindowDimensions();
+  const listRef = useRef<FlatList<ParcoursSection>>(null);
 
   const [sections, setSections] = useState<ParcoursSection[]>([]);
   const [loadError, setLoadError] = useState(false);
@@ -632,23 +634,28 @@ export default function ParcoursScreen() {
   const [canLoadMore, setCanLoadMore] = useState(true);
   const ITEMS_PER_PAGE = 5;
 
-  // Liste complète triée (section active en tête) + nb de sections affichées.
+  // Liste complète dans l'ordre naturel (section 1, 2, 3…) + nb de sections affichées.
   const orderedRef = useRef<ParcoursSection[]>([]);
   const shownRef = useRef(0);
+  // Index (dans la liste affichée) de la section active — pour l'auto-scroll.
+  const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
+  const hasAutoScrolledRef = useRef(false);
 
   /** Applique la liste complète en gardant le nb de sections déjà affichées. */
   const applyAll = useCallback((all: ParcoursSection[]) => {
-    // La section active = celle qui contient la leçon en cours → en tête.
+    // On garde l'ordre naturel des sections (comme un vrai parcours) : pas de
+    // réordonnancement, sinon les sections déjà terminées "disparaissent"
+    // visuellement (elles se retrouvent après la section active au lieu d'avant).
+    orderedRef.current = all;
     const activeIndex = all.findIndex((s) => s.nodes.some((n) => n.state === 'active'));
-    const ordered =
-      activeIndex > 0
-        ? [all[activeIndex], ...all.slice(0, activeIndex), ...all.slice(activeIndex + 1)]
-        : all;
-    orderedRef.current = ordered;
-    const count = Math.min(Math.max(shownRef.current, ITEMS_PER_PAGE), ordered.length);
+    // On affiche au moins jusqu'à la section active (+1 page), pour qu'elle
+    // soit déjà montée quand on scrolle vers elle au premier chargement.
+    const minCount = activeIndex >= 0 ? activeIndex + 1 : ITEMS_PER_PAGE;
+    const count = Math.min(Math.max(shownRef.current, ITEMS_PER_PAGE, minCount), all.length);
     shownRef.current = count;
-    setSections(ordered.slice(0, count));
-    setCanLoadMore(count < ordered.length);
+    setSections(all.slice(0, count));
+    setCanLoadMore(count < all.length);
+    setActiveSectionIndex(activeIndex >= 0 ? activeIndex : null);
   }, []);
 
   const loadSections = useCallback(async () => {
@@ -671,6 +678,36 @@ export default function ParcoursScreen() {
       loadSections();
     }, [syncHearts, loadSections]),
   );
+
+  /** Scrolle jusqu'à la section active (l'endroit où on en est dans le parcours). */
+  const scrollToActiveSection = useCallback(() => {
+    if (activeSectionIndex == null) return;
+    listRef.current?.scrollToIndex({
+      index: activeSectionIndex,
+      animated: true,
+      viewPosition: 0.2, // laisse voir un peu de la section précédente au-dessus
+    });
+  }, [activeSectionIndex]);
+
+  // Premier chargement : on rejoint directement là où on en est, sans avoir
+  // à scroller manuellement depuis le tout début du parcours.
+  useEffect(() => {
+    if (hasAutoScrolledRef.current) return;
+    if (activeSectionIndex == null) return;
+    if (sections.length <= activeSectionIndex) return; // pas encore montée
+    hasAutoScrolledRef.current = true;
+    // Léger délai pour laisser le FlatList terminer son layout initial.
+    const id = setTimeout(scrollToActiveSection, 50);
+    return () => clearTimeout(id);
+  }, [activeSectionIndex, sections.length, scrollToActiveSection]);
+
+  // Retap sur l'onglet "Apprendre" alors qu'il est déjà actif → on ramène
+  // l'utilisateur là où il en est dans son parcours.
+  useEffect(() => {
+    // @ts-expect-error événement custom émis par TabBar (pas dans le core event map)
+    const unsubscribe = navigation.addListener('scrollToActive', scrollToActiveSection);
+    return unsubscribe;
+  }, [navigation, scrollToActiveSection]);
 
   // Pagination purement locale → instantanée (les données sont déjà en mémoire).
   const handleLoadMore = useCallback(() => {
@@ -772,6 +809,7 @@ export default function ParcoursScreen() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={sections}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
@@ -788,6 +826,13 @@ export default function ParcoursScreen() {
           maxToRenderPerBatch={2}
           windowSize={5}
           removeClippedSubviews
+          // Les sections pas encore mesurées (hors fenêtre de rendu initiale)
+          // font échouer scrollToIndex : on réessaie après le rendu approximatif.
+          onScrollToIndexFailed={({ index }) => {
+            setTimeout(() => {
+              listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.2 });
+            }, 100);
+          }}
         />
       )}
     </View>
