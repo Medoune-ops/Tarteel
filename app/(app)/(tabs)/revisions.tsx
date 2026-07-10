@@ -35,6 +35,8 @@ interface SourateRow {
   nom: string;
   nomArabe: string;
   nombreVersets: number;
+  /** Position d'enseignement (0-based) — null si pas encore enseignée. */
+  ordreParcours: number | null;
   apprise: boolean;
   revision: SourateRevisionView | null;
 }
@@ -108,6 +110,7 @@ export default function RevisionsScreen() {
         nom: s.nom,
         nomArabe: s.nomArabe,
         nombreVersets: s.nombreVersets,
+        ordreParcours: s.ordreParcours,
         apprise: revision !== null,
         revision,
       };
@@ -131,7 +134,8 @@ export default function RevisionsScreen() {
   const urgentes = (revisions ?? []).filter((s) => formatProchaineRevision(s.prochaineRevision) === "Aujourd'hui");
 
   // Recherche sur TOUTES les sourates ; hors recherche, les sourates apprises
-  // passent en premier (priorité de révision) — le reste garde l'ordre du Mushaf.
+  // passent en premier (priorité de révision), triées dans l'ordre réel
+  // d'enseignement du parcours (ex: Al-Fatiha puis An-Nas), pas le Mushaf.
   const resultats = useMemo(() => {
     const all = sourates ?? [];
     const q = query.trim().toLowerCase();
@@ -143,7 +147,9 @@ export default function RevisionsScreen() {
     if (q) return filtered;
     return [...filtered].sort((a, b) => {
       if (a.apprise !== b.apprise) return a.apprise ? -1 : 1;
-      return a.numero - b.numero;
+      const oa = a.ordreParcours ?? 999 + a.numero;
+      const ob = b.ordreParcours ?? 999 + b.numero;
+      return oa - ob;
     });
   }, [query, sourates]);
 
@@ -241,9 +247,14 @@ export default function RevisionsScreen() {
           )}
 
           {/* Alphabet & Harakat */}
-          {!enRecherche && lettres.length > 0 && (
+          {!enRecherche && (
             <>
               <Text style={[styles.sectionTitle, { color: T.text }]}>Alphabet & Harakat</Text>
+              {lettres.length === 0 && (
+                <Text style={[styles.emptySub, { textAlign: 'left', paddingHorizontal: 2, marginBottom: 16 }]}>
+                  Termine une leçon d'alphabet ou d'harakat dans le parcours pour la voir apparaître ici.
+                </Text>
+              )}
               {lettres.map((l) => {
                 const c = ETAT_COLORS[l.etat];
                 return (
