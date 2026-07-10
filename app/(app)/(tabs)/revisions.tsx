@@ -6,7 +6,10 @@ import Svg, { Circle } from 'react-native-svg';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
-import { fetchRevisions, fetchSourates, type SourateRevisionView, type SourateListItem } from '../../../lib/api';
+import {
+  fetchRevisions, fetchSourates, fetchLettreRevisions,
+  type SourateRevisionView, type SourateListItem, type LettreRevisionView,
+} from '../../../lib/api';
 
 // Couleurs par état SRS (maitrise/revoir/difficile) — même palette que le mock d'origine.
 const ETAT_COLORS: Record<SourateRevisionView['etat'], { couleur: string; couleurDark: string; bg: string }> = {
@@ -32,6 +35,8 @@ interface SourateRow {
   nom: string;
   nomArabe: string;
   nombreVersets: number;
+  /** Position d'enseignement (0-based) — null si pas encore enseignée. */
+  ordreParcours: number | null;
   apprise: boolean;
   revision: SourateRevisionView | null;
 }
@@ -74,14 +79,16 @@ export default function RevisionsScreen() {
   const [query, setQuery] = useState('');
   const [toutes, setToutes] = useState<SourateListItem[] | null>(null);
   const [revisions, setRevisions] = useState<SourateRevisionView[] | null>(null);
+  const [lettres, setLettres] = useState<LettreRevisionView[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
     try {
-      const [s, r] = await Promise.all([fetchSourates(), fetchRevisions()]);
+      const [s, r, l] = await Promise.all([fetchSourates(), fetchRevisions(), fetchLettreRevisions()]);
       setToutes(s);
       setRevisions(r);
+      setLettres(l);
     } catch {
       setLoadError(true);
     }
@@ -103,6 +110,7 @@ export default function RevisionsScreen() {
         nom: s.nom,
         nomArabe: s.nomArabe,
         nombreVersets: s.nombreVersets,
+        ordreParcours: s.ordreParcours,
         apprise: revision !== null,
         revision,
       };
@@ -126,7 +134,10 @@ export default function RevisionsScreen() {
   const urgentes = (revisions ?? []).filter((s) => formatProchaineRevision(s.prochaineRevision) === "Aujourd'hui");
 
   // Recherche sur TOUTES les sourates ; hors recherche, les sourates apprises
-  // passent en premier (priorité de révision) — le reste garde l'ordre du Mushaf.
+  // passent en premier (priorité de révision), dans l'ordre de mémorisation du
+  // parcours : Al-Fatiha, puis An-Nas (114), Al-Falaq (113)… en remontant
+  // depuis la fin du Coran — PAS l'ordre du Mushaf.
+  const ordreMemorisation = (numero: number) => (numero === 1 ? 0 : 115 - numero);
   const resultats = useMemo(() => {
     const all = sourates ?? [];
     const q = query.trim().toLowerCase();
@@ -138,7 +149,7 @@ export default function RevisionsScreen() {
     if (q) return filtered;
     return [...filtered].sort((a, b) => {
       if (a.apprise !== b.apprise) return a.apprise ? -1 : 1;
-      return a.numero - b.numero;
+      return ordreMemorisation(a.numero) - ordreMemorisation(b.numero);
     });
   }, [query, sourates]);
 
@@ -156,7 +167,7 @@ export default function RevisionsScreen() {
       </View>
     );
   }
-  if (!sourates) {
+  if (!sourates || !lettres) {
     return (
       <View style={[styles.screen, styles.centerState, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
@@ -232,6 +243,53 @@ export default function RevisionsScreen() {
                   <Text style={styles.urgentBtnText}>Commencer</Text>
                 </Pressable>
               </View>
+            </>
+          )}
+
+          {/* Alphabet & Harakat */}
+          {!enRecherche && (
+            <>
+              <Text style={[styles.sectionTitle, { color: T.text }]}>Alphabet & Harakat</Text>
+              {lettres.length === 0 && (
+                <Text style={[styles.emptySub, { textAlign: 'left', paddingHorizontal: 2, marginBottom: 16 }]}>
+                  Termine une leçon d'alphabet ou d'harakat dans le parcours pour la voir apparaître ici.
+                </Text>
+              )}
+              {lettres.map((l) => {
+                const c = ETAT_COLORS[l.etat];
+                return (
+                  <Pressable
+                    key={l.lessonId}
+                    style={[styles.card, { backgroundColor: T.cardBg }]}
+                    onPress={() => router.push({
+                      pathname: '/(app)/revision/lettre',
+                      params: { lessonId: l.lessonId, titre: l.titre },
+                    })}
+                  >
+                    <View style={[styles.numBox, { backgroundColor: c.bg, borderColor: c.couleur }]}>
+                      <Feather name="type" size={20} color={c.couleur} />
+                    </View>
+                    <View style={styles.cardBody}>
+                      <View style={styles.cardTop}>
+                        <Text style={[styles.cardNom, { color: T.text }]} numberOfLines={1}>{l.titre}</Text>
+                      </View>
+                      <View style={styles.cardMeta}>
+                        <EtatBadge etat={l.etat} />
+                        <Text style={styles.cardRevision}>
+                          <Feather name="clock" size={11} color="#8A8F99" /> {formatProchaineRevision(l.prochaineRevision)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.cardRight}>
+                      <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+                        <ScoreRing score={l.score} color={c.couleur} trackColor={T.isDark ? '#2E2D3F' : '#E6E8ED'} />
+                        <Text style={[styles.scoreText, { color: c.couleur }]}>{l.score}%</Text>
+                      </View>
+                      <Feather name="chevron-right" size={18} color="#C9CDD4" style={{ marginTop: 4 }} />
+                    </View>
+                  </Pressable>
+                );
+              })}
             </>
           )}
 
