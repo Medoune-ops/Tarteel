@@ -10,9 +10,14 @@ const mockSetRepeat = jest.fn((..._a: unknown[]) => Promise.resolve());
 const mockChangeReciter = jest.fn((..._a: unknown[]) => Promise.resolve());
 let mockPlaying = false;
 
-jest.mock('react-native-track-player', () => ({
-  __esModule: true,
-  default: {
+// L'écran importe tout via le wrapper constants/trackPlayer (jamais RNTP direct).
+jest.mock('../constants/trackPlayer', () => ({
+  AUDIO_AVAILABLE: true,
+  useActiveTrack: () => ({ id: '1', title: '1. Al-Fatiha', artist: 'Abdul Basit' }),
+  useProgress: () => ({ position: 30, duration: 120, buffered: 0 }),
+  useIsPlaying: () => ({ playing: mockPlaying }),
+  RepeatMode: { Off: 0, Track: 1, Queue: 2 },
+  audioControls: {
     play: (...a: unknown[]) => mockPlay(...a),
     pause: (...a: unknown[]) => mockPause(...a),
     skipToNext: (...a: unknown[]) => mockNext(...a),
@@ -20,12 +25,6 @@ jest.mock('react-native-track-player', () => ({
     setRate: (...a: unknown[]) => mockSetRate(...a),
     setRepeatMode: (...a: unknown[]) => mockSetRepeat(...a),
   },
-  useActiveTrack: () => ({ id: '1', title: '1. Al-Fatiha', artist: 'Abdul Basit' }),
-  useProgress: () => ({ position: 30, duration: 120, buffered: 0 }),
-  useIsPlaying: () => ({ playing: mockPlaying }),
-  RepeatMode: { Off: 0, Track: 1, Queue: 2 },
-}));
-jest.mock('../constants/trackPlayer', () => ({
   changeReciter: (...a: unknown[]) => mockChangeReciter(...a),
   getCurrentReciterId: () => 'basit',
   getCurrentSourates: () => [{ numero: 1, nom: 'Al-Fatiha', nomArabe: 'الفاتحة' }],

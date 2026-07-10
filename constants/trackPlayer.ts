@@ -1,27 +1,66 @@
 /**
- * Configuration et helpers du lecteur audio du Coran (react-native-track-player).
- * Gère la lecture en arrière-plan, la file d'attente (sourate suivante auto) et
- * les contrôles de l'écran verrouillé (service enregistré dans index.js).
- * ⚠️ Nécessite un development build — indisponible dans Expo Go.
+ * Lecteur audio du Coran (react-native-track-player).
+ *
+ * ⚠️ RNTP est un module natif → nécessite un development build. On le charge de
+ * façon DÉFENSIVE : dans Expo Go (ou si le natif manque), le `require` lève une
+ * erreur au chargement du module (`new NativeEventEmitter()`), qu'on attrape.
+ * `AUDIO_AVAILABLE` vaut alors false et les écrans affichent « dev build requis »
+ * au lieu de crasher toute l'app. Tous les accès à RNTP passent par ce module.
  */
-import TrackPlayer, {
-  Capability, AppKilledPlaybackBehavior, RepeatMode, type Track,
-} from 'react-native-track-player';
 import { surahAudioUrl, DEFAULT_RECITER_ID, type Reciter } from './reciters';
 
 export interface SourateLite { numero: number; nom: string; nomArabe: string }
+export interface QueueTrack { id: string; url: string; title: string; artist: string; album: string }
 
-let isSetup = false;
-let currentReciterId = DEFAULT_RECITER_ID;
-
-/** Id du récitateur de la file en cours (pour l'écran lecteur). */
-export function getCurrentReciterId(): string {
-  return currentReciterId;
+// Chargement défensif : le module RNTP lève au require quand le natif est absent.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let RNTP: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  RNTP = require('react-native-track-player');
+} catch {
+  RNTP = null;
 }
+
+/** true seulement dans un dev build où le module natif RNTP est présent. */
+export const AUDIO_AVAILABLE: boolean = RNTP != null && RNTP.default != null;
+
+const TrackPlayer = RNTP?.default ?? null;
+const Capability = RNTP?.Capability ?? {};
+const AppKilledPlaybackBehavior = RNTP?.AppKilledPlaybackBehavior ?? {};
+export const RepeatMode: { Off: number; Track: number; Queue: number } =
+  RNTP?.RepeatMode ?? { Off: 0, Track: 1, Queue: 2 };
+
+// ── Hooks (réels si natif présent, sinon stubs sûrs) ────────────────────────
+export interface ActiveTrack { id?: string; title?: string; artist?: string }
+export const useActiveTrack: () => ActiveTrack | undefined =
+  RNTP?.useActiveTrack ?? (() => undefined);
+export const useProgress: (interval?: number) => { position: number; duration: number; buffered: number } =
+  RNTP?.useProgress ?? (() => ({ position: 0, duration: 0, buffered: 0 }));
+export const useIsPlaying: () => { playing?: boolean } =
+  RNTP?.useIsPlaying ?? (() => ({ playing: false }));
+
+// ── Contrôles directs (no-op si natif absent) ───────────────────────────────
+export const audioControls = {
+  play: () => { TrackPlayer?.play?.(); },
+  pause: () => { TrackPlayer?.pause?.(); },
+  skipToNext: () => { TrackPlayer?.skipToNext?.()?.catch?.(() => {}); },
+  skipToPrevious: () => { TrackPlayer?.skipToPrevious?.()?.catch?.(() => {}); },
+  setRate: (r: number) => { TrackPlayer?.setRate?.(r)?.catch?.(() => {}); },
+  setRepeatMode: (m: number) => { TrackPlayer?.setRepeatMode?.(m)?.catch?.(() => {}); },
+};
+
+// File en cours (mémorisée pour changer de récitateur sans perdre la position).
+let currentSourates: SourateLite[] = [];
+let currentReciterId = DEFAULT_RECITER_ID;
+let isSetup = false;
+
+export function getCurrentSourates(): SourateLite[] { return currentSourates; }
+export function getCurrentReciterId(): string { return currentReciterId; }
 
 /** Initialise le lecteur (idempotent) + contrôles écran verrouillé. */
 export async function setupTrackPlayer(): Promise<void> {
-  if (isSetup) return;
+  if (!AUDIO_AVAILABLE || isSetup) return;
   try {
     await TrackPlayer.setupPlayer();
   } catch {
@@ -43,7 +82,7 @@ export async function setupTrackPlayer(): Promise<void> {
 }
 
 /** Construit la file d'attente (les sourates fournies) pour un récitateur. */
-export function buildQueue(sourates: SourateLite[], reciter: Reciter): Track[] {
+export function buildQueue(sourates: SourateLite[], reciter: Reciter): QueueTrack[] {
   return sourates.map((s) => ({
     id: String(s.numero),
     url: surahAudioUrl(reciter.baseUrl, s.numero),
@@ -53,21 +92,13 @@ export function buildQueue(sourates: SourateLite[], reciter: Reciter): Track[] {
   }));
 }
 
-// File en cours (mémorisée pour pouvoir changer de récitateur sans perdre la
-// position, RNTP étant un lecteur global).
-let currentSourates: SourateLite[] = [];
-
-/** Sourates de la file en cours (pour l'écran lecteur). */
-export function getCurrentSourates(): SourateLite[] {
-  return currentSourates;
-}
-
 /** Charge toutes les `sourates` (récitateur `reciter`) et démarre à `startIndex`. */
 export async function playSurates(
   sourates: SourateLite[],
   reciter: Reciter,
   startIndex: number,
 ): Promise<void> {
+  if (!AUDIO_AVAILABLE) throw new Error('AUDIO_UNAVAILABLE');
   currentSourates = sourates;
   currentReciterId = reciter.id;
   await setupTrackPlayer();
@@ -79,7 +110,7 @@ export async function playSurates(
 
 /** Change de récitateur en gardant la sourate courante et la position. */
 export async function changeReciter(reciter: Reciter): Promise<void> {
-  if (currentSourates.length === 0) return;
+  if (!AUDIO_AVAILABLE || currentSourates.length === 0) return;
   currentReciterId = reciter.id;
   const idx = (await TrackPlayer.getActiveTrackIndex()) ?? 0;
   const { position } = await TrackPlayer.getProgress();
@@ -89,5 +120,3 @@ export async function changeReciter(reciter: Reciter): Promise<void> {
   if (position > 0) await TrackPlayer.seekTo(position);
   await TrackPlayer.play();
 }
-
-export { RepeatMode };

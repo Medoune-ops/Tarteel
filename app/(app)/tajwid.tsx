@@ -8,7 +8,7 @@ import { useTheme } from '../../utils/useTheme';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/reciters';
-import { playSurates } from '../../constants/trackPlayer';
+import { playSurates, AUDIO_AVAILABLE } from '../../constants/trackPlayer';
 
 // « Écoute du Coran » (badge Tajwid) — catalogue des 114 sourates en audio
 // complet. On choisit un récitateur puis une sourate : la lecture démarre et se
@@ -88,7 +88,14 @@ export default function TajwidScreen() {
         <Text style={styles.headerSub}>Continue même écran éteint 🌙</Text>
       </LinearGradient>
 
-      {error ? (
+      {!AUDIO_AVAILABLE ? (
+        <View style={styles.stateBox}>
+          <Text style={{ fontSize: 40 }}>🎧</Text>
+          <Text style={[styles.stateText, { color: T.textSecondary }]}>
+            L'écoute audio du Coran nécessite un development build (indisponible dans Expo Go).
+          </Text>
+        </View>
+      ) : error ? (
         <View style={styles.stateBox}>
           <Feather name="wifi-off" size={32} color={T.textTertiary} />
           <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger les sourates.</Text>

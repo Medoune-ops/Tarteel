@@ -22,7 +22,10 @@ jest.mock('../components/StatusBar', () => () => null);
 jest.mock('../lib/api', () => ({ fetchSourates: (...a: unknown[]) => mockFetch(...a) }));
 jest.mock('../lib/api/swr', () => ({ swrFetch: (_k: string, fn: () => Promise<unknown>) => fn() }));
 // Mocke trackPlayer -> évite de charger react-native-track-player (natif).
-jest.mock('../constants/trackPlayer', () => ({ playSurates: (...a: unknown[]) => mockPlaySurates(...a) }));
+jest.mock('../constants/trackPlayer', () => ({
+  AUDIO_AVAILABLE: true,
+  playSurates: (...a: unknown[]) => mockPlaySurates(...a),
+}));
 jest.mock('../utils/useTheme', () => ({
   useTheme: () => ({
     pageBg: '#fff', cardBg: '#fff', text: '#000', textSecondary: '#666', textTertiary: '#999',
