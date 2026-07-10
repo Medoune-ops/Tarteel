@@ -783,18 +783,18 @@ export default function ParcoursScreen() {
       </View>
 
       <View style={[styles.statsBar, { backgroundColor: T.cardBg }]}>
-        <View style={styles.stat}>
+        <Pressable style={styles.stat} onPress={() => router.push('/(app)/streak')} hitSlop={8}>
           <Text style={{ fontSize: 22 }}>🔥</Text>
           <Text style={[styles.statText, { color: '#F0820C' }]}>{streak}</Text>
-        </View>
+        </Pressable>
         <View style={styles.stat}>
           <Feather name="zap" size={22} color="#E8A800" />
           <Text style={[styles.statText, { color: '#E8A800' }]}>{xp} XP</Text>
         </View>
-        <View style={styles.stat}>
+        <Pressable style={styles.stat} onPress={() => router.push('/(app)/gems')} hitSlop={8}>
           <Text style={{ fontSize: 20 }}>💎</Text>
           <Text style={[styles.statText, { color: '#1CB0F6' }]}>{gems}</Text>
-        </View>
+        </Pressable>
         <Pressable style={styles.stat} onPress={() => router.push('/(app)/hearts')} hitSlop={8}>
           <Feather name="heart" size={22} color="#FF4B4B" />
           <Text style={[styles.statText, { color: '#FF4B4B' }]}>{isPremium ? '∞' : hearts}</Text>
