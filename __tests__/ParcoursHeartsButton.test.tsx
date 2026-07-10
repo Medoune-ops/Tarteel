@@ -10,6 +10,8 @@ const mockStoreState: Record<string, unknown> = {
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
   useFocusEffect: () => {},
+  // Auto-scroll (fusion main) : navigation.addListener renvoie une fonction de désabonnement.
+  useNavigation: () => ({ addListener: () => () => {} }),
 }));
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 // SVG : chaque élément devient un composant vide (le panorama décoratif).
@@ -52,20 +54,32 @@ function collectOnPress(node: ReactTestInstance | string, acc: Array<() => void>
   (node.children ?? []).forEach((c) => collectOnPress(c, acc));
 }
 
-describe('Bouton cœurs du parcours', () => {
+describe('Compteurs interactifs du parcours', () => {
   let current: TestRenderer.ReactTestRenderer | undefined;
   beforeEach(() => mockPush.mockClear());
   afterEach(() => { act(() => { current?.unmount(); }); current = undefined; });
 
-  it('le compteur de cœurs navigue vers la page /(app)/hearts', () => {
+  // Déclenche tous les onPress rendus (sections vides → seuls les compteurs de
+  // la barre de stats ont un onPress).
+  function fireAll() {
     act(() => { current = TestRenderer.create(<ParcoursScreen />); });
-
-    // Déclenche tous les onPress rendus (sections vides → le seul bouton de la
-    // barre de stats est le compteur de cœurs).
     const handlers: Array<() => void> = [];
     collectOnPress(current!.root, handlers);
     act(() => { handlers.forEach((h) => { try { h(); } catch { /* ignore */ } }); });
+  }
 
+  it('le compteur de cœurs navigue vers /(app)/hearts', () => {
+    fireAll();
     expect(mockPush).toHaveBeenCalledWith('/(app)/hearts');
+  });
+
+  it('le compteur de flamme navigue vers /(app)/streak', () => {
+    fireAll();
+    expect(mockPush).toHaveBeenCalledWith('/(app)/streak');
+  });
+
+  it('le compteur de gemmes navigue vers /(app)/gems', () => {
+    fireAll();
+    expect(mockPush).toHaveBeenCalledWith('/(app)/gems');
   });
 });

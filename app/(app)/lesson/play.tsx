@@ -83,9 +83,9 @@ export default function LessonPlayScreen() {
     );
   }
 
-  // Leçon sans contenu (étapes pas encore rédigées) : on évite le crash sur
-  // lesson.steps[0] et on renvoie proprement au parcours.
-  if (lesson.steps.length === 0) {
+  // Leçon sans contenu (étapes pas encore rédigées) ou réponse mal formée : on
+  // évite le crash sur lesson.steps[0] et on renvoie proprement au parcours.
+  if (!lesson.steps || lesson.steps.length === 0) {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <Feather name="clock" size={34} color="#9AA0AA" />

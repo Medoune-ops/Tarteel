@@ -15,6 +15,8 @@ export default function AppLayout() {
       <Stack.Screen name="lecture-libre" />
       <Stack.Screen name="lecture/[numero]" />
       <Stack.Screen name="streak-goal" />
+      <Stack.Screen name="streak" />
+      <Stack.Screen name="gems" />
       <Stack.Screen name="podiums" />
       <Stack.Screen name="subscription" />
       <Stack.Screen name="hearts" />
