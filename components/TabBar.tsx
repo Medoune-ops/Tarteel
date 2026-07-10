@@ -29,7 +29,16 @@ export default function TabBar({ state, navigation }: BottomTabBarProps) {
           <Pressable
             key={name}
             style={styles.tab}
-            onPress={() => navigation.navigate(route.name)}
+            onPress={() => {
+              if (isActive) {
+                // Onglet déjà actif : on redemande le scroll-to-top au lieu
+                // de re-naviguer (sinon rien ne se passe visuellement).
+                // @ts-expect-error événement custom, pas dans BottomTabNavigationEventMap
+                navigation.emit({ type: 'scrollToActive', target: route.key });
+              } else {
+                navigation.navigate(route.name);
+              }
+            }}
           >
             <Feather
               name={meta.icon}

@@ -80,6 +80,7 @@ export default function PodiumsScreen() {
   const total = list.length;
   const victoires = list.filter((e) => e.rang === 1).length;
   const meilleureLigue = list.reduce<PodiumEntry | null>((best, e) => {
+    if (!LIGUES[e.ligue]) return best;
     const order: Record<string, number> = { bronze: 1, argent: 2, or: 3, emeraude: 4, diamant: 5 };
     return !best || order[e.ligue] > order[best.ligue] ? e : best;
   }, null);
@@ -109,7 +110,7 @@ export default function PodiumsScreen() {
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{meilleureLigue ? LIGUES[meilleureLigue.ligue].emoji : '—'}</Text>
+            <Text style={styles.summaryValue}>{meilleureLigue ? LIGUES[meilleureLigue.ligue]?.emoji ?? '—' : '—'}</Text>
             <Text style={styles.summaryLabel}>Meilleure ligue</Text>
           </View>
         </View>
@@ -127,7 +128,7 @@ export default function PodiumsScreen() {
         )}
 
         {list.map((e) => {
-          const l = LIGUES[e.ligue];
+          const l = LIGUES[e.ligue] ?? LIGUES.bronze;
           const claimable = e.id === claimableId;
           return (
             <View key={e.id} style={[styles.card, claimable && styles.cardClaimable]}>
