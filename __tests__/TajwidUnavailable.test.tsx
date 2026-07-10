@@ -28,9 +28,15 @@ function textOf(inst: ReactTestInstance | string): string {
   return (inst.children ?? []).map(textOf).join('');
 }
 
-it('Tajwid affiche « development build requis » quand l’audio natif est absent (Expo Go)', async () => {
+it('Tajwid montre le design (liste + récitateurs) + bannière quand l’audio natif est absent', async () => {
   let r: TestRenderer.ReactTestRenderer | undefined;
   await act(async () => { r = TestRenderer.create(<TajwidScreen />); });
-  expect(textOf(r!.root)).toContain('development build');
+  const all = textOf(r!.root);
+  // Le DESIGN reste visible en Expo Go (ce que l'utilisateur veut voir)…
+  expect(all).toContain('Écoute du Coran');
+  expect(all).toContain('Abdul Basit');
+  expect(all).toContain('الفاتحة');
+  // …avec une bannière d'aperçu (pas de blocage plein écran).
+  expect(all).toContain('development build');
   act(() => { r?.unmount(); });
 });
