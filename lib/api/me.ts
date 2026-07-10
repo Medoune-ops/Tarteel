@@ -19,6 +19,8 @@ export interface MeResponse {
   lastHeartLossAt: number | null;
   gems?: number;
   streakFreezes?: number;
+  /** Série sauvegardée quand elle s'est cassée = jours récupérés en payant la restauration. */
+  lastStreakValue?: number;
   doubleXpUntil?: number | null;
   sourates?: number;
   precision?: number;
