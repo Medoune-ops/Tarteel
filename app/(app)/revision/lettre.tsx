@@ -127,6 +127,9 @@ export default function LettreRevisionScreen() {
       await recorder.stop();
       uri = recorder.uri;
     } catch { /* recorder déjà arrêté/détruit */ }
+    // iOS : le mode enregistrement (allowsRecording: true) coupe/atténue la
+    // lecture audio — on repasse en mode lecture avant de rejouer la carte.
+    await exitRecordingMode();
     setPhase('analyzing');
     try {
       if (!uri) {
@@ -354,7 +357,7 @@ export default function LettreRevisionScreen() {
             <>
               <Text style={styles.translit}>{card.translitteration}</Text>
               <Text style={[styles.traduction, { color: T.textSecondary }]}>{card.traduction}</Text>
-              <Pressable style={styles.audioBtn} onPress={() => playCard(card)} hitSlop={8}>
+              <Pressable style={styles.audioBtn} onPress={() => { exitRecordingMode(); playCard(card); }} hitSlop={8}>
                 <Feather name="volume-2" size={26} color="#2A9E1C" />
               </Pressable>
             </>
