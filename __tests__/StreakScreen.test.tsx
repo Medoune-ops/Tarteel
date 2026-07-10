@@ -13,6 +13,8 @@ const mockTransactions = [
 let mockGems = { gems: 500, streakFreezes: 1, doubleXpUntil: null, doubleXpActive: false, transactions: mockTransactions };
 const mockFetchGems = jest.fn((..._a: unknown[]) => Promise.resolve(mockGems));
 const mockRepairStreak = jest.fn((..._a: unknown[]) => Promise.resolve({ streak: 7 }));
+let mockMe: Record<string, unknown> = { lastStreakValue: 12 };
+const mockFetchMe = jest.fn((..._a: unknown[]) => Promise.resolve(mockMe));
 const mockStoreState: Record<string, unknown> = { streak: 7, streakGoal: null, streakFreezes: 1 };
 
 jest.mock('expo-router', () => ({
@@ -26,6 +28,7 @@ jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('../components/StatusBar', () => () => null);
 jest.mock('../lib/api', () => ({
   fetchGems: (...a: unknown[]) => mockFetchGems(...a),
+  fetchMe: (...a: unknown[]) => mockFetchMe(...a),
   repairStreak: (...a: unknown[]) => mockRepairStreak(...a),
 }));
 jest.mock('../lib/api/client', () => ({
@@ -70,9 +73,11 @@ describe('Écran « Ma série » (historique des flammes)', () => {
     mockPush.mockClear();
     mockBack.mockClear();
     mockFetchGems.mockClear();
+    mockFetchMe.mockClear();
     mockRepairStreak.mockClear();
     mockStoreState.streakGoal = null;
     mockGems = { gems: 500, streakFreezes: 1, doubleXpUntil: null, doubleXpActive: false, transactions: mockTransactions };
+    mockMe = { lastStreakValue: 12 };
   });
   afterEach(() => { act(() => { current?.unmount(); }); current = undefined; });
 
@@ -109,6 +114,20 @@ describe('Écran « Ma série » (historique des flammes)', () => {
     const r = await renderScreen();
     await press(r, 'Restaurer ma série');
     expect(mockRepairStreak).toHaveBeenCalled();
+  });
+
+  it('affiche les jours récupérés (lastStreakValue) dans la restauration', async () => {
+    mockMe = { lastStreakValue: 12 };
+    const r = await renderScreen();
+    const all = textOf(r.root);
+    expect(all).toContain('Récupère 12 jours');
+    expect(all).toContain('Payer · 12 j');
+  });
+
+  it('sans série à restaurer (lastStreakValue 0) : message dédié', async () => {
+    mockMe = { lastStreakValue: 0 };
+    const r = await renderScreen();
+    expect(textOf(r.root)).toContain('Aucune série à restaurer');
   });
 
   it('affiche un état vide quand aucun évènement de série', async () => {

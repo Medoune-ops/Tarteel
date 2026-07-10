@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
-import { fetchGems, repairStreak, type GemLedgerEntry } from '../../lib/api';
+import { fetchGems, fetchMe, repairStreak, type GemLedgerEntry } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
 
 // Évènements du ledger de gemmes liés à la SÉRIE (flammes). On ne garde que
@@ -34,12 +34,15 @@ export default function StreakScreen() {
   const [history, setHistory] = useState<GemLedgerEntry[] | null>(null);
   const [error, setError] = useState(false);
   const [repairing, setRepairing] = useState(false);
+  // Jours de série récupérés en payant la restauration (= lastStreakValue).
+  const [recoverable, setRecoverable] = useState(0);
 
   const load = useCallback(async () => {
     setError(false);
     try {
-      const g = await fetchGems();
+      const [g, me] = await Promise.all([fetchGems(), fetchMe()]);
       setHistory(g.transactions.filter((t) => t.reason in STREAK_REASONS));
+      setRecoverable(me.lastStreakValue ?? 0);
     } catch {
       setError(true);
     }
@@ -114,22 +117,26 @@ export default function StreakScreen() {
 
         {/* Restaurer la série cassée en payant */}
         <Pressable
-          style={[styles.repairBtn, { backgroundColor: T.cardBg }, repairing && { opacity: 0.6 }]}
+          style={[styles.repairBtn, { backgroundColor: T.cardBg }, (repairing || recoverable === 0) && { opacity: 0.6 }]}
           onPress={onRepair}
-          disabled={repairing}
+          disabled={repairing || recoverable === 0}
         >
           <View style={styles.repairIcon}>
             <Feather name="credit-card" size={20} color="#FF4B4B" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.repairTitle, { color: T.text }]}>Restaurer ma série</Text>
-            <Text style={styles.repairHint}>Répare ta série cassée en payant</Text>
+            <Text style={styles.repairHint}>
+              {recoverable > 0
+                ? `Récupère ${recoverable} jour${recoverable > 1 ? 's' : ''} de série 🔥`
+                : 'Aucune série à restaurer pour le moment'}
+            </Text>
           </View>
           {repairing ? (
             <ActivityIndicator color="#FF4B4B" />
           ) : (
-            <View style={styles.repairCta}>
-              <Text style={styles.repairCtaText}>Payer</Text>
+            <View style={[styles.repairCta, recoverable === 0 && { backgroundColor: '#B0B5BE' }]}>
+              <Text style={styles.repairCtaText}>{recoverable > 0 ? `Payer · ${recoverable} j` : 'Payer'}</Text>
             </View>
           )}
         </Pressable>
