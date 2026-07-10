@@ -3,7 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
-  SlideInRight, SlideOutLeft, Easing,
+  Easing,
   useSharedValue, useAnimatedStyle, withTiming,
 } from 'react-native-reanimated';
 import LessonHeader from '../../../components/LessonHeader';
@@ -216,13 +216,11 @@ export default function LessonPlayScreen() {
     <View style={styles.screen}>
       <LessonHeader progress={progress} progressColor={phase === 'wrong' ? '#FF4B4B' : '#34C724'} />
 
-      {/* La key={index} force le re-montage à chaque étape → déclenche le glissement. */}
-      <Animated.View
-        key={index}
-        style={styles.stepWrap}
-        entering={SlideInRight.duration(280).easing(Easing.out(Easing.cubic))}
-        exiting={SlideOutLeft.duration(220).easing(Easing.in(Easing.cubic))}
-      >
+      {/* key={index} : re-montage à chaque étape. On évite ici les animations
+          de layout reanimated (entering/exiting) qui peuvent provoquer une
+          « render error » sur certaines configs New Architecture / Expo Go —
+          la transition reste nette, l'étape s'affiche directement. */}
+      <View key={index} style={styles.stepWrap}>
         {step.type === 'discovery' && (
           step.mots && step.mots.length > 0
             ? <FullVerseReader step={step} onContinue={goNext} />
@@ -259,7 +257,7 @@ export default function LessonPlayScreen() {
             onContinue={onContinueAfterFeedback}
           />
         )}
-      </Animated.View>
+      </View>
     </View>
   );
 }

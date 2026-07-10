@@ -10,6 +10,8 @@ const mockStoreState: Record<string, unknown> = {
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
   useFocusEffect: () => {},
+  // Auto-scroll (fusion main) : navigation.addListener renvoie une fonction de désabonnement.
+  useNavigation: () => ({ addListener: () => () => {} }),
 }));
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 // SVG : chaque élément devient un composant vide (le panorama décoratif).

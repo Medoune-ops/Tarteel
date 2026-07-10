@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
-import { fetchGems, type GemLedgerEntry } from '../../lib/api';
+import { fetchGems, repairStreak, type GemLedgerEntry } from '../../lib/api';
+import { ApiError } from '../../lib/api/client';
 
 // Évènements du ledger de gemmes liés à la SÉRIE (flammes). On ne garde que
 // ceux-là pour bâtir « l'historique des flammes ».
@@ -32,6 +33,7 @@ export default function StreakScreen() {
 
   const [history, setHistory] = useState<GemLedgerEntry[] | null>(null);
   const [error, setError] = useState(false);
+  const [repairing, setRepairing] = useState(false);
 
   const load = useCallback(async () => {
     setError(false);
@@ -44,6 +46,26 @@ export default function StreakScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Restaure la série cassée en payant (paiement mock côté backend). Le store
+  // est rehydraté par repairStreak() ; on recharge aussi l'historique.
+  const onRepair = useCallback(async () => {
+    if (repairing) return;
+    setRepairing(true);
+    try {
+      await repairStreak();
+      await load();
+      Alert.alert('Série restaurée', 'Ta série est repartie ! 🔥');
+    } catch (e) {
+      const msg =
+        e instanceof ApiError && e.status !== 0
+          ? e.message
+          : 'Le paiement a échoué. Réessaie.';
+      Alert.alert('Restauration', msg);
+    } finally {
+      setRepairing(false);
+    }
+  }, [repairing, load]);
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
@@ -88,6 +110,28 @@ export default function StreakScreen() {
             {streakGoal ? 'Modifier mon objectif de série' : 'Fixer un objectif de série'}
           </Text>
           <Feather name="chevron-right" size={20} color="#F0820C" />
+        </Pressable>
+
+        {/* Restaurer la série cassée en payant */}
+        <Pressable
+          style={[styles.repairBtn, { backgroundColor: T.cardBg }, repairing && { opacity: 0.6 }]}
+          onPress={onRepair}
+          disabled={repairing}
+        >
+          <View style={styles.repairIcon}>
+            <Feather name="credit-card" size={20} color="#FF4B4B" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.repairTitle, { color: T.text }]}>Restaurer ma série</Text>
+            <Text style={styles.repairHint}>Répare ta série cassée en payant</Text>
+          </View>
+          {repairing ? (
+            <ActivityIndicator color="#FF4B4B" />
+          ) : (
+            <View style={styles.repairCta}>
+              <Text style={styles.repairCtaText}>Payer</Text>
+            </View>
+          )}
         </Pressable>
 
         <Text style={[styles.sectionTitle, { color: T.text }]}>Historique des flammes</Text>
@@ -164,6 +208,17 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
   },
   goalText: { flex: 1, fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
+
+  repairBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 16, padding: 14, marginTop: 12, borderWidth: 1.5, borderColor: '#FF4B4B55',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+  },
+  repairIcon: { width: 44, height: 44, borderRadius: 13, backgroundColor: '#FF4B4B1A', alignItems: 'center', justifyContent: 'center' },
+  repairTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
+  repairHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12.5, color: '#8A8F99', marginTop: 2 },
+  repairCta: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 9, backgroundColor: '#FF4B4B' },
+  repairCtaText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#fff' },
 
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 24, marginBottom: 12 },
   stateBox: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 36, paddingHorizontal: 20 },
