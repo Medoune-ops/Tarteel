@@ -134,8 +134,10 @@ export default function RevisionsScreen() {
   const urgentes = (revisions ?? []).filter((s) => formatProchaineRevision(s.prochaineRevision) === "Aujourd'hui");
 
   // Recherche sur TOUTES les sourates ; hors recherche, les sourates apprises
-  // passent en premier (priorité de révision), triées dans l'ordre réel
-  // d'enseignement du parcours (ex: Al-Fatiha puis An-Nas), pas le Mushaf.
+  // passent en premier (priorité de révision), dans l'ordre de mémorisation du
+  // parcours : Al-Fatiha, puis An-Nas (114), Al-Falaq (113)… en remontant
+  // depuis la fin du Coran — PAS l'ordre du Mushaf.
+  const ordreMemorisation = (numero: number) => (numero === 1 ? 0 : 115 - numero);
   const resultats = useMemo(() => {
     const all = sourates ?? [];
     const q = query.trim().toLowerCase();
@@ -147,9 +149,7 @@ export default function RevisionsScreen() {
     if (q) return filtered;
     return [...filtered].sort((a, b) => {
       if (a.apprise !== b.apprise) return a.apprise ? -1 : 1;
-      const oa = a.ordreParcours ?? 999 + a.numero;
-      const ob = b.ordreParcours ?? 999 + b.numero;
-      return oa - ob;
+      return ordreMemorisation(a.numero) - ordreMemorisation(b.numero);
     });
   }, [query, sourates]);
 
