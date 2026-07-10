@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import * as Speech from 'expo-speech';
 import { useAudioRecorder, RecordingPresets } from 'expo-audio';
-import { fetchLesson, reviewLettre, reciteLettreStep, type RevisionQuality } from '../../../lib/api';
+import { fetchLesson, reviewLettre, reciteLettreStep, ApiError, type RevisionQuality } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../../../lib/audio/recorder';
 import { playRemoteAudio, stopRemoteAudio } from '../../../constants/sounds';
@@ -60,6 +60,8 @@ export default function LettreRevisionScreen() {
   const [successes, setSuccesses] = useState(0);
   const [finished, setFinished] = useState(false);
   const [micDenied, setMicDenied] = useState(false);
+  /** Message d'erreur affiché sous la carte (micro ou analyse en échec). */
+  const [cardError, setCardError] = useState<string | null>(null);
 
   // ── Fin de session : application du SRS ──
   const [applied, setApplied] = useState<Reponse | null>(null);
@@ -100,12 +102,20 @@ export default function LettreRevisionScreen() {
 
   /** Démarre l'enregistrement de la prononciation. */
   const startRecording = useCallback(async () => {
+    setCardError(null);
     stopRemoteAudio();
     Speech.stop();
-    await enterRecordingMode();
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    setPhase('recording');
+    try {
+      await enterRecordingMode();
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setPhase('recording');
+    } catch {
+      // Micro indisponible (web/simulateur…) : on bascule en mode manuel
+      // plutôt que de laisser un bouton qui ne fait rien.
+      setCardError("Le micro n'est pas disponible sur cet appareil — mode lecture activé.");
+      setMicDenied(true);
+    }
   }, [recorder]);
 
   /** Arrête l'enregistrement et envoie au judging Whisper. */
@@ -119,8 +129,13 @@ export default function LettreRevisionScreen() {
     } catch { /* recorder déjà arrêté/détruit */ }
     setPhase('analyzing');
     try {
-      if (!uri) throw new Error('no-recording');
+      if (!uri) {
+        setCardError("L'enregistrement a échoué — réessaie, ou vérifie ton micro.");
+        setPhase('idle');
+        return;
+      }
       const res = await reciteLettreStep(card.id, uri);
+      setCardError(null);
       if (res.verdict === 'fluide') {
         setSuccesses((n) => n + 1);
         setPhase('correct');
@@ -129,8 +144,14 @@ export default function LettreRevisionScreen() {
         setPhase('wrong');
         playCard(card); // fait entendre la bonne prononciation
       }
-    } catch {
-      // Réseau/ASR indisponible : on ne pénalise pas — on laisse réessayer.
+    } catch (e) {
+      // Réseau/ASR indisponible : on ne pénalise pas — on laisse réessayer,
+      // avec un message clair au lieu d'un retour silencieux.
+      setCardError(
+        e instanceof ApiError && e.status === 503
+          ? 'La reconnaissance vocale est indisponible pour le moment.'
+          : "L'analyse a échoué (connexion ?) — appuie sur le micro pour réessayer.",
+      );
       setPhase('idle');
     }
   }, [cards, index, recorder]);
@@ -139,6 +160,7 @@ export default function LettreRevisionScreen() {
     if (!cards) return;
     stopRemoteAudio();
     Speech.stop();
+    setCardError(null);
     if (index + 1 >= cards.length) setFinished(true);
     else { setIndex(index + 1); setPhase('idle'); }
   }, [cards, index]);
@@ -339,6 +361,10 @@ export default function LettreRevisionScreen() {
           )}
           {phase === 'analyzing' && <ActivityIndicator size="small" color="#6B4DFF" style={{ marginTop: 8 }} />}
         </View>
+
+        {cardError && (
+          <Text style={styles.cardErrorText}>{cardError}</Text>
+        )}
       </View>
 
       <View style={styles.footer}>
@@ -402,6 +428,10 @@ const styles = StyleSheet.create({
   },
   cardOk: { borderWidth: 3, borderColor: '#34C724' },
   cardKo: { borderWidth: 3, borderColor: '#FF6B6B' },
+  cardErrorText: {
+    fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#FF4B4B',
+    textAlign: 'center', paddingHorizontal: 12,
+  },
   arabe: { fontSize: 84, lineHeight: 120, textAlign: 'center' },
   translit: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#6B4DFF' },
   traduction: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, textAlign: 'center' },
