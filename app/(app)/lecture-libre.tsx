@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { useTheme } from '../../utils/useTheme';
+import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
 
 // Minuscules + suppression des accents → recherche tolérante ("fatiha" trouve
 // "Al-Fâtiha", "nas" trouve "An-Nâs"…).
@@ -37,12 +38,14 @@ export default function LectureLibreScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  // Filtrage live : nom (sans accents), numéro (préfixe) ou nom arabe.
+  // Ordre : Al-Fatiha en tête, puis décroissant (114 → 2), puis filtrage live
+  // (nom sans accents, numéro en préfixe, ou nom arabe).
   const filtered = useMemo(() => {
     if (!sourates) return [];
+    const ordered = fatihaFirstThenDesc(sourates);
     const q = normalize(query.trim());
-    if (!q) return sourates;
-    return sourates.filter(
+    if (!q) return ordered;
+    return ordered.filter(
       (s) =>
         normalize(s.nom).includes(q) ||
         String(s.numero).startsWith(q) ||
