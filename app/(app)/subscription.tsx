@@ -3,20 +3,23 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { t, useT } from '../../lib/i18n';
+
 const AVANTAGES = [
-  { icon: 'slash' as const,       titre: 'Sans publicité',        desc: 'Apprends sans interruption' },
-  { icon: 'heart' as const,       titre: 'Vies illimitées',       desc: 'Ne sois plus jamais bloqué' },
-  { icon: 'bar-chart-2' as const, titre: 'Statistiques avancées', desc: 'Suis ta progression en détail' },
-  { icon: 'zap' as const,         titre: 'XP doublés',            desc: 'Progresse deux fois plus vite' },
+  { icon: 'slash' as const,       titre: t('subscription.perkNoAdsTitle'),        desc: t('subscription.perkNoAdsDesc') },
+  { icon: 'heart' as const,       titre: t('subscription.perkUnlimitedLivesTitle'),       desc: t('subscription.perkUnlimitedLivesDesc') },
+  { icon: 'bar-chart-2' as const, titre: t('subscription.perkStatsTitle'), desc: t('subscription.perkStatsDesc') },
+  { icon: 'zap' as const,         titre: t('subscription.perkDoubleXpTitle'),            desc: t('subscription.perkDoubleXpDesc') },
 ];
 
 export const PLANS = [
-  { id: 'annuel',  titre: 'Annuel',  prix: '15,24 €', detail: '1,27 €/mois', badge: 'ÉCONOMISE 17%', best: true },
-  { id: 'mensuel', titre: 'Mensuel', prix: '1,52 €',  detail: 'par mois',    badge: null,            best: false },
+  { id: 'annuel',  titre: t('subscription.planYearlyTitle'),  prix: '15,24 €', detail: '1,27 €/mois', badge: t('subscription.planYearlyBadge'), best: true },
+  { id: 'mensuel', titre: t('subscription.planMonthlyTitle'), prix: '1,52 €',  detail: t('subscription.planMonthlyDetail'),    badge: null,            best: false },
 ];
 
 export default function SubscriptionScreen() {
   const router = useRouter();
+  const tr = useT();
   const [plan, setPlan] = useState('annuel');
 
   // On passe l'offre choisie à l'écran de paiement.
@@ -35,8 +38,8 @@ export default function SubscriptionScreen() {
           <View style={styles.crown}>
             <Feather name="star" size={36} color="#F0820C" />
           </View>
-          <Text style={styles.heroTitle}>Tarteel Premium</Text>
-          <Text style={styles.heroSub}>Débloque tout ton potentiel d'apprentissage</Text>
+          <Text style={styles.heroTitle}>{tr('subscription.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{tr('subscription.heroSub')}</Text>
         </LinearGradient>
 
         <View style={styles.body}>
@@ -55,7 +58,7 @@ export default function SubscriptionScreen() {
           ))}
 
           {/* Plans */}
-          <Text style={styles.plansTitle}>Choisis ton offre</Text>
+          <Text style={styles.plansTitle}>{tr('subscription.plansTitle')}</Text>
           {PLANS.map((p) => {
             const actif = plan === p.id;
             return (
@@ -83,10 +86,10 @@ export default function SubscriptionScreen() {
 
           {/* CTA */}
           <Pressable style={styles.cta} onPress={goToPayment}>
-            <Text style={styles.ctaText}>Commencer l'essai gratuit de 7 jours</Text>
+            <Text style={styles.ctaText}>{tr('subscription.ctaStartTrial')}</Text>
           </Pressable>
           <Text style={styles.ctaNote}>
-            Puis {PLANS.find((p) => p.id === plan)?.prix}. Annulable à tout moment.
+            {tr('subscription.ctaNote', { price: PLANS.find((p) => p.id === plan)?.prix ?? '' })}
           </Text>
 
           <View style={{ height: 24 }} />

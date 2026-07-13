@@ -5,9 +5,11 @@ import { Feather } from '@expo/vector-icons';
 import { LIGUES, podiumRangLabel, podiumMedaille } from '../../constants/ligues';
 import { fetchPodiums, claimPodium, ApiError, type PodiumEntry } from '../../lib/api';
 import { playSound } from '../../constants/sounds';
+import { useT } from '../../lib/i18n';
 
 export default function PodiumsScreen() {
   const router = useRouter();
+  const tr = useT();
 
   // Historique RÉEL des podiums (GET /me/podiums). Vide = aucun trophée gagné.
   const [entries, setEntries] = useState<PodiumEntry[] | null>(null);
@@ -31,10 +33,10 @@ export default function PodiumsScreen() {
     try {
       const gained = await claimPodium(ref);
       playSound('finish');
-      Alert.alert('🏆 Récompense récupérée !', `+${gained} XP pour ton podium. Continue comme ça !`);
+      Alert.alert(tr('podiums.claimAlertTitle'), tr('podiums.claimAlertMsg', { n: gained }));
       await load(); // rafraîchit l'état "réclamé"
     } catch (e) {
-      Alert.alert('Oups', e instanceof ApiError ? e.message : 'Impossible de récupérer la récompense.');
+      Alert.alert(tr('podiums.errorTitle'), e instanceof ApiError ? e.message : tr('podiums.claimError'));
     } finally {
       setClaiming(null);
     }
@@ -46,12 +48,12 @@ export default function PodiumsScreen() {
       <View style={styles.screen}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={10}><Text style={styles.back}>‹</Text></Pressable>
-          <Text style={styles.headerTitle}>Mes podiums</Text>
+          <Text style={styles.headerTitle}>{tr('podiums.headerTitle')}</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color="#E0A02C" />
-          <Text style={styles.stateText}>Chargement de tes podiums…</Text>
+          <Text style={styles.stateText}>{tr('podiums.loading')}</Text>
         </View>
       </View>
     );
@@ -61,13 +63,13 @@ export default function PodiumsScreen() {
       <View style={styles.screen}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={10}><Text style={styles.back}>‹</Text></Pressable>
-          <Text style={styles.headerTitle}>Mes podiums</Text>
+          <Text style={styles.headerTitle}>{tr('podiums.headerTitle')}</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.centerState}>
           <Feather name="wifi-off" size={30} color="#9AA0AA" />
-          <Text style={styles.stateText}>Impossible de charger tes podiums.</Text>
-          <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>Réessayer</Text></Pressable>
+          <Text style={styles.stateText}>{tr('podiums.loadError')}</Text>
+          <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>{tr('common.retry')}</Text></Pressable>
         </View>
       </View>
     );
@@ -92,7 +94,7 @@ export default function PodiumsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Text style={styles.back}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Mes podiums</Text>
+        <Text style={styles.headerTitle}>{tr('podiums.headerTitle')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -101,28 +103,28 @@ export default function PodiumsScreen() {
         <View style={styles.summary}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>{total}</Text>
-            <Text style={styles.summaryLabel}>Top 3</Text>
+            <Text style={styles.summaryLabel}>{tr('podiums.summaryTop3')}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>{victoires} 🥇</Text>
-            <Text style={styles.summaryLabel}>Victoires</Text>
+            <Text style={styles.summaryLabel}>{tr('podiums.summaryWins')}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>{meilleureLigue ? LIGUES[meilleureLigue.ligue]?.emoji ?? '—' : '—'}</Text>
-            <Text style={styles.summaryLabel}>Meilleure ligue</Text>
+            <Text style={styles.summaryLabel}>{tr('podiums.summaryBestLeague')}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>HISTORIQUE</Text>
+        <Text style={styles.sectionLabel}>{tr('podiums.historyLabel')}</Text>
 
         {list.length === 0 && (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>🏆</Text>
-            <Text style={styles.emptyTitle}>Aucun podium pour l'instant</Text>
+            <Text style={styles.emptyTitle}>{tr('podiums.emptyTitle')}</Text>
             <Text style={styles.emptyText}>
-              Finis dans le top 3 d'une ligue à la fin d'une semaine pour décrocher ton premier trophée.
+              {tr('podiums.emptyText')}
             </Text>
           </View>
         )}
@@ -137,7 +139,7 @@ export default function PodiumsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>{l.nom}</Text>
-                <Text style={styles.cardSub}>Semaine {e.semaine}</Text>
+                <Text style={styles.cardSub}>{tr('podiums.weekLabel', { n: e.semaine })}</Text>
                 <View style={[styles.rangPill, { backgroundColor: l.bg, alignSelf: 'flex-start', marginTop: 6 }]}>
                   <Text style={[styles.rangText, { color: l.couleur }]}>{podiumRangLabel(e.rang)}</Text>
                 </View>
@@ -157,11 +159,11 @@ export default function PodiumsScreen() {
               ) : e.claimed ? (
                 <View style={styles.claimedPill}>
                   <Feather name="check" size={14} color="#2A9E1C" />
-                  <Text style={styles.claimedText}>Récupéré</Text>
+                  <Text style={styles.claimedText}>{tr('podiums.claimedLabel')}</Text>
                 </View>
               ) : (
                 <View style={styles.rewardPill}>
-                  <Text style={styles.rewardPillText}>🎁 +{e.reward}</Text>
+                  <Text style={styles.rewardPillText}>{tr('podiums.rewardPill', { n: e.reward })}</Text>
                 </View>
               )}
             </View>
@@ -170,7 +172,7 @@ export default function PodiumsScreen() {
 
         {list.length > 0 && (
           <Text style={styles.note}>
-            Finis dans le top 3 chaque semaine pour grimper de ligue 🏆
+            {tr('podiums.footerNote')}
           </Text>
         )}
         <View style={{ height: 24 }} />

@@ -10,12 +10,14 @@ import { deleteAccount } from '../../lib/api/me';
 import { ApiError } from '../../lib/api/client';
 import { t as tr } from '../../lib/i18n';
 
-const TOGGLES = [
-  { id: 'usage',   iconBg: '#6B4DFF', icon: 'bar-chart-2' as const, title: "Partage des données d'usage", sub: 'Aide à améliorer Tarteel',          default: true  },
-  { id: 'profil',  iconBg: '#2A9E1C', icon: 'eye' as const,         title: 'Profil public',                sub: 'Visible par les autres apprenants', default: true  },
-  { id: 'ligues',  iconBg: '#E0A02C', icon: 'award' as const,       title: 'Visibilité dans les ligues',   sub: 'Afficher mon nom au classement',   default: true  },
-  { id: 'voix',    iconBg: '#E0387E', icon: 'mic' as const,         title: 'Enregistrements vocaux',       sub: 'Conserver mes récitations',        default: false },
-];
+function useToggles() {
+  return [
+    { id: 'usage',   iconBg: '#6B4DFF', icon: 'bar-chart-2' as const, title: tr('privacy.toggleUsageTitle'), sub: tr('privacy.toggleUsageSub'),      default: true  },
+    { id: 'profil',  iconBg: '#2A9E1C', icon: 'eye' as const,         title: tr('privacy.toggleProfileTitle'), sub: tr('privacy.toggleProfileSub'), default: true  },
+    { id: 'ligues',  iconBg: '#E0A02C', icon: 'award' as const,       title: tr('privacy.toggleLeaguesTitle'), sub: tr('privacy.toggleLeaguesSub'), default: true  },
+    { id: 'voix',    iconBg: '#E0387E', icon: 'mic' as const,         title: tr('privacy.toggleVoiceTitle'), sub: tr('privacy.toggleVoiceSub'),      default: false },
+  ];
+}
 
 function Row({ iconBg, icon, title, subtitle, onPress, danger }: {
   iconBg: string; icon: keyof typeof Feather.glyphMap; title: string;
@@ -37,6 +39,7 @@ function Row({ iconBg, icon, title, subtitle, onPress, danger }: {
 
 export default function PrivacyScreen() {
   const router = useRouter();
+  const TOGGLES = useToggles();
   const [states, setStates] = useState<Record<string, boolean>>(
     Object.fromEntries(TOGGLES.map((t) => [t.id, t.default]))
   );
@@ -82,13 +85,13 @@ export default function PrivacyScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Text style={styles.back}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Confidentialité</Text>
+        <Text style={styles.headerTitle}>{tr('privacy.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Toggles de données */}
-        <Text style={styles.sectionLabel}>MES DONNÉES</Text>
+        <Text style={styles.sectionLabel}>{tr('privacy.sectionData')}</Text>
         <View style={styles.card}>
           {TOGGLES.map((t, i) => (
             <View key={t.id} style={[styles.row, i > 0 && styles.divider]}>
@@ -108,17 +111,17 @@ export default function PrivacyScreen() {
         </View>
 
         {/* Actions sur le compte */}
-        <Text style={styles.sectionLabel}>MON COMPTE</Text>
+        <Text style={styles.sectionLabel}>{tr('privacy.sectionAccount')}</Text>
         <View style={styles.card}>
-          <Row iconBg="#FF4B4B" icon="trash-2" title="Supprimer mon compte" subtitle="Effacer définitivement mes données" onPress={supprimerCompte} danger />
+          <Row iconBg="#FF4B4B" icon="trash-2" title={tr('privacy.deleteAccountTitle')} subtitle={tr('privacy.deleteAccountSub')} onPress={supprimerCompte} danger />
         </View>
 
         {/* Liens légaux */}
-        <Text style={styles.sectionLabel}>DOCUMENTS LÉGAUX</Text>
+        <Text style={styles.sectionLabel}>{tr('privacy.sectionLegal')}</Text>
         <View style={styles.card}>
-          <Row iconBg="#8A8F99" icon="file-text" title="Politique de confidentialité" onPress={() => Linking.openURL('https://tarteel.app/privacy')} />
+          <Row iconBg="#8A8F99" icon="file-text" title={tr('privacy.privacyPolicy')} onPress={() => Linking.openURL('https://tarteel.app/privacy')} />
           <View style={styles.divider} />
-          <Row iconBg="#8A8F99" icon="file" title="Conditions d'utilisation" onPress={() => Linking.openURL('https://tarteel.app/terms')} />
+          <Row iconBg="#8A8F99" icon="file" title={tr('privacy.termsOfUse')} onPress={() => Linking.openURL('https://tarteel.app/terms')} />
         </View>
 
         <View style={{ height: 24 }} />

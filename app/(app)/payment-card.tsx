@@ -10,6 +10,7 @@ import { Alert } from 'react-native';
 import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
 import { getPaymentProvider } from '../../lib/payments';
 import { PLANS } from './subscription';
+import { useT } from '../../lib/i18n';
 
 // ─── Helpers de formatage ────────────────────────────────────────────────────
 const formatCardNumber = (v: string) =>
@@ -29,6 +30,7 @@ const detectBrand = (num: string): keyof typeof Feather.glyphMap | null => {
 
 export default function PaymentCardScreen() {
   const router = useRouter();
+  const tr = useT();
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 
@@ -54,14 +56,14 @@ export default function PaymentCardScreen() {
     try {
       const payment = await getPaymentProvider().payPremium(plan.id as PremiumPlan, 'card');
       if (!payment.ok) {
-        Alert.alert('Paiement impossible', payment.error ?? 'Réessaie dans un instant.');
+        Alert.alert(tr('paymentCard.errorTitle'), payment.error ?? tr('paymentCard.errorMessage'));
         setPaying(false);
         return;
       }
       await subscribePremium(plan.id as PremiumPlan, payment.paymentToken);
       router.replace('/(app)/(tabs)/parcours');
     } catch {
-      Alert.alert('Paiement impossible', 'Réessaie dans un instant.');
+      Alert.alert(tr('paymentCard.errorTitle'), tr('paymentCard.errorMessage'));
       setPaying(false);
     }
   };
@@ -77,7 +79,7 @@ export default function PaymentCardScreen() {
           <Pressable onPress={() => router.back()} hitSlop={10}>
             <Text style={styles.back}>‹</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>Carte bancaire</Text>
+          <Text style={styles.headerTitle}>{tr('paymentCard.headerTitle')}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -91,18 +93,18 @@ export default function PaymentCardScreen() {
             <Text style={styles.cardNum}>{number || '•••• •••• •••• ••••'}</Text>
             <View style={styles.cardBottom}>
               <View>
-                <Text style={styles.cardMini}>TITULAIRE</Text>
-                <Text style={styles.cardVal}>{name.toUpperCase() || 'VOTRE NOM'}</Text>
+                <Text style={styles.cardMini}>{tr('paymentCard.cardHolderLabel')}</Text>
+                <Text style={styles.cardVal}>{name.toUpperCase() || tr('paymentCard.cardHolderPlaceholder')}</Text>
               </View>
               <View>
-                <Text style={styles.cardMini}>EXP.</Text>
+                <Text style={styles.cardMini}>{tr('paymentCard.cardExpiryLabel')}</Text>
                 <Text style={styles.cardVal}>{expiry || 'MM/AA'}</Text>
               </View>
             </View>
           </LinearGradient>
 
           {/* Formulaire */}
-          <Text style={styles.label}>Numéro de carte</Text>
+          <Text style={styles.label}>{tr('paymentCard.numberLabel')}</Text>
           <View style={styles.inputWrap}>
             <Feather name="credit-card" size={18} color="#8A8F99" />
             <TextInput
@@ -116,7 +118,7 @@ export default function PaymentCardScreen() {
             />
           </View>
 
-          <Text style={styles.label}>Nom du titulaire</Text>
+          <Text style={styles.label}>{tr('paymentCard.nameLabel')}</Text>
           <View style={styles.inputWrap}>
             <Feather name="user" size={18} color="#8A8F99" />
             <TextInput
@@ -131,7 +133,7 @@ export default function PaymentCardScreen() {
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Expiration</Text>
+              <Text style={styles.label}>{tr('paymentCard.expiryLabel')}</Text>
               <View style={styles.inputWrap}>
                 <Feather name="calendar" size={18} color="#8A8F99" />
                 <TextInput
@@ -146,7 +148,7 @@ export default function PaymentCardScreen() {
               </View>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>CVV</Text>
+              <Text style={styles.label}>{tr('paymentCard.cvvLabel')}</Text>
               <View style={styles.inputWrap}>
                 <Feather name="lock" size={18} color="#8A8F99" />
                 <TextInput
@@ -171,11 +173,11 @@ export default function PaymentCardScreen() {
           >
             <Feather name="lock" size={18} color="#fff" />
             <Text style={styles.ctaText}>
-              {paying ? 'Traitement…' : `Démarrer l’essai · puis ${plan.prix}`}
+              {paying ? tr('paymentCard.processing') : tr('paymentCard.ctaStartTrial', { price: plan.prix })}
             </Text>
           </Pressable>
           <Text style={styles.note}>
-            <Feather name="shield" size={12} color="#8A8F99" />  Tes informations sont chiffrées et ne sont pas stockées.
+            <Feather name="shield" size={12} color="#8A8F99" />  {tr('paymentCard.securityNote')}
           </Text>
 
           <View style={{ height: 24 }} />

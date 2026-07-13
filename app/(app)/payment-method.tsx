@@ -6,19 +6,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
 import { getPaymentProvider } from '../../lib/payments';
 import { PLANS } from './subscription';
+import { useT } from '../../lib/i18n';
 
 type MethodId = 'apple' | 'google' | 'card';
 
-const METHODES: { id: MethodId; label: string; sub: string; icon: keyof typeof Feather.glyphMap; iconBg: string }[] = [
-  { id: 'apple',  label: 'Apple Pay',     sub: 'Paiement en un geste',     icon: 'smartphone',  iconBg: '#1B2333' },
-  { id: 'google', label: 'Google Pay',    sub: 'Paiement en un geste',     icon: 'smartphone',  iconBg: '#2C9CE0' },
-  { id: 'card',   label: 'Carte bancaire', sub: 'Visa, Mastercard, Amex',  icon: 'credit-card', iconBg: '#6B4DFF' },
-];
-
 export default function PaymentMethodScreen() {
   const router = useRouter();
+  const tr = useT();
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
+
+  const METHODES: { id: MethodId; label: string; sub: string; icon: keyof typeof Feather.glyphMap; iconBg: string }[] = [
+    { id: 'apple',  label: tr('paymentMethod.applePay'),     sub: tr('paymentMethod.oneTapPayment'),  icon: 'smartphone',  iconBg: '#1B2333' },
+    { id: 'google', label: tr('paymentMethod.googlePay'),    sub: tr('paymentMethod.oneTapPayment'),  icon: 'smartphone',  iconBg: '#2C9CE0' },
+    { id: 'card',   label: tr('paymentMethod.cardLabel'),    sub: tr('paymentMethod.cardSub'),         icon: 'credit-card', iconBg: '#6B4DFF' },
+  ];
 
   const [method, setMethod] = useState<MethodId>('apple');
   const [paying, setPaying] = useState(false);
@@ -38,14 +40,14 @@ export default function PaymentMethodScreen() {
     try {
       const payment = await getPaymentProvider().payPremium(plan.id as PremiumPlan, method);
       if (!payment.ok) {
-        Alert.alert('Paiement impossible', payment.error ?? 'Réessaie dans un instant.');
+        Alert.alert(tr('paymentMethod.errorTitle'), payment.error ?? tr('paymentMethod.errorMessage'));
         setPaying(false);
         return;
       }
       await subscribePremium(plan.id as PremiumPlan, payment.paymentToken);
       router.replace('/(app)/(tabs)/parcours');
     } catch {
-      Alert.alert('Paiement impossible', 'Réessaie dans un instant.');
+      Alert.alert(tr('paymentMethod.errorTitle'), tr('paymentMethod.errorMessage'));
       setPaying(false);
     }
   };
@@ -57,7 +59,7 @@ export default function PaymentMethodScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Text style={styles.back}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Paiement</Text>
+        <Text style={styles.headerTitle}>{tr('paymentMethod.headerTitle')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -69,8 +71,8 @@ export default function PaymentMethodScreen() {
               <Feather name="star" size={20} color="#F0820C" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.recapTitle}>Tarteel Premium</Text>
-              <Text style={styles.recapPlan}>Offre {plan.titre.toLowerCase()} · {plan.detail}</Text>
+              <Text style={styles.recapTitle}>{tr('paymentMethod.premiumTitle')}</Text>
+              <Text style={styles.recapPlan}>{tr('paymentMethod.planOffer', { plan: plan.titre.toLowerCase(), detail: plan.detail })}</Text>
             </View>
           </View>
           {plan.badge && (
@@ -83,23 +85,23 @@ export default function PaymentMethodScreen() {
         {/* Détail prix */}
         <View style={styles.priceCard}>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Essai gratuit</Text>
-            <Text style={styles.priceFree}>7 jours · 0,00 €</Text>
+            <Text style={styles.priceLabel}>{tr('paymentMethod.freeTrialLabel')}</Text>
+            <Text style={styles.priceFree}>{tr('paymentMethod.freeTrialValue')}</Text>
           </View>
           <View style={styles.priceDivider} />
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Puis, facturé {plan.titre.toLowerCase()}</Text>
+            <Text style={styles.priceLabel}>{tr('paymentMethod.thenBilled', { plan: plan.titre.toLowerCase() })}</Text>
             <Text style={styles.priceValue}>{plan.prix}</Text>
           </View>
           <View style={styles.priceDivider} />
           <View style={styles.priceRow}>
-            <Text style={styles.totalLabel}>À payer aujourd'hui</Text>
+            <Text style={styles.totalLabel}>{tr('paymentMethod.dueToday')}</Text>
             <Text style={styles.totalValue}>0,00 €</Text>
           </View>
         </View>
 
         {/* Moyens de paiement */}
-        <Text style={styles.sectionLabel}>MOYEN DE PAIEMENT</Text>
+        <Text style={styles.sectionLabel}>{tr('paymentMethod.sectionLabel')}</Text>
         <View style={styles.card}>
           {METHODES.map((m, i) => {
             const actif = method === m.id;
@@ -132,13 +134,13 @@ export default function PaymentMethodScreen() {
             <>
               <Feather name={method === 'card' ? 'arrow-right' : 'lock'} size={18} color="#fff" />
               <Text style={styles.ctaText}>
-                {method === 'card' ? 'Continuer' : 'Confirmer et démarrer l’essai'}
+                {method === 'card' ? tr('paymentMethod.ctaContinue') : tr('paymentMethod.ctaConfirmTrial')}
               </Text>
             </>
           )}
         </Pressable>
         <Text style={styles.ctaNote}>
-          <Feather name="shield" size={12} color="#8A8F99" />  Paiement sécurisé · Annulable à tout moment
+          <Feather name="shield" size={12} color="#8A8F99" />  {tr('paymentMethod.securityNote')}
         </Text>
 
         <View style={{ height: 24 }} />

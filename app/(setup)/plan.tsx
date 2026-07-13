@@ -11,9 +11,11 @@ import Otter from '../../components/Otter';
 import Confetti from '../../components/Confetti';
 import { useUserStore } from '../../store/userStore';
 import { saveOnboarding } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 export default function PlanScreen() {
   const router = useRouter();
+  const tr = useT();
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
 
   const otterScale = useSharedValue(0);
@@ -84,29 +86,29 @@ export default function PlanScreen() {
       </Animated.View>
 
       <Animated.Text entering={FadeInDown.delay(250).springify()} style={styles.title}>
-        Ton plan est prêt !
+        {tr('plan.title')}
       </Animated.Text>
 
       <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.card}>
         <View style={styles.cardTitleRow}>
           <Feather name="book" size={22} color="#6B4DFF" />
-          <Text style={styles.cardTitle}>Unité 1 — Alphabet Arabe</Text>
+          <Text style={styles.cardTitle}>{tr('plan.unit1')}</Text>
         </View>
-        <Text style={styles.cardSub}>12 leçons · 3 semaines à 10 min/j</Text>
+        <Text style={styles.cardSub}>{tr('plan.lessonsInfo')}</Text>
         <Animated.View style={[styles.emptyBar, barStyle]} />
-        <Text style={styles.cardSub}>0 / 12 leçons complétées</Text>
+        <Text style={styles.cardSub}>{tr('plan.progress')}</Text>
         <View style={styles.streakRow}>
           <Text style={{ fontSize: 19 }}>🔥</Text>
-          <Text style={styles.streakText}>Streak quotidien activé</Text>
+          <Text style={styles.streakText}>{tr('plan.streakActive')}</Text>
         </View>
-        <Text style={styles.cardSubSmall}>Notification à 20h00 chaque jour</Text>
+        <Text style={styles.cardSubSmall}>{tr('plan.notifTime')}</Text>
       </Animated.View>
 
       <View style={{ flex: 1 }} />
 
       <Animated.View entering={FadeInDown.delay(700).springify()} style={{ width: '100%' }}>
         <Pressable style={styles.cta} onPress={start}>
-          <Text style={styles.ctaLabel}>Commencer la leçon 1</Text>
+          <Text style={styles.ctaLabel}>{tr('plan.startLesson1')}</Text>
         </Pressable>
       </Animated.View>
     </View>

@@ -9,9 +9,11 @@ import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { fetchReferral, redeemReferral, type ReferralInfo } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import { useT } from '../../lib/i18n';
 
 export default function ReferralScreen() {
   const router = useRouter();
+  const tr = useT();
   const T = useTheme();
   const [info, setInfo] = useState<ReferralInfo | null>(null);
   const [error, setError] = useState(false);
@@ -33,7 +35,7 @@ export default function ReferralScreen() {
     if (!info) return;
     try {
       await Share.share({
-        message: `Rejoins-moi sur Tarteel pour apprendre le Coran ! Utilise mon code de parrainage ${info.code} et on gagne chacun ${info.rewardPerReferral} cœurs. 💚`,
+        message: tr('referral.shareMessage', { code: info.code, reward: info.rewardPerReferral }),
       });
     } catch { /* partage annulé — sans conséquence */ }
   };
@@ -44,15 +46,15 @@ export default function ReferralScreen() {
     setRedeeming(true);
     try {
       await redeemReferral(c);
-      Alert.alert('Bravo ! 🎉', `Code accepté : toi et ton parrain avez gagné ${info?.rewardPerReferral ?? 2} cœurs.`);
+      Alert.alert(tr('referral.successTitle'), tr('referral.successMessage', { reward: info?.rewardPerReferral ?? 2 }));
       setCode('');
       router.back();
     } catch (e) {
       const msg =
         e instanceof ApiError && e.status !== 0
           ? e.message
-          : "Impossible de valider ce code. Vérifie-le et réessaie.";
-      Alert.alert('Code invalide', msg);
+          : tr('referral.invalidCodeMessage');
+      Alert.alert(tr('referral.invalidCodeTitle'), msg);
     } finally {
       setRedeeming(false);
     }
@@ -67,17 +69,17 @@ export default function ReferralScreen() {
           <Feather name="arrow-left" size={24} color="#fff" />
         </Pressable>
         <Text style={{ fontSize: 40 }}>👥</Text>
-        <Text style={styles.headerTitle}>Parrainage</Text>
-        <Text style={styles.headerSub}>Invite des amis, gagnez des cœurs ensemble</Text>
+        <Text style={styles.headerTitle}>{tr('referral.title')}</Text>
+        <Text style={styles.headerSub}>{tr('referral.headerSub')}</Text>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         {error ? (
           <View style={styles.center}>
             <Feather name="wifi-off" size={32} color="#9AA0AA" />
-            <Text style={[styles.stateText, { color: T.text }]}>Impossible de charger ton code.</Text>
+            <Text style={[styles.stateText, { color: T.text }]}>{tr('referral.loadError')}</Text>
             <Pressable style={styles.retryBtn} onPress={load}>
-              <Text style={styles.retryLabel}>Réessayer</Text>
+              <Text style={styles.retryLabel}>{tr('referral.retry')}</Text>
             </Pressable>
           </View>
         ) : !info ? (
@@ -87,12 +89,12 @@ export default function ReferralScreen() {
         ) : (
           <>
             {/* Mon code */}
-            <Text style={[styles.sectionTitle, { color: T.text }]}>Mon code de parrainage</Text>
+            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('referral.myCodeTitle')}</Text>
             <View style={[styles.codeCard, { backgroundColor: T.cardBg }]}>
               <Text style={styles.codeValue}>{info.code}</Text>
               <Pressable style={[styles.codeActionBtn, styles.shareBtn]} onPress={shareCode} hitSlop={6}>
                 <Feather name="share-2" size={18} color="#fff" />
-                <Text style={[styles.codeActionText, { color: '#fff' }]}>Partager mon code</Text>
+                <Text style={[styles.codeActionText, { color: '#fff' }]}>{tr('referral.shareButton')}</Text>
               </Pressable>
             </View>
 
@@ -100,18 +102,18 @@ export default function ReferralScreen() {
               <Text style={{ fontSize: 22 }}>🎁</Text>
               <Text style={[styles.infoText, { color: T.text }]}>
                 {info.referredCount > 0
-                  ? `Tu as déjà parrainé ${info.referredCount} ami${info.referredCount > 1 ? 's' : ''} !`
-                  : `Chaque ami parrainé = ${info.rewardPerReferral} cœurs pour vous deux.`}
+                  ? tr(info.referredCount > 1 ? 'referral.referredCountPlural' : 'referral.referredCountSingular', { count: info.referredCount })
+                  : tr('referral.rewardInfo', { reward: info.rewardPerReferral })}
               </Text>
             </View>
 
             {/* Saisir un code (une seule fois par compte) */}
-            <Text style={[styles.sectionTitle, { color: T.text, marginTop: 26 }]}>J'ai un code de parrain</Text>
-            <Text style={styles.redeemHint}>Utilisable une seule fois, à ton arrivée sur l'app.</Text>
+            <Text style={[styles.sectionTitle, { color: T.text, marginTop: 26 }]}>{tr('referral.haveCodeTitle')}</Text>
+            <Text style={styles.redeemHint}>{tr('referral.haveCodeHint')}</Text>
             <View style={[styles.inputRow, { backgroundColor: T.cardBg }]}>
               <TextInput
                 style={[styles.input, { color: T.text }]}
-                placeholder="Ex : ABC123"
+                placeholder={tr('referral.codePlaceholder')}
                 placeholderTextColor="#A0A5AE"
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -127,7 +129,7 @@ export default function ReferralScreen() {
             >
               {redeeming
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.redeemText}>Valider le code</Text>}
+                : <Text style={styles.redeemText}>{tr('referral.validateButton')}</Text>}
             </Pressable>
             <View style={{ height: 24 }} />
           </>
