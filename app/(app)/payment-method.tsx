@@ -5,7 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
 import { getPaymentProvider } from '../../lib/payments';
-import { PLANS } from './subscription';
+import { buildPlans } from './subscription';
 import { useT } from '../../lib/i18n';
 
 type MethodId = 'apple' | 'google' | 'card';
@@ -14,6 +14,7 @@ export default function PaymentMethodScreen() {
   const router = useRouter();
   const tr = useT();
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
+  const PLANS = buildPlans(tr);
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 
   const METHODES: { id: MethodId; label: string; sub: string; icon: keyof typeof Feather.glyphMap; iconBg: string }[] = [

@@ -3,23 +3,31 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { t, useT } from '../../lib/i18n';
+import { useT } from '../../lib/i18n';
 
-const AVANTAGES = [
-  { icon: 'slash' as const,       titre: t('subscription.perkNoAdsTitle'),        desc: t('subscription.perkNoAdsDesc') },
-  { icon: 'heart' as const,       titre: t('subscription.perkUnlimitedLivesTitle'),       desc: t('subscription.perkUnlimitedLivesDesc') },
-  { icon: 'bar-chart-2' as const, titre: t('subscription.perkStatsTitle'), desc: t('subscription.perkStatsDesc') },
-  { icon: 'zap' as const,         titre: t('subscription.perkDoubleXpTitle'),            desc: t('subscription.perkDoubleXpDesc') },
-];
+/** Fonctions (pas des constantes figées) : réévaluées à chaque rendu pour
+ *  rester réactives à un changement de langue en cours de session. */
+function buildAvantages(tr: ReturnType<typeof useT>) {
+  return [
+    { icon: 'slash' as const,       titre: tr('subscription.perkNoAdsTitle'),          desc: tr('subscription.perkNoAdsDesc') },
+    { icon: 'heart' as const,       titre: tr('subscription.perkUnlimitedLivesTitle'), desc: tr('subscription.perkUnlimitedLivesDesc') },
+    { icon: 'bar-chart-2' as const, titre: tr('subscription.perkStatsTitle'),          desc: tr('subscription.perkStatsDesc') },
+    { icon: 'zap' as const,         titre: tr('subscription.perkDoubleXpTitle'),       desc: tr('subscription.perkDoubleXpDesc') },
+  ];
+}
 
-export const PLANS = [
-  { id: 'annuel',  titre: t('subscription.planYearlyTitle'),  prix: '15,24 €', detail: '1,27 €/mois', badge: t('subscription.planYearlyBadge'), best: true },
-  { id: 'mensuel', titre: t('subscription.planMonthlyTitle'), prix: '1,52 €',  detail: t('subscription.planMonthlyDetail'),    badge: null,            best: false },
-];
+export function buildPlans(tr: ReturnType<typeof useT>) {
+  return [
+    { id: 'annuel',  titre: tr('subscription.planYearlyTitle'),  prix: '15,24 €', detail: '1,27 €/mois', badge: tr('subscription.planYearlyBadge'), best: true },
+    { id: 'mensuel', titre: tr('subscription.planMonthlyTitle'), prix: '1,52 €',  detail: tr('subscription.planMonthlyDetail'),    badge: null,            best: false },
+  ];
+}
 
 export default function SubscriptionScreen() {
   const router = useRouter();
   const tr = useT();
+  const AVANTAGES = buildAvantages(tr);
+  const PLANS = buildPlans(tr);
   const [plan, setPlan] = useState('annuel');
 
   // On passe l'offre choisie à l'écran de paiement.

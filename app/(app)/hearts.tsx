@@ -9,18 +9,19 @@ import { useUserStore, MAX_HEARTS } from '../../store/userStore';
 import { refillHeartsWithGems } from '../../lib/api/gems';
 import { buyHearts } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import { useT, t } from '../../lib/i18n';
 
 /** Coût serveur d'un refill complet en gemmes (source de vérité : backend). */
 const REFILL_GEM_COST = 350;
 
 /** Formate un nombre de ms en "Xh Ymin" / "Y min". */
 function formatRemaining(ms: number): string {
-  if (ms <= 0) return 'bientôt';
+  if (ms <= 0) return t('heartsPage.soon');
   const totalMin = Math.ceil(ms / 60000);
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}min`;
-  return `${m} min`;
+  if (h > 0) return t('heartsPage.remainingHM', { h, m: m.toString().padStart(2, '0') });
+  return t('heartsPage.remainingM', { m });
 }
 
 function OptionCard({
@@ -57,6 +58,7 @@ function OptionCard({
 
 export default function HeartsScreen() {
   const router = useRouter();
+  const tr = useT();
   const T = useTheme();
   const hearts = useUserStore((s) => s.hearts);
   const gems = useUserStore((s) => s.gems);
@@ -84,13 +86,13 @@ export default function HeartsScreen() {
     setRefilling(true);
     try {
       await refillHeartsWithGems();
-      Alert.alert('Cœurs rechargés', 'Tes cœurs sont de nouveau au maximum !');
+      Alert.alert(tr('heartsPage.refillOkTitle'), tr('heartsPage.refillOkMsg'));
     } catch (e) {
       const msg =
         e instanceof ApiError && e.code === 'INSUFFICIENT_GEMS'
-          ? `Il te faut ${REFILL_GEM_COST} gemmes pour recharger.`
-          : "Impossible de recharger pour l'instant. Réessaie.";
-      Alert.alert('Oups', msg);
+          ? tr('heartsPage.refillFailInsufficient', { n: REFILL_GEM_COST })
+          : tr('heartsPage.refillFailGeneric');
+      Alert.alert(tr('heartsPage.oops'), msg);
     } finally {
       setRefilling(false);
     }
@@ -102,13 +104,13 @@ export default function HeartsScreen() {
     setBuying(true);
     try {
       await buyHearts();
-      Alert.alert('Cœurs rechargés', 'Merci ! Tes cœurs sont au maximum.');
+      Alert.alert(tr('heartsPage.buyOkTitle'), tr('heartsPage.buyOkMsg'));
     } catch (e) {
       const msg =
         e instanceof ApiError && e.status !== 0
           ? e.message
-          : 'Le paiement a échoué. Réessaie.';
-      Alert.alert('Paiement', msg);
+          : tr('heartsPage.paymentFailed');
+      Alert.alert(tr('heartsPage.paymentTitle'), msg);
     } finally {
       setBuying(false);
     }
@@ -127,13 +129,13 @@ export default function HeartsScreen() {
           <Feather name="heart" size={40} color="#fff" />
           <Text style={styles.heartCount}>{isPremium ? '∞' : `${hearts}/${MAX_HEARTS}`}</Text>
         </View>
-        <Text style={styles.headerTitle}>Mes cœurs</Text>
+        <Text style={styles.headerTitle}>{tr('heartsPage.title')}</Text>
         <Text style={styles.headerSub}>
           {isPremium
-            ? 'Premium : cœurs illimités 💫'
+            ? tr('heartsPage.premiumSub')
             : full
-              ? 'Tes cœurs sont au maximum 🎉'
-              : `Prochain cœur dans ${formatRemaining(remaining)}`}
+              ? tr('heartsPage.fullSub')
+              : tr('heartsPage.nextIn', { time: formatRemaining(remaining) })}
         </Text>
       </LinearGradient>
 
@@ -141,17 +143,17 @@ export default function HeartsScreen() {
         {isPremium ? (
           <View style={styles.premiumNote}>
             <Text style={{ fontSize: 40 }}>💫</Text>
-            <Text style={[styles.premiumTitle, { color: T.text }]}>Tu es Premium</Text>
-            <Text style={styles.premiumHint}>Tes cœurs ne s'épuisent jamais. Profite de tes leçons !</Text>
+            <Text style={[styles.premiumTitle, { color: T.text }]}>{tr('heartsPage.youArePremium')}</Text>
+            <Text style={styles.premiumHint}>{tr('heartsPage.premiumHint')}</Text>
           </View>
         ) : (
           <>
-            <Text style={[styles.sectionTitle, { color: T.text }]}>Obtenir des cœurs</Text>
+            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('heartsPage.getHearts')}</Text>
 
             <OptionCard
               emoji="💎" tint="#1CB0F6" cardBg={T.cardBg} textColor={T.text}
-              title="Convertir mes gemmes"
-              hint={`${REFILL_GEM_COST} gemmes → cœurs pleins · tu as ${gems} 💎`}
+              title={tr('heartsPage.convertGems')}
+              hint={tr('heartsPage.convertGemsHint', { n: REFILL_GEM_COST, gems })}
               cta={String(REFILL_GEM_COST)}
               onPress={onRefillGems}
               loading={refilling}
@@ -160,9 +162,9 @@ export default function HeartsScreen() {
 
             <OptionCard
               emoji="💳" tint="#F0820C" cardBg={T.cardBg} textColor={T.text}
-              title="Acheter avec de l'argent"
-              hint="Recharge instantanée de tous tes cœurs"
-              cta="Acheter"
+              title={tr('heartsPage.buyWithMoney')}
+              hint={tr('heartsPage.buyWithMoneyHint')}
+              cta={tr('heartsPage.buy')}
               onPress={onBuyMoney}
               loading={buying}
               disabled={full}
@@ -170,23 +172,23 @@ export default function HeartsScreen() {
 
             <OptionCard
               emoji="📖" tint="#34C724" cardBg={T.cardBg} textColor={T.text}
-              title="Réviser pour des cœurs"
-              hint="Termine une session de révision (+1 cœur, max 2/jour)"
+              title={tr('heartsPage.reviewForHearts')}
+              hint={tr('heartsPage.reviewForHeartsHint')}
               onPress={() => router.push({ pathname: '/(app)/(tabs)/revisions', params: { regagner: '1' } })}
               disabled={full}
             />
 
             <OptionCard
               emoji="👥" tint="#6B4DFF" cardBg={T.cardBg} textColor={T.text}
-              title="Parrainer des amis"
-              hint="Gagne des cœurs quand un ami rejoint avec ton code"
+              title={tr('heartsPage.referFriends')}
+              hint={tr('heartsPage.referFriendsHint')}
               onPress={() => router.push('/(app)/referral')}
             />
 
             <Pressable onPress={() => router.push('/(app)/subscription')} style={styles.premiumCtaWrap}>
               <LinearGradient colors={['#FFA53D', '#F0820C']} style={styles.premiumCta}>
                 <Feather name="star" size={18} color="#fff" />
-                <Text style={styles.premiumCtaText}>Passer Premium · cœurs illimités</Text>
+                <Text style={styles.premiumCtaText}>{tr('heartsPage.goPremium')}</Text>
               </LinearGradient>
             </Pressable>
           </>
