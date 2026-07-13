@@ -9,6 +9,7 @@ import { Feather, FontAwesome } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
 import { login, register, ApiError } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 type Mode = 'login' | 'signup';
 
@@ -52,6 +53,7 @@ function Field({
 
 export default function SignupScreen() {
   const router = useRouter();
+  const tr = useT();
   const [mode, setMode] = useState<Mode>('login');
 
   // Champs communs
@@ -87,40 +89,40 @@ export default function SignupScreen() {
     // On vérifie un problème à la fois, dans l'ordre où l'utilisateur les remplit.
     const mail = email.trim();
     if (!mail) {
-      setError('Renseigne ton adresse email.');
+      setError(tr('signup.errEmailRequired'));
       return;
     }
     // Format email simple (le backend applique la règle stricte).
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
-      setError("L'adresse email n'est pas valide. Exemple : nom@exemple.com");
+      setError(tr('signup.errEmailInvalid'));
       return;
     }
     if (isSignup && !fullName.trim()) {
-      setError('Renseigne ton nom complet.');
+      setError(tr('signup.errNameRequired'));
       return;
     }
     // Pseudo public (affiché dans les ligues) : 3–20 caractères, lettres,
     // chiffres, point ou underscore. Mêmes règles que le backend.
     const pseudo = username.trim().toLowerCase();
     if (isSignup && !pseudo) {
-      setError("Renseigne ton nom d'utilisateur.");
+      setError(tr('signup.errUsernameRequired'));
       return;
     }
     if (isSignup && !/^[a-z0-9._]{3,20}$/.test(pseudo)) {
-      setError("Nom d'utilisateur : 3 à 20 caractères, lettres, chiffres, « . » ou « _ ».");
+      setError(tr('signup.errUsernameFormat'));
       return;
     }
     if (!password) {
-      setError('Renseigne ton mot de passe.');
+      setError(tr('signup.errPasswordRequired'));
       return;
     }
     // Le backend exige 8 caractères minimum à l'inscription.
     if (isSignup && password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.');
+      setError(tr('signup.errPasswordLength'));
       return;
     }
     if (isSignup && password !== confirm) {
-      setError('Les deux mots de passe ne correspondent pas.');
+      setError(tr('signup.errPasswordMismatch'));
       return;
     }
 
@@ -143,7 +145,7 @@ export default function SignupScreen() {
     } catch (e) {
       // Le client API produit déjà un message précis (champ + raison) à partir
       // de l'erreur backend. On l'affiche tel quel.
-      setError(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessaie.');
+      setError(e instanceof ApiError ? e.message : tr('signup.errGeneric'));
     } finally {
       setLoading(false);
     }
@@ -163,53 +165,53 @@ export default function SignupScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.appName}>Tarteel</Text>
-          <Text style={styles.welcome}>{isSignup ? 'Crée ton compte' : 'Bon retour'}</Text>
+          <Text style={styles.welcome}>{isSignup ? tr('signup.createTitle') : tr('signup.welcomeBack')}</Text>
           <Text style={styles.sub}>
-            {isSignup ? 'Rejoins-nous gratuitement' : 'Connecte-toi pour continuer'}
+            {isSignup ? tr('signup.subSignup') : tr('signup.subLogin')}
           </Text>
 
           {/* Onglets Connexion / Inscription */}
           <View style={styles.tabs}>
             <Pressable style={[styles.tab, !isSignup && styles.tabActive]} onPress={() => setMode('login')}>
-              <Text style={[styles.tabText, !isSignup && styles.tabTextActive]}>Connexion</Text>
+              <Text style={[styles.tabText, !isSignup && styles.tabTextActive]}>{tr('signup.tabLogin')}</Text>
             </Pressable>
             <Pressable style={[styles.tab, isSignup && styles.tabActive]} onPress={() => setMode('signup')}>
-              <Text style={[styles.tabText, isSignup && styles.tabTextActive]}>Inscription</Text>
+              <Text style={[styles.tabText, isSignup && styles.tabTextActive]}>{tr('signup.tabSignup')}</Text>
             </Pressable>
           </View>
 
           {/* Boutons sociaux */}
           <Pressable style={styles.googleBtn}>
             <Text style={styles.googleG}>G</Text>
-            <Text style={styles.socialLabel}>Continuer avec Google</Text>
+            <Text style={styles.socialLabel}>{tr('signup.continueGoogle')}</Text>
           </Pressable>
           <Pressable style={styles.appleBtn}>
             <FontAwesome name="apple" size={22} color="#fff" />
-            <Text style={styles.appleLabel}>Continuer avec Apple</Text>
+            <Text style={styles.appleLabel}>{tr('signup.continueApple')}</Text>
           </Pressable>
 
           {/* Séparateur */}
           <View style={styles.separator}>
             <View style={styles.line} />
-            <Text style={styles.ou}>ou {isSignup ? "s'inscrire" : 'se connecter'} avec un email</Text>
+            <Text style={styles.ou}>{isSignup ? tr('signup.orSignupEmail') : tr('signup.orLoginEmail')}</Text>
             <View style={styles.line} />
           </View>
 
           {/* Champs spécifiques à l'inscription */}
           {isSignup && (
             <>
-              <Field icon="user" value={fullName} onChangeText={setFullName} placeholder="Nom complet" autoCapitalize="words" autoComplete="name" />
+              <Field icon="user" value={fullName} onChangeText={setFullName} placeholder={tr('signup.fullName')} autoCapitalize="words" autoComplete="name" />
               <View style={{ height: 12 }} />
-              <Field icon="at-sign" value={username} onChangeText={setUsername} placeholder="Nom d'utilisateur" autoComplete="username" />
+              <Field icon="at-sign" value={username} onChangeText={setUsername} placeholder={tr('signup.username')} autoComplete="username" />
               <View style={{ height: 12 }} />
             </>
           )}
 
           {/* Email + mot de passe (communs) */}
-          <Field icon="mail" value={email} onChangeText={setEmail} placeholder="Email" keyboardType="email-address" autoComplete="email" />
+          <Field icon="mail" value={email} onChangeText={setEmail} placeholder={tr('signup.email')} keyboardType="email-address" autoComplete="email" />
           <View style={{ height: 12 }} />
           <Field
-            icon="lock" value={password} onChangeText={setPassword} placeholder="Mot de passe" secure
+            icon="lock" value={password} onChangeText={setPassword} placeholder={tr('signup.password')} secure
             autoComplete={isSignup ? 'password-new' : 'password'}
           />
 
@@ -217,21 +219,21 @@ export default function SignupScreen() {
           {isSignup ? (
             <>
               <View style={{ height: 12 }} />
-              <Field icon="lock" value={confirm} onChangeText={setConfirm} placeholder="Confirmer le mot de passe" secure autoComplete="password-new" />
+              <Field icon="lock" value={confirm} onChangeText={setConfirm} placeholder={tr('signup.confirmPassword')} secure autoComplete="password-new" />
 
               <Pressable style={styles.cguRow} onPress={() => setAcceptCgu((v) => !v)}>
                 <View style={[styles.checkbox, acceptCgu && styles.checkboxOn]}>
                   {acceptCgu && <Feather name="check" size={14} color="#fff" />}
                 </View>
                 <Text style={styles.cguText}>
-                  J'accepte les <Text style={styles.cguLink}>Conditions d'utilisation</Text> et la{' '}
-                  <Text style={styles.cguLink}>Politique de confidentialité</Text>.
+                  {tr('signup.acceptCguBefore')}<Text style={styles.cguLink}>{tr('signup.acceptCguTerms')}</Text>{tr('signup.acceptCguAnd')}
+                  <Text style={styles.cguLink}>{tr('signup.acceptCguPrivacy')}</Text>{tr('signup.acceptCguAfter')}
                 </Text>
               </Pressable>
             </>
           ) : (
             <Pressable style={styles.forgot} hitSlop={6} onPress={() => router.push('/(onboarding)/forgot-password')}>
-              <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+              <Text style={styles.forgotText}>{tr('signup.forgotPassword')}</Text>
             </Pressable>
           )}
 
@@ -247,15 +249,15 @@ export default function SignupScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.ctaLabel}>{isSignup ? 'Créer mon compte' : 'Se connecter'}</Text>
+              <Text style={styles.ctaLabel}>{isSignup ? tr('signup.createAccount') : tr('signup.login')}</Text>
             )}
           </Pressable>
 
           {/* Bascule */}
           <Pressable onPress={() => setMode(isSignup ? 'login' : 'signup')}>
             <Text style={styles.switchLink}>
-              {isSignup ? 'Déjà un compte ? ' : 'Pas encore de compte ? '}
-              <Text style={styles.switchStrong}>{isSignup ? 'Se connecter' : "S'inscrire"}</Text>
+              {isSignup ? tr('signup.alreadyAccount') : tr('signup.noAccount')}
+              <Text style={styles.switchStrong}>{isSignup ? tr('signup.login') : tr('signup.register')}</Text>
             </Text>
           </Pressable>
         </ScrollView>

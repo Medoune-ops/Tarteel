@@ -7,9 +7,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import Otter from '../../components/Otter';
 import { bootstrapSession } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const tr = useT();
   const loadingWidth = useSharedValue(0);
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export default function SplashScreen() {
           <Otter size={186} showBook />
         </View>
         <Text style={styles.title}>Tarteel</Text>
-        <Text style={styles.subtitle}>Apprends le Coran</Text>
+        <Text style={styles.subtitle}>{tr('splash.subtitle')}</Text>
 
         <View style={styles.loaderTrack}>
           <Animated.View style={[styles.loaderFill, barStyle]} />
