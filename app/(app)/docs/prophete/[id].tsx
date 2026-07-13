@@ -1,13 +1,16 @@
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { DocHeader } from '../_components';
-import { PROPHETES } from '../_prophetes-data';
+import { PROPHETES, usePropheteLocalized } from '../_prophetes-data';
+import { useT } from '../../../../lib/i18n';
 
 const C = '#D96E00';
 
 export default function PropheteDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const tr = useT();
   const p = PROPHETES.find((x) => x.id === id) ?? PROPHETES[0];
+  const { titre, histoire } = usePropheteLocalized(p);
   const numero = PROPHETES.indexOf(p) + 1;
 
   return (
@@ -20,16 +23,16 @@ export default function PropheteDetail() {
         <View style={styles.banner}>
           <View style={styles.bannerNum}>
             <Text style={styles.bannerNumText}>{numero}</Text>
-            <Text style={styles.bannerNumLbl}>sur 25</Text>
+            <Text style={styles.bannerNumLbl}>{tr('docProphete.numOf25')}</Text>
           </View>
-          <Text style={styles.bannerTitre}>{p.titre}</Text>
+          <Text style={styles.bannerTitre}>{titre}</Text>
         </View>
 
         {/* Histoire */}
         <View style={styles.card}>
           <View style={styles.bar} />
-          <Text style={styles.sectionTitre}>Son histoire</Text>
-          {p.histoire.map((para, i) => (
+          <Text style={styles.sectionTitre}>{tr('docProphete.hisStory')}</Text>
+          {histoire.map((para, i) => (
             <Text key={i} style={styles.para}>{para}</Text>
           ))}
         </View>
@@ -37,8 +40,7 @@ export default function PropheteDetail() {
         {/* Rappel */}
         <View style={styles.note}>
           <Text style={styles.noteText}>
-            🤍 Que la paix soit sur lui. Chaque prophète a transmis le même message :
-            adorer Allah unique et faire le bien.
+            🤍 {tr('docProphete.note')}
           </Text>
         </View>
 
