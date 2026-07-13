@@ -1,23 +1,25 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import Otter from '../../components/Otter';
+import { useT } from '../../lib/i18n';
 
 export default function Onboarding3() {
   const router = useRouter();
+  const tr = useT();
 
   return (
     <View style={styles.screen}>
       <View style={[styles.header, { backgroundColor: '#DEF5E5' }]}>
         <Pressable style={styles.skip} onPress={() => router.replace('/(onboarding)/signup')}>
-          <Text style={[styles.skipText, { color: '#A7C4B2' }]}>Passer</Text>
+          <Text style={[styles.skipText, { color: '#A7C4B2' }]}>{tr('onboarding.skip')}</Text>
         </Pressable>
         <Text style={{ fontSize: 50, marginBottom: 12 }}>🚀</Text>
         <Otter size={150} />
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.title}>Progresse vite</Text>
-        <Text style={styles.desc}>8 exercices pour maîtriser chaque verset du Coran</Text>
+        <Text style={styles.title}>{tr('onboarding3.title')}</Text>
+        <Text style={styles.desc}>{tr('onboarding3.desc')}</Text>
 
         <View style={styles.flex} />
 
@@ -28,7 +30,7 @@ export default function Onboarding3() {
         </View>
 
         <Pressable style={styles.cta} onPress={() => router.replace('/(onboarding)/signup')}>
-          <Text style={styles.ctaLabel}>Commencer 🚀</Text>
+          <Text style={styles.ctaLabel}>{tr('onboarding3.start')}</Text>
         </Pressable>
       </View>
     </View>
