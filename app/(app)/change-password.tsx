@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../utils/useTheme';
 import { changePassword, ApiError } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 function PwdField({
   value, onChange, placeholder,
@@ -35,6 +36,7 @@ function PwdField({
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
+  const tr = useT();
   const T = useTheme();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -62,8 +64,8 @@ export default function ChangePasswordScreen() {
     } catch (e) {
       setError(
         e instanceof ApiError && e.status === 401
-          ? 'Mot de passe actuel incorrect.'
-          : e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessaie.',
+          ? tr('changePassword.wrongCurrent')
+          : e instanceof ApiError ? e.message : tr('changePassword.genericError'),
       );
       setLoading(false);
     }
@@ -75,40 +77,40 @@ export default function ChangePasswordScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Text style={[styles.back, { color: T.text }]}>‹</Text>
         </Pressable>
-        <Text style={[styles.headerTitle, { color: T.text }]}>Mot de passe</Text>
+        <Text style={[styles.headerTitle, { color: T.text }]}>{tr('changePassword.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Text style={[styles.label, { color: T.sectionLabel }]}>MOT DE PASSE ACTUEL</Text>
-          <PwdField value={current} onChange={setCurrent} placeholder="Mot de passe actuel" />
+          <Text style={[styles.label, { color: T.sectionLabel }]}>{tr('changePassword.currentLabel')}</Text>
+          <PwdField value={current} onChange={setCurrent} placeholder={tr('changePassword.currentPlaceholder')} />
 
-          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>NOUVEAU MOT DE PASSE</Text>
-          <PwdField value={next} onChange={setNext} placeholder="Nouveau mot de passe" />
+          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>{tr('changePassword.newLabel')}</Text>
+          <PwdField value={next} onChange={setNext} placeholder={tr('changePassword.newPlaceholder')} />
 
-          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>CONFIRMER</Text>
-          <PwdField value={confirm} onChange={setConfirm} placeholder="Confirmer le nouveau mot de passe" />
+          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>{tr('changePassword.confirmLabel')}</Text>
+          <PwdField value={confirm} onChange={setConfirm} placeholder={tr('changePassword.confirmPlaceholder')} />
           {confirm.length > 0 && (
             <Text style={[styles.matchLabel, { color: matches ? '#34C724' : '#FF4B4B' }]}>
-              {matches ? 'Les mots de passe correspondent ✓' : 'Les mots de passe ne correspondent pas'}
+              {matches ? tr('changePassword.matchOk') : tr('changePassword.matchFail')}
             </Text>
           )}
 
           <View style={[styles.criteria, { backgroundColor: T.cardBg }]}>
-            <Check ok={hasMin8}    label="Au moins 8 caractères" />
-            <Check ok={hasCase}    label="Une majuscule et une minuscule" />
-            <Check ok={hasNumber}  label="Un chiffre" />
-            <Check ok={hasSpecial} label="Un caractère spécial (!@#$…)" />
+            <Check ok={hasMin8}    label={tr('changePassword.criteriaMinLength')} />
+            <Check ok={hasCase}    label={tr('changePassword.criteriaCase')} />
+            <Check ok={hasNumber}  label={tr('changePassword.criteriaNumber')} />
+            <Check ok={hasSpecial} label={tr('changePassword.criteriaSpecial')} />
           </View>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
-          {done && <Text style={styles.successText}>Mot de passe mis à jour ✓</Text>}
+          {done && <Text style={styles.successText}>{tr('changePassword.success')}</Text>}
 
           <View style={{ flex: 1 }} />
 
           <Pressable style={[styles.cta, !canSubmit && styles.ctaDisabled]} onPress={submit} disabled={!canSubmit}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaLabel}>Mettre à jour</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaLabel}>{tr('changePassword.submit')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

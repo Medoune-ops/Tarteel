@@ -10,6 +10,7 @@ import { swrFetch } from '../../lib/api/swr';
 import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/reciters';
 import { playSurates, AUDIO_AVAILABLE } from '../../constants/trackPlayer';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
+import { useT } from '../../lib/i18n';
 
 // « Écoute du Coran » (badge Tajwid) — catalogue des 114 sourates en audio
 // complet. On choisit un récitateur puis une sourate : la lecture démarre et se
@@ -18,6 +19,7 @@ import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
 export default function TajwidScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -44,8 +46,8 @@ export default function TajwidScreen() {
     // planter, mais la page (liste + récitateurs) reste entièrement visible.
     if (!AUDIO_AVAILABLE) {
       Alert.alert(
-        'Écoute audio',
-        "L'écoute du Coran nécessite un development build (npx expo run:android). Indisponible dans Expo Go.",
+        tr('tajwid.audioAlertTitle'),
+        tr('tajwid.audioAlertMessage'),
       );
       return;
     }
@@ -60,7 +62,7 @@ export default function TajwidScreen() {
     } finally {
       setStarting(null);
     }
-  }, [ordered, reciterId, starting, router]);
+  }, [ordered, reciterId, starting, router, tr]);
 
   const renderRow = useCallback(
     ({ item, index }: { item: SourateListItem; index: number }) => (
@@ -78,14 +80,14 @@ export default function TajwidScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.nom, { color: T.text }]}>{item.nom}</Text>
           <Text style={[styles.arabe, { color: T.text }]}>{item.nomArabe}</Text>
-          <Text style={[styles.versets, { color: T.textTertiary }]}>{item.nombreVersets} versets</Text>
+          <Text style={[styles.versets, { color: T.textTertiary }]}>{tr('tajwid.versetsCount', { n: item.nombreVersets })}</Text>
         </View>
         {starting === item.numero
           ? <ActivityIndicator color="#8A5CF0" />
           : <Feather name="play-circle" size={26} color="#8A5CF0" />}
       </Pressable>
     ),
-    [T, onPlay, starting],
+    [T, onPlay, starting, tr],
   );
 
   return (
@@ -98,22 +100,22 @@ export default function TajwidScreen() {
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
         <Text style={styles.headerEmoji}>🎧</Text>
-        <Text style={styles.headerTitle}>Écoute du Coran</Text>
-        <Text style={styles.headerSub}>Continue même écran éteint 🌙</Text>
+        <Text style={styles.headerTitle}>{tr('tajwid.headerTitle')}</Text>
+        <Text style={styles.headerSub}>{tr('tajwid.headerSub')}</Text>
       </LinearGradient>
 
       {error ? (
         <View style={styles.stateBox}>
           <Feather name="wifi-off" size={32} color={T.textTertiary} />
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger les sourates.</Text>
+          <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('tajwid.loadError')}</Text>
           <Pressable style={styles.retryBtn} onPress={load}>
-            <Text style={styles.retryLabel}>Réessayer</Text>
+            <Text style={styles.retryLabel}>{tr('tajwid.retry')}</Text>
           </Pressable>
         </View>
       ) : !sourates ? (
         <View style={styles.stateBox}>
           <ActivityIndicator size="large" color="#8A5CF0" />
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement des sourates…</Text>
+          <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('tajwid.loading')}</Text>
         </View>
       ) : (
         <>
@@ -123,14 +125,14 @@ export default function TajwidScreen() {
             <View style={styles.notice}>
               <Feather name="info" size={16} color="#8A5CF0" />
               <Text style={styles.noticeText}>
-                Aperçu · l'écoute audio nécessite un development build
+                {tr('tajwid.previewNotice')}
               </Text>
             </View>
           )}
 
           {/* Choix du récitateur */}
           <View style={styles.reciterWrap}>
-            <Text style={[styles.reciterLabel, { color: T.textSecondary }]}>Récitateur</Text>
+            <Text style={[styles.reciterLabel, { color: T.textSecondary }]}>{tr('tajwid.reciter')}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}

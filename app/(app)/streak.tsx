@@ -8,13 +8,16 @@ import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
 import { fetchGems, fetchMe, repairStreak, type GemLedgerEntry } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import { useT } from '../../lib/i18n';
 
 // Évènements du ledger de gemmes liés à la SÉRIE (flammes). On ne garde que
-// ceux-là pour bâtir « l'historique des flammes ».
-const STREAK_REASONS: Record<string, { emoji: string; label: string }> = {
-  daily_streak: { emoji: '🔥', label: 'Série maintenue' },
-  streak_bonus: { emoji: '🎁', label: 'Bonus de série' },
-  streak_freeze: { emoji: '❄️', label: 'Gel de série' },
+// ceux-là pour bâtir « l'historique des flammes ». Construit avec `tr` dans le
+// composant (au lieu d'une constante module-level) pour rester réactif au
+// changement de langue.
+const STREAK_REASON_EMOJIS: Record<string, string> = {
+  daily_streak: '🔥',
+  streak_bonus: '🎁',
+  streak_freeze: '❄️',
 };
 
 function formatDate(iso: string): string {
@@ -27,9 +30,16 @@ function formatDate(iso: string): string {
 export default function StreakScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
   const streak = useUserStore((s) => s.streak);
   const streakGoal = useUserStore((s) => s.streakGoal);
   const streakFreezes = useUserStore((s) => s.streakFreezes);
+
+  const STREAK_REASONS: Record<string, { emoji: string; label: string }> = {
+    daily_streak: { emoji: STREAK_REASON_EMOJIS.daily_streak, label: tr('streak.reasonDaily') },
+    streak_bonus: { emoji: STREAK_REASON_EMOJIS.streak_bonus, label: tr('streak.reasonBonus') },
+    streak_freeze: { emoji: STREAK_REASON_EMOJIS.streak_freeze, label: tr('streak.reasonFreeze') },
+  };
 
   const [history, setHistory] = useState<GemLedgerEntry[] | null>(null);
   const [error, setError] = useState(false);
@@ -41,7 +51,7 @@ export default function StreakScreen() {
     setError(false);
     try {
       const [g, me] = await Promise.all([fetchGems(), fetchMe()]);
-      setHistory(g.transactions.filter((t) => t.reason in STREAK_REASONS));
+      setHistory(g.transactions.filter((t) => t.reason in STREAK_REASON_EMOJIS));
       setRecoverable(me.lastStreakValue ?? 0);
     } catch {
       setError(true);
@@ -58,17 +68,17 @@ export default function StreakScreen() {
     try {
       await repairStreak();
       await load();
-      Alert.alert('Série restaurée', 'Ta série est repartie ! 🔥');
+      Alert.alert(tr('streak.repairOkTitle'), tr('streak.repairOkMsg'));
     } catch (e) {
       const msg =
         e instanceof ApiError && e.status !== 0
           ? e.message
-          : 'Le paiement a échoué. Réessaie.';
-      Alert.alert('Restauration', msg);
+          : tr('streak.repairFailMsg');
+      Alert.alert(tr('streak.repairFailTitle'), msg);
     } finally {
       setRepairing(false);
     }
-  }, [repairing, load]);
+  }, [repairing, load, tr]);
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
@@ -81,9 +91,9 @@ export default function StreakScreen() {
         </Pressable>
         <Text style={styles.flameBig}>🔥</Text>
         <Text style={styles.headerCount}>{streak}</Text>
-        <Text style={styles.headerTitle}>Ma série</Text>
+        <Text style={styles.headerTitle}>{tr('streak.headerTitle')}</Text>
         <Text style={styles.headerSub}>
-          {streak === 0 ? "Commence ta série aujourd'hui !" : `${streak} jour${streak > 1 ? 's' : ''} de suite`}
+          {streak === 0 ? tr('streak.headerSubZero') : streak > 1 ? tr('streak.headerSubMany', { n: streak }) : tr('streak.headerSubOne', { n: streak })}
         </Text>
       </LinearGradient>
 
@@ -92,17 +102,17 @@ export default function StreakScreen() {
         <View style={[styles.statsCard, { backgroundColor: T.cardBg }]}>
           <View style={styles.statCol}>
             <Text style={[styles.statVal, { color: T.text }]}>{streak}</Text>
-            <Text style={styles.statLabel}>Jours</Text>
+            <Text style={styles.statLabel}>{tr('streak.statDays')}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: T.divider }]} />
           <View style={styles.statCol}>
             <Text style={[styles.statVal, { color: T.text }]}>{streakGoal ?? '—'}</Text>
-            <Text style={styles.statLabel}>Objectif</Text>
+            <Text style={styles.statLabel}>{tr('streak.statGoal')}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: T.divider }]} />
           <View style={styles.statCol}>
             <Text style={[styles.statVal, { color: T.text }]}>{streakFreezes}</Text>
-            <Text style={styles.statLabel}>Gels ❄️</Text>
+            <Text style={styles.statLabel}>{tr('streak.statFreezes')}</Text>
           </View>
         </View>
 
@@ -110,7 +120,7 @@ export default function StreakScreen() {
         <Pressable style={[styles.goalBtn, { backgroundColor: T.cardBg }]} onPress={() => router.push('/(app)/streak-goal')}>
           <Feather name="target" size={20} color="#F0820C" />
           <Text style={[styles.goalText, { color: T.text }]}>
-            {streakGoal ? 'Modifier mon objectif de série' : 'Fixer un objectif de série'}
+            {streakGoal ? tr('streak.goalEdit') : tr('streak.goalSet')}
           </Text>
           <Feather name="chevron-right" size={20} color="#F0820C" />
         </Pressable>
@@ -125,30 +135,30 @@ export default function StreakScreen() {
             <Feather name="credit-card" size={20} color="#FF4B4B" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.repairTitle, { color: T.text }]}>Restaurer ma série</Text>
+            <Text style={[styles.repairTitle, { color: T.text }]}>{tr('streak.repairTitle')}</Text>
             <Text style={styles.repairHint}>
               {recoverable > 0
-                ? `Récupère ${recoverable} jour${recoverable > 1 ? 's' : ''} de série 🔥`
-                : 'Aucune série à restaurer pour le moment'}
+                ? (recoverable > 1 ? tr('streak.repairHintMany', { n: recoverable }) : tr('streak.repairHintOne', { n: recoverable }))
+                : tr('streak.repairHintNone')}
             </Text>
           </View>
           {repairing ? (
             <ActivityIndicator color="#FF4B4B" />
           ) : (
             <View style={[styles.repairCta, recoverable === 0 && { backgroundColor: '#B0B5BE' }]}>
-              <Text style={styles.repairCtaText}>{recoverable > 0 ? `Payer · ${recoverable} j` : 'Payer'}</Text>
+              <Text style={styles.repairCtaText}>{recoverable > 0 ? tr('streak.repairCtaPay', { n: recoverable }) : tr('streak.repairCtaPayDefault')}</Text>
             </View>
           )}
         </Pressable>
 
-        <Text style={[styles.sectionTitle, { color: T.text }]}>Historique des flammes</Text>
+        <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('streak.historyTitle')}</Text>
 
         {error ? (
           <View style={styles.stateBox}>
             <Feather name="wifi-off" size={28} color={T.textTertiary} />
-            <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger l'historique.</Text>
+            <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('streak.loadError')}</Text>
             <Pressable style={styles.retryBtn} onPress={load}>
-              <Text style={styles.retryLabel}>Réessayer</Text>
+              <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
             </Pressable>
           </View>
         ) : !history ? (
@@ -159,7 +169,7 @@ export default function StreakScreen() {
           <View style={styles.stateBox}>
             <Text style={{ fontSize: 34 }}>🔥</Text>
             <Text style={[styles.stateText, { color: T.textSecondary }]}>
-              Aucun évènement de série pour l'instant. Termine une leçon chaque jour pour bâtir ta série !
+              {tr('streak.historyEmpty')}
             </Text>
           </View>
         ) : (

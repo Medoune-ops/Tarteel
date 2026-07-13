@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { fetchLearnedSourates, type SourateListItem } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 // Badge « Sourates apprises » (profil) — LECTURE SEULE : liste uniquement les
 // sourates que l'utilisateur a apprises en intégralité dans le parcours (toutes
@@ -11,6 +12,7 @@ import { fetchLearnedSourates, type SourateListItem } from '../../lib/api';
 
 export default function SouratesScreen() {
   const router = useRouter();
+  const tr = useT();
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -35,29 +37,29 @@ export default function SouratesScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Text style={styles.back}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Sourates apprises</Text>
+        <Text style={styles.headerTitle}>{tr('sourates.headerTitle')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       {error ? (
         <View style={styles.stateBox}>
           <Feather name="wifi-off" size={32} color="#9AA0AA" />
-          <Text style={styles.stateText}>Impossible de charger les sourates.</Text>
+          <Text style={styles.stateText}>{tr('sourates.loadError')}</Text>
           <Pressable style={styles.retryBtn} onPress={load}>
-            <Text style={styles.retryLabel}>Réessayer</Text>
+            <Text style={styles.retryLabel}>{tr('sourates.retry')}</Text>
           </Pressable>
         </View>
       ) : !sourates ? (
         <View style={styles.stateBox}>
           <ActivityIndicator size="large" color="#2A9E1C" />
-          <Text style={styles.stateText}>Chargement des sourates…</Text>
+          <Text style={styles.stateText}>{tr('sourates.loading')}</Text>
         </View>
       ) : sourates.length === 0 ? (
         <View style={styles.stateBox}>
           <Text style={{ fontSize: 40 }}>📖</Text>
-          <Text style={styles.stateText}>Aucune sourate apprise pour l'instant.</Text>
+          <Text style={styles.stateText}>{tr('sourates.emptyTitle')}</Text>
           <Text style={styles.emptyHint}>
-            Termine toutes les leçons d'une section du parcours pour ajouter sa sourate ici.
+            {tr('sourates.emptyHint')}
           </Text>
         </View>
       ) : (
@@ -66,17 +68,17 @@ export default function SouratesScreen() {
           <View style={styles.summary}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryValue}>{sourates.length}</Text>
-              <Text style={styles.summaryLabel}>Sourates</Text>
+              <Text style={styles.summaryLabel}>{tr('sourates.summarySourates')}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryValue}>{versets}</Text>
-              <Text style={styles.summaryLabel}>Versets</Text>
+              <Text style={styles.summaryLabel}>{tr('sourates.summaryVersets')}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryValue}>📖</Text>
-              <Text style={styles.summaryLabel}>Lecture</Text>
+              <Text style={styles.summaryLabel}>{tr('sourates.summaryLecture')}</Text>
             </View>
           </View>
 
@@ -89,7 +91,7 @@ export default function SouratesScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.nom}>{s.nom}</Text>
-                  <Text style={styles.versets}>{s.nombreVersets} versets</Text>
+                  <Text style={styles.versets}>{tr('sourates.versetsCount', { n: s.nombreVersets })}</Text>
                 </View>
                 <Text style={styles.arabe}>{s.nomArabe}</Text>
               </View>
@@ -97,7 +99,7 @@ export default function SouratesScreen() {
           </View>
 
           <Text style={styles.note}>
-            Sourates apprises en intégralité dans le parcours 📖
+            {tr('sourates.footerNote')}
           </Text>
           <View style={{ height: 24 }} />
         </ScrollView>
