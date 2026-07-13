@@ -22,6 +22,7 @@ import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../.
 import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio, setRemotePlaybackRate, correctFeedback, wrongFeedback } from '../../../constants/sounds';
 import { getLetterSound } from '../../../constants/letterSounds';
 import * as Speech from 'expo-speech';
+import { useT, t } from '../../../lib/i18n';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -29,6 +30,7 @@ type Phase = 'answering' | 'correct' | 'wrong';
 
 export default function LessonPlayScreen() {
   const router = useRouter();
+  const tr = useT();
   const { lessonId } = useLocalSearchParams<{ lessonId?: string }>();
   const isPremium = useUserStore((s) => s.isPremium);
   const voiceEnabled = useUserStore((s) => s.voiceEnabled);
@@ -66,9 +68,9 @@ export default function LessonPlayScreen() {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <Feather name="wifi-off" size={34} color="#9AA0AA" />
-        <Text style={styles.stateText}>Impossible de charger la leçon.</Text>
+        <Text style={styles.stateText}>{tr('play.loadError')}</Text>
         <Pressable style={styles.retryBtn} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
-          <Text style={styles.retryLabel}>Retour au parcours</Text>
+          <Text style={styles.retryLabel}>{tr('play.backToPath')}</Text>
         </Pressable>
       </View>
     );
@@ -78,7 +80,7 @@ export default function LessonPlayScreen() {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <ActivityIndicator size="large" color="#6B4DFF" />
-        <Text style={styles.stateText}>Chargement de la leçon…</Text>
+        <Text style={styles.stateText}>{tr('play.loading')}</Text>
       </View>
     );
   }
@@ -89,9 +91,9 @@ export default function LessonPlayScreen() {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <Feather name="clock" size={34} color="#9AA0AA" />
-        <Text style={styles.stateText}>Cette leçon n'est pas encore disponible.</Text>
+        <Text style={styles.stateText}>{tr('play.notAvailable')}</Text>
         <Pressable style={styles.retryBtn} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
-          <Text style={styles.retryLabel}>Retour au parcours</Text>
+          <Text style={styles.retryLabel}>{tr('play.backToPath')}</Text>
         </Pressable>
       </View>
     );
@@ -328,9 +330,9 @@ function FullVerseReader({ step, onContinue }: { step: DiscoveryStep; onContinue
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.tag, { backgroundColor: '#FFF3E0' }]}>
           <Feather name="volume-2" size={15} color="#E07A0C" />
-          <Text style={[styles.tagText, { color: '#E07A0C' }]}>Verset complet</Text>
+          <Text style={[styles.tagText, { color: '#E07A0C' }]}>{t('play.tagFullVerse')}</Text>
         </View>
-        <Text style={styles.consigne}>Écoute et répète à voix basse</Text>
+        <Text style={styles.consigne}>{t('play.repeatQuietly')}</Text>
 
         <View style={styles.verseCard}>
           {/* Mots en RTL (droite → gauche), tappables */}
@@ -355,7 +357,7 @@ function FullVerseReader({ step, onContinue }: { step: DiscoveryStep; onContinue
         <Pressable style={[readerStyles.autoBtn, autoPlaying && readerStyles.autoBtnActive]} onPress={toggleAuto}>
           <Feather name={autoPlaying ? 'pause' : 'play'} size={20} color="#fff" />
           <Text style={readerStyles.autoLabel}>
-            {autoPlaying ? 'Lecture en cours — appuie pour arrêter' : 'Lecture automatique mot par mot'}
+            {autoPlaying ? t('play.autoPlaying') : t('play.autoPlay')}
           </Text>
         </Pressable>
 
@@ -377,10 +379,10 @@ function FullVerseReader({ step, onContinue }: { step: DiscoveryStep; onContinue
           })}
         </View>
 
-        <Text style={styles.hint}>Appuie sur un mot, ou lance la lecture automatique 🔊</Text>
+        <Text style={styles.hint}>{t('play.tapWordHint')}</Text>
       </ScrollView>
 
-      <Footer label="J'ai répété" color="#34C724" colorDark="#2A9E1C" onPress={onContinue} />
+      <Footer label={t('play.iRepeated')} color="#34C724" colorDark="#2A9E1C" onPress={onContinue} />
     </View>
   );
 }
@@ -428,12 +430,12 @@ function DiscoveryView({
         <View style={[styles.tag, isFullVerse && { backgroundColor: '#FFF3E0' }]}>
           <Feather name={isFullVerse ? 'volume-2' : 'book-open'} size={15} color={isFullVerse ? '#E07A0C' : '#6B4DFF'} />
           <Text style={[styles.tagText, isFullVerse && { color: '#E07A0C' }]}>
-            {isFullVerse ? 'Verset complet' : 'Découverte'}
+            {isFullVerse ? t('play.tagFullVerse') : t('play.tagDiscovery')}
           </Text>
         </View>
 
         {isFullVerse && (
-          <Text style={styles.consigne}>Écoute et répète à voix basse</Text>
+          <Text style={styles.consigne}>{t('play.repeatQuietly')}</Text>
         )}
 
         <View style={styles.verseCard}>
@@ -466,22 +468,22 @@ function DiscoveryView({
         </AnimatedPressable>
         <Text style={styles.hint}>
           {noAudio
-            ? 'Audio indisponible pour cette étape'
+            ? t('play.noAudio')
             : isFullVerse
-              ? 'Appuie pour écouter, puis répète à voix basse'
-              : 'Écoute et répète à voix basse'}
+              ? t('play.tapToListenThenRepeat')
+              : t('play.repeatQuietly')}
         </Text>
 
         {isFullVerse && (
           <View style={styles.tipRow}>
             <Feather name="info" size={15} color="#6B4DFF" />
-            <Text style={styles.tipText}>Pas d'évaluation — concentre-toi sur la prononciation</Text>
+            <Text style={styles.tipText}>{t('play.noEvalTip')}</Text>
           </View>
         )}
       </ScrollView>
 
       <Footer
-        label={isFullVerse ? "J'ai répété" : "J'ai compris"}
+        label={isFullVerse ? t('play.iRepeated') : t('play.iUnderstood')}
         color="#34C724"
         colorDark="#2A9E1C"
         onPress={onContinue}
@@ -516,7 +518,7 @@ function WrittenView({
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.tag, { backgroundColor: '#FFF3E0' }]}>
           <Feather name="edit-3" size={15} color="#E07A0C" />
-          <Text style={[styles.tagText, { color: '#E07A0C' }]}>Test écrit</Text>
+          <Text style={[styles.tagText, { color: '#E07A0C' }]}>{t('play.tagWritten')}</Text>
         </View>
 
         <Text style={styles.consigne}>{step.consigne}</Text>
@@ -552,7 +554,7 @@ function WrittenView({
 
       {!answered ? (
         <Footer
-          label={judging ? 'Validation…' : 'Valider'}
+          label={judging ? t('play.validating') : t('play.validate')}
           color={picked && !judging ? '#34C724' : '#C9CDD4'}
           colorDark={picked && !judging ? '#2A9E1C' : '#B0B5BE'}
           disabled={!picked || judging}
@@ -615,15 +617,15 @@ function OrderingView({
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.tag, { backgroundColor: '#E8F4FF' }]}>
           <Feather name="layers" size={15} color="#0070CC" />
-          <Text style={[styles.tagText, { color: '#0070CC' }]}>Remise en ordre</Text>
+          <Text style={[styles.tagText, { color: '#0070CC' }]}>{t('play.tagOrdering')}</Text>
         </View>
 
-        <Text style={styles.consigne}>{step.consigne ?? 'Remets les mots dans le bon ordre'}</Text>
+        <Text style={styles.consigne}>{step.consigne ?? t('play.reorderDefault')}</Text>
 
         {/* Zone de réponse (RTL) */}
         <View style={orderStyles.placedZone}>
           {placed.length === 0 ? (
-            <Text style={orderStyles.placeholder}>Appuie sur un mot ci-dessous</Text>
+            <Text style={orderStyles.placeholder}>{t('play.tapWordBelow')}</Text>
           ) : (
             <View style={orderStyles.placedRow}>
               {placed.map((m) => (
@@ -660,14 +662,14 @@ function OrderingView({
         </View>
 
         {!answered && (
-          <Text style={styles.hintSmall}>Tape un mot placé pour le remettre dans la banque</Text>
+          <Text style={styles.hintSmall}>{t('play.tapPlacedHint')}</Text>
         )}
         <View style={{ height: 20 }} />
       </ScrollView>
 
       {!answered ? (
         <Footer
-          label={judging ? 'Validation…' : 'Valider'}
+          label={judging ? t('play.validating') : t('play.validate')}
           color={ready && !judging ? '#34C724' : '#C9CDD4'}
           colorDark={ready && !judging ? '#2A9E1C' : '#B0B5BE'}
           disabled={!ready || judging}
@@ -744,10 +746,10 @@ function MatchingView({ step, onContinue }: { step: MatchingStep; onContinue: ()
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.tag, { backgroundColor: '#FEF4FF' }]}>
           <Feather name="link" size={15} color="#9C27B0" />
-          <Text style={[styles.tagText, { color: '#9C27B0' }]}>Association</Text>
+          <Text style={[styles.tagText, { color: '#9C27B0' }]}>{t('play.tagMatching')}</Text>
         </View>
 
-        <Text style={styles.consigne}>Relie chaque verset à sa traduction</Text>
+        <Text style={styles.consigne}>{t('play.linkVerseHint')}</Text>
 
         <View style={matchStyles.columns}>
           <View style={matchStyles.col}>
@@ -798,15 +800,15 @@ function MatchingView({ step, onContinue }: { step: MatchingStep; onContinue: ()
         {allMatched && (
           <View style={matchStyles.successBanner}>
             <Feather name="check-circle" size={18} color="#2A9E1C" />
-            <Text style={matchStyles.successText}>Toutes les paires trouvées !</Text>
+            <Text style={matchStyles.successText}>{t('play.allPairsFound')}</Text>
           </View>
         )}
-        <Text style={styles.hintSmall}>Appuie sur un verset, puis sur sa traduction</Text>
+        <Text style={styles.hintSmall}>{t('play.tapVerseThenTranslation')}</Text>
         <View style={{ height: 20 }} />
       </ScrollView>
 
       <Footer
-        label={allMatched ? 'Continuer' : `${matched.size} / ${step.paires.length} paires`}
+        label={allMatched ? t('play.continue') : t('play.pairsCount', { done: matched.size, total: step.paires.length })}
         color={allMatched ? '#34C724' : '#C9CDD4'}
         colorDark={allMatched ? '#2A9E1C' : '#B0B5BE'}
         disabled={!allMatched}
@@ -893,10 +895,10 @@ function VoiceView({
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.tag, { backgroundColor: '#FFE8F0' }]}>
           <Feather name="mic" size={15} color="#E0398B" />
-          <Text style={[styles.tagText, { color: '#E0398B' }]}>Récitation</Text>
+          <Text style={[styles.tagText, { color: '#E0398B' }]}>{t('play.tagVoice')}</Text>
         </View>
 
-        <Text style={styles.consigne}>{step.consigne ?? 'Récite ce verset à voix haute'}</Text>
+        <Text style={styles.consigne}>{step.consigne ?? t('play.reciteDefault')}</Text>
 
         <View style={styles.verseCard}>
           <Text style={styles.arabic}>{step.arabe}</Text>
@@ -908,7 +910,7 @@ function VoiceView({
         {!!step.audioUrl && !recording && (
           <Pressable style={voiceStyles.refBtn} onPress={() => playRemoteAudio(step.audioUrl)}>
             <Feather name="volume-2" size={18} color="#6B4DFF" />
-            <Text style={voiceStyles.refLabel}>Écouter la récitation</Text>
+            <Text style={voiceStyles.refLabel}>{t('play.listenRecitation')}</Text>
           </Pressable>
         )}
 
@@ -922,19 +924,19 @@ function VoiceView({
         </Pressable>
         <Text style={styles.hint}>
           {micDenied
-            ? 'Autorise le micro dans les réglages pour réciter'
+            ? t('play.micDenied')
             : recording
-              ? 'Enregistrement… appuie pour arrêter'
+              ? t('play.recording')
               : ready
-                ? 'Enregistré ! Valide, ou recommence'
-                : 'Appuie sur le micro et récite'}
+                ? t('play.recordedReady')
+                : t('play.tapMicToRecord')}
         </Text>
 
         {/* Réécouter son enregistrement avant de valider */}
         {ready && !answered && (
           <Pressable style={voiceStyles.refBtn} onPress={() => playRemoteAudio(audioUri)}>
             <Feather name="play" size={18} color="#6B4DFF" />
-            <Text style={voiceStyles.refLabel}>Réécouter mon enregistrement</Text>
+            <Text style={voiceStyles.refLabel}>{t('play.replayMyRecording')}</Text>
           </Pressable>
         )}
         <View style={{ height: 20 }} />
@@ -942,7 +944,7 @@ function VoiceView({
 
       {!answered ? (
         <Footer
-          label={judging ? 'Analyse de ta récitation…' : 'Valider'}
+          label={judging ? t('play.analyzingRecitation') : t('play.validate')}
           color={ready && !judging ? '#34C724' : '#C9CDD4'}
           colorDark={ready && !judging ? '#2A9E1C' : '#B0B5BE'}
           disabled={!ready || judging}
@@ -974,16 +976,16 @@ function FeedbackBar({ correct, onContinue }: { correct: boolean; onContinue: ()
   return (
     <View style={[styles.feedbackBar, { backgroundColor: correct ? '#DEF5E5' : '#FFE7E7' }]}>
       <Text style={[styles.feedbackTitle, { color: correct ? '#2A9E1C' : '#E03434' }]}>
-        {correct ? '✓ Correct !' : '✕ Pas tout à fait'}
+        {correct ? t('play.correctTitle') : t('play.wrongTitle')}
       </Text>
       <Text style={[styles.feedbackSub, { color: correct ? '#3C7A30' : '#C53A3A' }]}>
-        {correct ? 'Bien joué, continue !' : 'Tu as perdu un cœur. Continue !'}
+        {correct ? t('play.correctSub') : t('play.wrongSub')}
       </Text>
       <Pressable
         style={[styles.footerBtn, { backgroundColor: correct ? '#34C724' : '#FF4B4B', borderBottomColor: correct ? '#2A9E1C' : '#D43A3A' }]}
         onPress={onContinue}
       >
-        <Text style={styles.footerLabel}>Continuer</Text>
+        <Text style={styles.footerLabel}>{t('play.continue')}</Text>
       </Pressable>
     </View>
   );
