@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import LessonHeader from '../../../components/LessonHeader';
 import { playSound } from '../../../constants/sounds';
+import { useT } from '../../../lib/i18n';
 
 // Mots disponibles (couleurs pastel selon le design)
 const WORDS = [
@@ -13,6 +14,7 @@ const WORDS = [
 
 export default function ArrangeScreen() {
   const router = useRouter();
+  const tr = useT();
   // 1er mot déjà placé : بِسْمِ ; 3 emplacements à remplir
   const [placed, setPlaced] = useState<string[]>([]);
 
@@ -24,8 +26,8 @@ export default function ArrangeScreen() {
       <LessonHeader progress={0.25} />
 
       <View style={styles.body}>
-        <Text style={styles.title}>Remets les mots dans le bon ordre</Text>
-        <Text style={styles.subtitle}>(de droite à gauche — arabe)</Text>
+        <Text style={styles.title}>{tr('arrange.title')}</Text>
+        <Text style={styles.subtitle}>{tr('arrange.subtitle')}</Text>
 
         {/* Zone réponse RTL */}
         <View style={styles.answerZone}>
@@ -39,7 +41,7 @@ export default function ArrangeScreen() {
           ))}
         </View>
 
-        <Text style={styles.label}>Mots disponibles :</Text>
+        <Text style={styles.label}>{tr('arrange.available')}</Text>
         <View style={styles.wordsRow}>
           {available.map((w) => (
             <Pressable
@@ -52,12 +54,12 @@ export default function ArrangeScreen() {
           ))}
         </View>
 
-        <Text style={styles.hint}>Touche un mot pour le placer dans la zone (droite à gauche)</Text>
+        <Text style={styles.hint}>{tr('arrange.hint')}</Text>
       </View>
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={() => { playSound('correct'); router.push('/(app)/lesson/match'); }}>
-          <Text style={styles.ctaLabel}>Vérifier</Text>
+          <Text style={styles.ctaLabel}>{tr('arrange.verify')}</Text>
         </Pressable>
       </View>
     </View>

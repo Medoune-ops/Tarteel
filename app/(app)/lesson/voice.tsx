@@ -8,9 +8,11 @@ import Animated, {
 import LessonHeader from '../../../components/LessonHeader';
 import Waveform from '../../../components/Waveform';
 import ProgressBar from '../../../components/ProgressBar';
+import { useT } from '../../../lib/i18n';
 
 export default function VoiceScreen() {
   const router = useRouter();
+  const tr = useT();
   const pulse = useSharedValue(1);
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function VoiceScreen() {
       <LessonHeader progress={0.88} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Récite cet ayat</Text>
+        <Text style={styles.title}>{tr('voice.title')}</Text>
 
         {/* Verset avec mot courant encadré */}
         <View style={styles.verseCard}>
@@ -49,7 +51,7 @@ export default function VoiceScreen() {
 
         {/* Score en cours */}
         <View style={styles.scoreSection}>
-          <Text style={styles.scoreLabel}>Score en cours :</Text>
+          <Text style={styles.scoreLabel}>{tr('voice.scoreLabel')}</Text>
           <View style={styles.scoreRow}>
             <View style={{ flex: 1 }}>
               <ProgressBar progress={0.87} />
@@ -66,11 +68,11 @@ export default function VoiceScreen() {
             </View>
           </Animated.View>
         </Pressable>
-        <Text style={styles.recording}>Enregistrement en cours...</Text>
+        <Text style={styles.recording}>{tr('voice.recording')}</Text>
 
         <View style={styles.tajwidRow}>
           <Feather name="zap" size={18} color="#6B4DFF" />
-          <Text style={styles.tajwidText}>Règle : Madd Tabii (allonger 2 temps)</Text>
+          <Text style={styles.tajwidText}>{tr('voice.tajwidRule')}</Text>
         </View>
       </ScrollView>
     </View>
