@@ -463,6 +463,46 @@ const fr = {
   'signup.alreadyAccount': 'Déjà un compte ? ',
   'signup.noAccount': 'Pas encore de compte ? ',
   'signup.register': "S'inscrire",
+
+  // ─── Mot de passe oublié ───────────────────────────────────────────────────
+  'forgot.title': 'Mot de passe oublié ?',
+  'forgot.sub': "Saisis ton adresse email.\nOn t'envoie un lien pour réinitialiser.",
+  'forgot.label': 'ADRESSE EMAIL',
+  'forgot.hint': 'Vérifie tes spams si tu ne reçois rien sous 2 min.',
+  'forgot.send': 'Envoyer le lien',
+  'forgot.rememberLogin': 'Je me souviens — Se connecter',
+
+  // ─── Réinitialisation du mot de passe ──────────────────────────────────────
+  'reset.linkInvalid': 'Lien invalide ou expiré. Refais une demande de réinitialisation.',
+  'reset.errGeneric': 'Une erreur est survenue. Réessaie.',
+  'reset.title': 'Nouveau mot de passe',
+  'reset.sub': 'Choisis un mot de passe solide.',
+  'reset.newPasswordLabel': 'NOUVEAU MOT DE PASSE',
+  'reset.password': 'Mot de passe',
+  'reset.confirmLabel': 'CONFIRMER LE MOT DE PASSE',
+  'reset.confirmPassword': 'Confirmer le mot de passe',
+  'reset.match': 'Les mots de passe correspondent ✓',
+  'reset.noMatch': 'Les mots de passe ne correspondent pas',
+  'reset.criteriaMin8': 'Au moins 8 caractères',
+  'reset.criteriaCase': 'Une majuscule et une minuscule',
+  'reset.criteriaNumber': 'Un chiffre',
+  'reset.criteriaSpecial': 'Un caractère spécial (!@#$…)',
+  'reset.save': 'Enregistrer le mot de passe',
+  'reset.strengthWeak': 'Faible',
+  'reset.strengthMedium': 'Moyen',
+  'reset.strengthStrong': 'Fort ✓',
+
+  // ─── Email envoyé ───────────────────────────────────────────────────────────
+  'resetSent.title': 'Email envoyé !',
+  'resetSent.subBefore': 'On a envoyé un lien à',
+  'resetSent.yourEmail': 'ton adresse email',
+  'resetSent.expiresBefore': 'Le lien expire dans ',
+  'resetSent.expiresBold': '30 minutes',
+  'resetSent.spamBefore': 'Vérifie aussi ton dossier ',
+  'resetSent.spamBold': 'Spams',
+  'resetSent.spamAfter': '',
+  'resetSent.resend': "Renvoyer l'email",
+  'resetSent.backToLogin': 'Retour à la connexion',
 };
 
 type Dict = typeof fr;
@@ -910,6 +950,46 @@ const en: Dict = {
   'signup.alreadyAccount': 'Already have an account? ',
   'signup.noAccount': "Don't have an account yet? ",
   'signup.register': 'Sign up',
+
+  // ─── Forgot password ────────────────────────────────────────────────────────
+  'forgot.title': 'Forgot password?',
+  'forgot.sub': "Enter your email address.\nWe'll send you a link to reset it.",
+  'forgot.label': 'EMAIL ADDRESS',
+  'forgot.hint': "Check your spam if you don't receive anything within 2 min.",
+  'forgot.send': 'Send the link',
+  'forgot.rememberLogin': 'I remember — Log in',
+
+  // ─── Password reset ─────────────────────────────────────────────────────────
+  'reset.linkInvalid': 'Invalid or expired link. Request a new reset.',
+  'reset.errGeneric': 'An error occurred. Please try again.',
+  'reset.title': 'New password',
+  'reset.sub': 'Choose a strong password.',
+  'reset.newPasswordLabel': 'NEW PASSWORD',
+  'reset.password': 'Password',
+  'reset.confirmLabel': 'CONFIRM PASSWORD',
+  'reset.confirmPassword': 'Confirm password',
+  'reset.match': 'Passwords match ✓',
+  'reset.noMatch': "Passwords don't match",
+  'reset.criteriaMin8': 'At least 8 characters',
+  'reset.criteriaCase': 'One uppercase and one lowercase letter',
+  'reset.criteriaNumber': 'One digit',
+  'reset.criteriaSpecial': 'One special character (!@#$…)',
+  'reset.save': 'Save password',
+  'reset.strengthWeak': 'Weak',
+  'reset.strengthMedium': 'Medium',
+  'reset.strengthStrong': 'Strong ✓',
+
+  // ─── Reset email sent ───────────────────────────────────────────────────────
+  'resetSent.title': 'Email sent!',
+  'resetSent.subBefore': 'We sent a link to',
+  'resetSent.yourEmail': 'your email address',
+  'resetSent.expiresBefore': 'The link expires in ',
+  'resetSent.expiresBold': '30 minutes',
+  'resetSent.spamBefore': 'Also check your ',
+  'resetSent.spamBold': 'Spam',
+  'resetSent.spamAfter': ' folder',
+  'resetSent.resend': 'Resend email',
+  'resetSent.backToLogin': 'Back to login',
 };
 
 // L'interface arabe n'est pas encore traduite → anglais en attendant.

@@ -2,9 +2,11 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { useT } from '../../lib/i18n';
 
 export default function ResetSentScreen() {
   const router = useRouter();
+  const tr = useT();
   const { email } = useLocalSearchParams<{ email: string }>();
 
   return (
@@ -19,10 +21,10 @@ export default function ResetSentScreen() {
         </View>
       </View>
 
-      <Text style={styles.title}>Email envoyé !</Text>
+      <Text style={styles.title}>{tr('resetSent.title')}</Text>
       <Text style={styles.sub}>
-        On a envoyé un lien à{'\n'}
-        <Text style={styles.emailHighlight}>{email ?? 'ton adresse email'}</Text>
+        {tr('resetSent.subBefore')}{'\n'}
+        <Text style={styles.emailHighlight}>{email ?? tr('resetSent.yourEmail')}</Text>
       </Text>
 
       {/* Card info */}
@@ -32,7 +34,7 @@ export default function ResetSentScreen() {
             <Feather name="clock" size={17} color="#fff" />
           </View>
           <Text style={styles.infoText}>
-            Le lien expire dans <Text style={styles.infoBold}>30 minutes</Text>
+            {tr('resetSent.expiresBefore')}<Text style={styles.infoBold}>{tr('resetSent.expiresBold')}</Text>
           </Text>
         </View>
         <View style={[styles.infoRow, { marginBottom: 0 }]}>
@@ -40,7 +42,7 @@ export default function ResetSentScreen() {
             <Feather name="alert-circle" size={17} color="#fff" />
           </View>
           <Text style={styles.infoText}>
-            Vérifie aussi ton dossier <Text style={styles.infoBold}>Spams</Text>
+            {tr('resetSent.spamBefore')}<Text style={styles.infoBold}>{tr('resetSent.spamBold')}</Text>{tr('resetSent.spamAfter')}
           </Text>
         </View>
       </View>
@@ -48,11 +50,11 @@ export default function ResetSentScreen() {
       <View style={{ flex: 1 }} />
 
       <Pressable style={styles.resend} onPress={() => router.back()}>
-        <Text style={styles.resendText}>Renvoyer l'email</Text>
+        <Text style={styles.resendText}>{tr('resetSent.resend')}</Text>
       </Pressable>
 
       <Pressable onPress={() => router.replace('/(onboarding)/signup')} style={styles.backLink}>
-        <Text style={styles.backLinkText}>Retour à la connexion</Text>
+        <Text style={styles.backLinkText}>{tr('resetSent.backToLogin')}</Text>
       </Pressable>
     </LinearGradient>
   );
