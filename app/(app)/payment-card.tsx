@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Alert } from 'react-native';
 import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
 import { getPaymentProvider } from '../../lib/payments';
-import { PLANS } from './subscription';
+import { buildPlans } from './subscription';
 import { useT } from '../../lib/i18n';
 
 // ─── Helpers de formatage ────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ export default function PaymentCardScreen() {
   const router = useRouter();
   const tr = useT();
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
+  const PLANS = buildPlans(tr);
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 
   const [number, setNumber] = useState('');
