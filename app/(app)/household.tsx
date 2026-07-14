@@ -19,6 +19,12 @@ function errMsg(e: unknown): string {
   return e instanceof ApiError && e.status !== 0 ? e.message : "Action impossible. Réessaie.";
 }
 
+// Plans familiaux (prix alignés sur le backend : 3,99 €/mois, 39,99 €/an).
+const FAMILY_PLANS = [
+  { id: 'famille_annuel' as const, titre: 'Familial annuel', prix: '39,99 €/an', detail: '≈ 3,33 €/mois · 2 mois offerts', best: true },
+  { id: 'famille_mensuel' as const, titre: 'Familial mensuel', prix: '3,99 €/mois', detail: 'Sans engagement', best: false },
+];
+
 // Écran « Plan familial » (foyer). Créer un foyer, inviter jusqu'à 5 comptes,
 // gérer les membres et les invitations, s'abonner au plan familial (tous les
 // membres deviennent premium).
@@ -86,6 +92,18 @@ export default function HouseholdScreen() {
       { text: 'Annuler', style: 'cancel' },
       { text: 'Quitter', style: 'destructive', onPress: () => run('leave', leaveHousehold, 'Tu as quitté le foyer') },
     ]);
+  };
+
+  // Active le plan familial choisi (paiement) → tout le foyer devient premium.
+  const subscribeFamily = (planId: 'famille_mensuel' | 'famille_annuel', titre: string, prix: string) => {
+    Alert.alert(
+      'Activer le plan familial',
+      `${titre} — ${prix}\nJusqu'à 5 comptes du foyer deviennent premium. Continuer ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Activer', onPress: () => run('sub', () => subscribePremium(planId), 'Abonnement familial activé 🎉 Tout le foyer est premium.') },
+      ],
+    );
   };
 
   const h = data?.household ?? null;
@@ -176,7 +194,7 @@ export default function HouseholdScreen() {
           {/* Foyer existant */}
           {h && (
             <>
-              {/* Abonnement */}
+              {/* Statut de l'abonnement */}
               <View style={[styles.subCard, h.subscriptionActive ? styles.subActive : { backgroundColor: T.cardBg, borderColor: T.border }]}>
                 <Feather name={h.subscriptionActive ? 'check-circle' : 'star'} size={22} color={h.subscriptionActive ? '#2A9E1C' : '#6B4DFF'} />
                 <View style={{ flex: 1 }}>
@@ -186,19 +204,44 @@ export default function HouseholdScreen() {
                   <Text style={styles.cardHint}>
                     {h.subscriptionActive
                       ? `Tout le foyer est premium${h.subscriptionUntil ? ` · jusqu'au ${new Date(h.subscriptionUntil).toLocaleDateString('fr-FR')}` : ''}`
-                      : 'Abonne le foyer pour rendre tous les membres premium.'}
+                      : 'Choisis un plan pour rendre tous les membres premium.'}
                   </Text>
                 </View>
-                {h.isOwner && (
-                  <Pressable
-                    style={[styles.btn, styles.btnPrimary, styles.btnSmall]}
-                    onPress={() => run('sub', () => subscribePremium('famille_mensuel'), 'Abonnement familial activé 🎉')}
-                    disabled={busy != null}
-                  >
-                    {busy === 'sub' ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>{h.subscriptionActive ? 'Renouveler' : "S'abonner"}</Text>}
-                  </Pressable>
-                )}
               </View>
+
+              {/* Choix du plan familial (propriétaire uniquement) */}
+              {h.isOwner && (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: T.text }]}>
+                    {h.subscriptionActive ? 'Renouveler / changer de plan' : 'Activer le plan familial'}
+                  </Text>
+                  {FAMILY_PLANS.map((p) => (
+                    <Pressable
+                      key={p.id}
+                      style={[styles.planCard, { backgroundColor: T.cardBg, borderColor: p.best ? '#6B4DFF' : T.border }]}
+                      onPress={() => subscribeFamily(p.id, p.titre, p.prix)}
+                      disabled={busy != null}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={[styles.planTitle, { color: T.text }]}>{p.titre}</Text>
+                          {p.best && (
+                            <View style={styles.planBadge}><Text style={styles.planBadgeText}>Le + avantageux</Text></View>
+                          )}
+                        </View>
+                        <Text style={styles.cardHint}>{p.detail}</Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                        <Text style={[styles.planPrice, { color: T.text }]}>{p.prix}</Text>
+                        {busy === 'sub' ? <ActivityIndicator color="#6B4DFF" /> : <Feather name="chevron-right" size={20} color="#6B4DFF" />}
+                      </View>
+                    </Pressable>
+                  ))}
+                  <Text style={[styles.cardHint, { marginTop: 6 }]}>
+                    Paiement sécurisé · jusqu'à 5 comptes premium · annulable à tout moment.
+                  </Text>
+                </View>
+              )}
 
               {/* Membres */}
               <View style={styles.section}>
@@ -331,6 +374,14 @@ const styles = StyleSheet.create({
   },
   subActive: { backgroundColor: '#DEF5E5', borderColor: '#34C724' },
   subTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
+  planCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1.5,
+  },
+  planTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
+  planPrice: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17 },
+  planBadge: { backgroundColor: '#6B4DFF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  planBadgeText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: '#fff' },
 
   rowBtns: { flexDirection: 'row', gap: 10, marginTop: 12 },
   btn: { borderRadius: 12, paddingVertical: 11, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
