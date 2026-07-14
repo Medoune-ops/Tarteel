@@ -10,7 +10,7 @@
 import { apiFetch } from './client';
 import { fetchMe } from './me';
 
-export type PremiumPlan = 'mensuel' | 'annuel';
+export type PremiumPlan = 'mensuel' | 'annuel' | 'famille_mensuel' | 'famille_annuel';
 
 export interface SubscribeResult {
   isPremium: boolean;

@@ -31,7 +31,7 @@ export interface PaymentProvider {
    * Collecte le paiement de l'abonnement auprès de l'utilisateur.
    * Doit ouvrir l'UI du provider (PaymentSheet, Apple Pay…) si nécessaire.
    */
-  payPremium(plan: 'mensuel' | 'annuel', method: PaymentMethodKind): Promise<PaymentResult>;
+  payPremium(plan: 'mensuel' | 'annuel' | 'famille_mensuel' | 'famille_annuel', method: PaymentMethodKind): Promise<PaymentResult>;
 }
 
 /**
