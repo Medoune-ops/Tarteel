@@ -43,7 +43,7 @@ export default function LessonPlayScreen() {
   useEffect(() => {
     if (!lessonId) { setLoadError(true); return; }
     let cancelled = false;
-    fetchLesson(lessonId)
+    fetchLesson(lessonId, useUserStore.getState().language)
       .then((l) => {
         if (cancelled) return;
         // « Voix & enregistrements » désactivé → on saute les étapes micro.
