@@ -14,6 +14,7 @@ import type { DiscoveryStep } from '../../../constants/lessonEngine';
 import { useTheme } from '../../../utils/useTheme';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useT, t } from '../../../lib/i18n';
+import { useUserStore } from '../../../store/userStore';
 
 type Reponse = 'facile' | 'difficile' | 'oublie';
 /** État de la carte courante pendant la session vocale. */
@@ -78,7 +79,8 @@ export default function LettreRevisionScreen() {
     if (!lessonId) { setLoadError(true); return; }
     setLoadError(false);
     try {
-      const lesson = await swrFetch(`lesson:${lessonId}`, () => fetchLesson(lessonId));
+      const lang = useUserStore.getState().language;
+      const lesson = await swrFetch(`lesson:${lessonId}:${lang}`, () => fetchLesson(lessonId, lang));
       setCards(lesson.steps.filter((s): s is DiscoveryStep => s.type === 'discovery'));
     } catch {
       setLoadError(true);
