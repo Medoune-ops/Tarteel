@@ -28,15 +28,19 @@ export default function HouseholdScreen() {
 
   const [data, setData] = useState<HouseholdView | null>(null);
   const [error, setError] = useState(false);
+  // 404 = endpoint foyer pas encore déployé côté serveur → message dédié.
+  const [notDeployed, setNotDeployed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [email, setEmail] = useState('');
 
   const load = useCallback(async () => {
     setError(false);
+    setNotDeployed(false);
     try {
       setData(await fetchHousehold());
-    } catch {
-      setError(true);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) setNotDeployed(true);
+      else setError(true);
     }
   }, []);
 
@@ -101,7 +105,17 @@ export default function HouseholdScreen() {
         <Text style={styles.headerSub}>Jusqu'à 5 comptes premium sous un même foyer</Text>
       </LinearGradient>
 
-      {error ? (
+      {notDeployed ? (
+        <View style={styles.stateBox}>
+          <Text style={{ fontSize: 44 }}>🏡</Text>
+          <Text style={[styles.stateText, { color: T.text, fontFamily: 'Nunito_800ExtraBold' }]}>
+            Le plan familial arrive bientôt
+          </Text>
+          <Text style={[styles.stateText, { color: T.textSecondary }]}>
+            Cette fonctionnalité sera disponible dès la prochaine mise à jour du service.
+          </Text>
+        </View>
+      ) : error ? (
         <View style={styles.stateBox}>
           <Feather name="wifi-off" size={32} color={T.textTertiary} />
           <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger le foyer.</Text>
