@@ -102,12 +102,15 @@ describe('Écran Plan familial (foyer)', () => {
     expect(all).toContain('invite@x.com'); // invitation en attente
   });
 
-  it('propriétaire : « S\'abonner » et suppression du foyer disponibles', async () => {
+  it('propriétaire : choix des plans familiaux + suppression du foyer disponibles', async () => {
     mockView = OWNED;
     const r = await renderScreen();
     const all = textOf(r.root);
     expect(all).toContain('Supprimer le foyer');
-    expect(all).toContain("S'abonner");
+    expect(all).toContain('Activer le plan familial');
+    expect(all).toContain('Familial annuel');
+    expect(all).toContain('Familial mensuel');
+    expect(all).toContain('39,99 €/an');
   });
 
   it('invitation reçue : accepter appelle acceptHouseholdInvite', async () => {
