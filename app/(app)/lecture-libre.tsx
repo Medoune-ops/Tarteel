@@ -7,6 +7,7 @@ import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { useTheme } from '../../utils/useTheme';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
+import { useT } from '../../lib/i18n';
 
 // Minuscules + suppression des accents → recherche tolérante ("fatiha" trouve
 // "Al-Fâtiha", "nas" trouve "An-Nâs"…).
@@ -21,6 +22,7 @@ function normalize(s: string): string {
 export default function LectureLibreScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -70,12 +72,12 @@ export default function LectureLibreScreen() {
           {/* Nom de la sourate — permet de la reconnaître d'un coup d'œil. */}
           <Text style={[styles.nom, { color: T.text }]}>{item.nom}</Text>
           <Text style={[styles.arabe, { color: T.text }]}>{item.nomArabe}</Text>
-          <Text style={[styles.versets, { color: T.textTertiary }]}>{item.nombreVersets} versets</Text>
+          <Text style={[styles.versets, { color: T.textTertiary }]}>{tr('lectureLibre.versetsCount', { n: item.nombreVersets })}</Text>
         </View>
         <Feather name="play-circle" size={26} color="#6B4DFF" />
       </Pressable>
     ),
-    [T, router],
+    [T, router, tr],
   );
 
   return (
@@ -86,22 +88,22 @@ export default function LectureLibreScreen() {
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
         <Text style={styles.headerEmoji}>🎧</Text>
-        <Text style={styles.headerTitle}>Lecture libre</Text>
-        <Text style={styles.headerSub}>Les 114 sourates du Coran</Text>
+        <Text style={styles.headerTitle}>{tr('lectureLibre.headerTitle')}</Text>
+        <Text style={styles.headerSub}>{tr('lectureLibre.headerSub')}</Text>
       </LinearGradient>
 
       {error ? (
         <View style={styles.stateBox}>
           <Feather name="wifi-off" size={32} color={T.textTertiary} />
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger les sourates.</Text>
+          <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('lectureLibre.loadError')}</Text>
           <Pressable style={styles.retryBtn} onPress={load}>
-            <Text style={styles.retryLabel}>Réessayer</Text>
+            <Text style={styles.retryLabel}>{tr('lectureLibre.retry')}</Text>
           </Pressable>
         </View>
       ) : !sourates ? (
         <View style={styles.stateBox}>
           <ActivityIndicator size="large" color="#6B4DFF" />
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement des sourates…</Text>
+          <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('lectureLibre.loading')}</Text>
         </View>
       ) : (
         <>
@@ -112,7 +114,7 @@ export default function LectureLibreScreen() {
               style={[styles.searchInput, { color: T.text }]}
               value={query}
               onChangeText={setQuery}
-              placeholder="Rechercher une sourate…"
+              placeholder={tr('lectureLibre.searchPlaceholder')}
               placeholderTextColor={T.textTertiary}
               autoCorrect={false}
               autoCapitalize="none"
@@ -136,7 +138,7 @@ export default function LectureLibreScreen() {
             ListEmptyComponent={
               <View style={styles.emptyBox}>
                 <Text style={{ fontSize: 34 }}>🔍</Text>
-                <Text style={[styles.emptyText, { color: T.textSecondary }]}>Aucune sourate trouvée.</Text>
+                <Text style={[styles.emptyText, { color: T.textSecondary }]}>{tr('lectureLibre.noResults')}</Text>
               </View>
             }
             ListFooterComponent={<View style={{ height: 24 }} />}

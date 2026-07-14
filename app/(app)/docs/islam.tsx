@@ -1,46 +1,45 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { DocHeader, DocScroll, Section, P, B, Quote, docStyles } from './_components';
+import { useT } from '../../../lib/i18n';
 
 const C = '#2A9E1C';
 
-const PILIERS = [
-  { emoji: '🕋', nom: 'Ash-Shahâda', fr: "L'attestation de foi", desc: "Témoigner qu'il n'y a de divinité qu'Allah et que Muhammad ﷺ est Son messager." },
-  { emoji: '🤲', nom: 'As-Salât',    fr: 'La prière',            desc: 'Accomplir les cinq prières quotidiennes face à La Mecque.' },
-  { emoji: '💰', nom: 'Az-Zakât',    fr: "L'aumône légale",      desc: 'Donner une part de ses biens aux nécessiteux chaque année.' },
-  { emoji: '🌙', nom: 'As-Sawm',     fr: 'Le jeûne',             desc: "Jeûner du lever au coucher du soleil pendant le mois de Ramadan." },
-  { emoji: '🕋', nom: 'Al-Hajj',     fr: 'Le pèlerinage',        desc: 'Se rendre à La Mecque au moins une fois dans sa vie si on en a les moyens.' },
-];
-
-const FOI = [
-  'Croire en Allah, unique et sans associé',
-  'Croire en Ses anges',
-  'Croire en Ses livres révélés',
-  'Croire en Ses prophètes et messagers',
-  'Croire au Jour du Jugement',
-  'Croire au destin (le bien et le mal viennent d\'Allah)',
-];
-
 export default function DocIslam() {
+  const tr = useT();
+
+  const PILIERS = [
+    { emoji: '🕋', nom: tr('docIslam.pilier1Nom'), fr: tr('docIslam.pilier1Fr'), desc: tr('docIslam.pilier1Desc') },
+    { emoji: '🤲', nom: tr('docIslam.pilier2Nom'), fr: tr('docIslam.pilier2Fr'), desc: tr('docIslam.pilier2Desc') },
+    { emoji: '💰', nom: tr('docIslam.pilier3Nom'), fr: tr('docIslam.pilier3Fr'), desc: tr('docIslam.pilier3Desc') },
+    { emoji: '🌙', nom: tr('docIslam.pilier4Nom'), fr: tr('docIslam.pilier4Fr'), desc: tr('docIslam.pilier4Desc') },
+    { emoji: '🕋', nom: tr('docIslam.pilier5Nom'), fr: tr('docIslam.pilier5Fr'), desc: tr('docIslam.pilier5Desc') },
+  ];
+
+  const FOI = [
+    tr('docIslam.foi1'),
+    tr('docIslam.foi2'),
+    tr('docIslam.foi3'),
+    tr('docIslam.foi4'),
+    tr('docIslam.foi5'),
+    tr('docIslam.foi6'),
+  ];
+
   return (
     <View style={docStyles.screen}>
-      <DocHeader emoji="☪️" titre="L'Islam" sous="La soumission à Allah" c1="#34C724" c2="#2A9E1C" />
+      <DocHeader emoji="☪️" titre={tr('docIslam.headerTitre')} sous={tr('docIslam.headerSous')} c1="#34C724" c2="#2A9E1C" />
       <DocScroll>
 
-        <Section titre="Qu'est-ce que l'Islam ?" accent={C}>
+        <Section titre={tr('docIslam.s1Titre')} accent={C}>
           <P>
-            Le mot <B>« Islam »</B> signifie « soumission » et « paix ». C'est la religion qui invite
-            à se soumettre volontairement à la volonté d'Allah, le Dieu unique, pour trouver
-            la paix dans cette vie et dans l'au-delà.
+            {tr('docIslam.s1P1Before')}<B>{tr('docIslam.s1P1Bold')}</B>{tr('docIslam.s1P1After')}
           </P>
           <P>
-            Un musulman est celui qui témoigne de l'unicité d'Allah et suit l'enseignement
-            du Prophète Muhammad ﷺ. L'Islam est aujourd'hui suivi par près de deux milliards
-            de personnes à travers le monde.
+            {tr('docIslam.s1P2')}
           </P>
         </Section>
 
-        <Section titre="Les 5 piliers de l'Islam" accent={C}>
-          <P>L'Islam repose sur cinq pratiques fondamentales :</P>
+        <Section titre={tr('docIslam.s2Titre')} accent={C}>
+          <P>{tr('docIslam.s2P1')}</P>
           {PILIERS.map((p, i) => (
             <View key={i} style={st.pilier}>
               <Text style={st.pilierEmoji}>{p.emoji}</Text>
@@ -52,8 +51,8 @@ export default function DocIslam() {
           ))}
         </Section>
 
-        <Section titre="Les 6 piliers de la foi (Îmân)" accent={C}>
-          <P>Au-delà des actes, la foi du musulman repose sur six croyances :</P>
+        <Section titre={tr('docIslam.s3Titre')} accent={C}>
+          <P>{tr('docIslam.s3P1')}</P>
           {FOI.map((f, i) => (
             <View key={i} style={st.foiRow}>
               <View style={st.foiDot}><Text style={st.foiDotText}>{i + 1}</Text></View>
@@ -62,14 +61,12 @@ export default function DocIslam() {
           ))}
         </Section>
 
-        <Section titre="Les valeurs de l'Islam" accent={C}>
+        <Section titre={tr('docIslam.s4Titre')} accent={C}>
           <P>
-            L'Islam encourage la <B>bonté</B>, l'<B>honnêteté</B>, la <B>générosité</B>, le respect
-            des parents et des voisins, la patience et la justice. Le sourire, la douceur et
-            l'entraide font partie intégrante de la foi.
+            {tr('docIslam.s4P1Before')}<B>{tr('docIslam.s4P1Bold1')}</B>{tr('docIslam.s4P1Mid1')}<B>{tr('docIslam.s4P1Bold2')}</B>{tr('docIslam.s4P1Mid2')}<B>{tr('docIslam.s4P1Bold3')}</B>{tr('docIslam.s4P1After')}
           </P>
           <Quote accent={C}>
-            « Les meilleurs d'entre vous sont ceux qui ont le meilleur comportement. » — Prophète Muhammad ﷺ
+            {tr('docIslam.s4Quote')}
           </Quote>
         </Section>
 

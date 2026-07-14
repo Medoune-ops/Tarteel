@@ -1,18 +1,20 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import Otter from '../../components/Otter';
+import { useT } from '../../lib/i18n';
 
 const DOTS = [true, false, false];
 
 export default function Onboarding1() {
   const router = useRouter();
+  const tr = useT();
 
   return (
     <View style={styles.screen}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: '#E9E4FB' }]}>
         <Pressable style={styles.skip} onPress={() => router.replace('/(onboarding)/signup')}>
-          <Text style={[styles.skipText, { color: '#A9A2C2' }]}>Passer</Text>
+          <Text style={[styles.skipText, { color: '#A9A2C2' }]}>{tr('onboarding.skip')}</Text>
         </Pressable>
         <Text style={{ fontSize: 50, marginBottom: 12 }}>🎧</Text>
         <Otter size={150} />
@@ -20,8 +22,8 @@ export default function Onboarding1() {
 
       {/* Body */}
       <View style={styles.body}>
-        <Text style={styles.title}>Écoute et répète</Text>
-        <Text style={styles.desc}>Améliore ta prononciation avec l'intelligence artificielle</Text>
+        <Text style={styles.title}>{tr('onboarding1.title')}</Text>
+        <Text style={styles.desc}>{tr('onboarding1.desc')}</Text>
 
         <View style={styles.flex} />
 
@@ -36,7 +38,7 @@ export default function Onboarding1() {
           style={styles.cta}
           onPress={() => router.push('/(onboarding)/onboarding-2')}
         >
-          <Text style={styles.ctaLabel}>Suivant →</Text>
+          <Text style={styles.ctaLabel}>{tr('onboarding.next')}</Text>
         </Pressable>
       </View>
     </View>

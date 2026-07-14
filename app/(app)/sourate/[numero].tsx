@@ -7,9 +7,11 @@ import { fetchVersets, type SourateVersets, type Verset } from '../../../lib/api
 import { swrFetch } from '../../../lib/api/swr';
 import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
+import { useT } from '../../../lib/i18n';
 
 export default function SourateReaderScreen() {
   const router = useRouter();
+  const tr = useT();
   const { numero } = useLocalSearchParams<{ numero?: string }>();
   const language = useUserStore((s) => s.language);
 
@@ -113,9 +115,9 @@ export default function SourateReaderScreen() {
     return (
       <View style={[styles.screen, styles.center]}>
         <Feather name="wifi-off" size={32} color="#9AA0AA" />
-        <Text style={styles.stateText}>Impossible de charger la sourate.</Text>
-        <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>Réessayer</Text></Pressable>
-        <Pressable style={styles.backLink} onPress={() => router.back()}><Text style={styles.backLinkText}>Retour</Text></Pressable>
+        <Text style={styles.stateText}>{tr('sourateDetail.loadError')}</Text>
+        <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>{tr('sourateDetail.retry')}</Text></Pressable>
+        <Pressable style={styles.backLink} onPress={() => router.back()}><Text style={styles.backLinkText}>{tr('sourateDetail.back')}</Text></Pressable>
       </View>
     );
   }
@@ -123,7 +125,7 @@ export default function SourateReaderScreen() {
     return (
       <View style={[styles.screen, styles.center]}>
         <ActivityIndicator size="large" color="#6B4DFF" />
-        <Text style={styles.stateText}>Chargement de la sourate…</Text>
+        <Text style={styles.stateText}>{tr('sourateDetail.loading')}</Text>
       </View>
     );
   }
@@ -139,19 +141,19 @@ export default function SourateReaderScreen() {
         </Pressable>
         <Text style={styles.headerArabe}>{s.nomArabe}</Text>
         <Text style={styles.headerNom}>{s.numero}. {s.nom}</Text>
-        <Text style={styles.headerSub}>{s.nombreVersets} versets · {s.revelation === 'makkah' ? 'Mecquoise' : s.revelation === 'madinah' ? 'Médinoise' : ''}</Text>
+        <Text style={styles.headerSub}>{tr('sourateDetail.versetsCount', { n: s.nombreVersets })} · {s.revelation === 'makkah' ? tr('sourateDetail.meccan') : s.revelation === 'madinah' ? tr('sourateDetail.medinan') : ''}</Text>
       </LinearGradient>
 
       {/* Barre de lecture continue mot par mot */}
       <Pressable style={[styles.autoBar, autoPlaying && styles.autoBarActive]} onPress={toggleAuto}>
         <Feather name={autoPlaying ? 'pause' : 'play'} size={18} color="#fff" />
         <Text style={styles.autoLabel}>
-          {autoPlaying ? 'Lecture en cours — appuie pour arrêter' : 'Lecture automatique mot par mot'}
+          {autoPlaying ? tr('sourateDetail.playingStop') : tr('sourateDetail.autoPlayWord')}
         </Text>
       </Pressable>
 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.hint}>Appuie sur un mot pour l'écouter 🔊</Text>
+        <Text style={styles.hint}>{tr('sourateDetail.hint')}</Text>
         {data.versets.map((v) => (
           <VerseCard
             key={v.id}

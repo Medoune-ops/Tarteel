@@ -12,6 +12,7 @@ import { playSound } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
 import { completeLesson } from '../../../lib/api';
 import { invalidate } from '../../../lib/api/swr';
+import { useT } from '../../../lib/i18n';
 
 const LEVEL_TARGET = 0.62; // 62 %
 
@@ -25,6 +26,7 @@ function formatDuration(ms: number): string {
 
 export default function FinishScreen() {
   const router = useRouter();
+  const tr = useT();
   const params = useLocalSearchParams<{
     lessonId?: string;
     correct?: string;
@@ -124,7 +126,7 @@ export default function FinishScreen() {
       </Animated.View>
 
       <Animated.Text entering={FadeInDown.delay(250).springify()} style={styles.title}>
-        Leçon terminée !
+        {tr('finish.title')}
       </Animated.Text>
 
       {/* Stats */}
@@ -132,17 +134,17 @@ export default function FinishScreen() {
         <View style={styles.statCol}>
           <Feather name="zap" size={28} color="#E0A800" />
           <Text style={styles.statVal}>{xpGained != null ? `+${xpGained}` : '+0'} XP</Text>
-          <Text style={styles.statLabel}>Points gagnés</Text>
+          <Text style={styles.statLabel}>{tr('finish.xpGained')}</Text>
         </View>
         <View style={styles.statCol}>
           <Feather name="target" size={28} color="#E0584F" />
           <Text style={styles.statVal}>{accuracy}%</Text>
-          <Text style={styles.statLabel}>Précision</Text>
+          <Text style={styles.statLabel}>{tr('finish.accuracy')}</Text>
         </View>
         <View style={styles.statCol}>
           <Feather name="clock" size={28} color="#6B7280" />
           <Text style={styles.statVal}>{durationMs > 0 ? formatDuration(durationMs) : '—'}</Text>
-          <Text style={styles.statLabel}>Durée</Text>
+          <Text style={styles.statLabel}>{tr('finish.duration')}</Text>
         </View>
       </Animated.View>
 
@@ -150,7 +152,7 @@ export default function FinishScreen() {
       <Animated.View entering={FadeInDown.delay(650).springify()} style={styles.streakBadge}>
         <Text style={{ fontSize: 20 }}>🔥</Text>
         <Text style={styles.streakText}>
-          {streak > 0 ? `Série de ${streak} jour${streak > 1 ? 's' : ''} consécutif${streak > 1 ? 's' : ''} !` : 'Commence ta série !'}
+          {streak > 0 ? tr(streak > 1 ? 'finish.streakDays' : 'finish.streakDay', { n: streak }) : tr('finish.streakStart')}
         </Text>
       </Animated.View>
 
@@ -163,7 +165,7 @@ export default function FinishScreen() {
 
       <Animated.View entering={FadeInDown.delay(950).springify()} style={{ width: '100%' }}>
         <Pressable style={styles.cta} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
-          <Text style={styles.ctaLabel}>Continuer</Text>
+          <Text style={styles.ctaLabel}>{tr('finish.continue')}</Text>
         </Pressable>
       </Animated.View>
     </View>

@@ -4,34 +4,35 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
+import { useT, type I18nKey } from '../../../lib/i18n';
 
 type Theme = {
   id: string;
   emoji: string;
-  titre: string;
-  sous: string;
+  titreKey: I18nKey;
+  sousKey: I18nKey;
   route: string;
   c1: string;
   c2: string;
 };
 
 const THEMES: Theme[] = [
-  { id: 'coran',     emoji: '📖', titre: 'Le Saint Coran',     sous: 'Histoire, révélation, structure',   route: '/(app)/docs/coran',     c1: '#7C5CFF', c2: '#6B4DFF' },
-  { id: 'islam',     emoji: '☪️', titre: "L'Islam",             sous: 'Les 5 piliers, la foi, les valeurs', route: '/(app)/docs/islam',     c1: '#34C724', c2: '#2A9E1C' },
-  { id: 'prophetes', emoji: '👤', titre: 'Les Prophètes',       sous: 'Les 25 prophètes cités dans le Coran', route: '/(app)/docs/prophetes', c1: '#F0820C', c2: '#D96E00' },
-  { id: 'ablutions', emoji: '💧', titre: 'Les Ablutions',       sous: 'Le Wudû étape par étape',           route: '/(app)/docs/ablutions', c1: '#0FB5C4', c2: '#0894A1' },
-  { id: 'priere',    emoji: '🕌', titre: 'La Prière',           sous: 'La Salât : gestes et invocations',  route: '/(app)/docs/priere',    c1: '#E0387E', c2: '#C42968' },
-];
-
-const FAITS = [
-  { val: '114',   lbl: 'Sourates' },
-  { val: '6 236', lbl: 'Versets' },
-  { val: '25',    lbl: 'Prophètes' },
+  { id: 'coran',     emoji: '📖', titreKey: 'coran.theme.coran.titre',     sousKey: 'coran.theme.coran.sous',     route: '/(app)/docs/coran',     c1: '#7C5CFF', c2: '#6B4DFF' },
+  { id: 'islam',     emoji: '☪️', titreKey: 'coran.theme.islam.titre',     sousKey: 'coran.theme.islam.sous',     route: '/(app)/docs/islam',     c1: '#34C724', c2: '#2A9E1C' },
+  { id: 'prophetes', emoji: '👤', titreKey: 'coran.theme.prophetes.titre', sousKey: 'coran.theme.prophetes.sous', route: '/(app)/docs/prophetes', c1: '#F0820C', c2: '#D96E00' },
+  { id: 'ablutions', emoji: '💧', titreKey: 'coran.theme.ablutions.titre', sousKey: 'coran.theme.ablutions.sous', route: '/(app)/docs/ablutions', c1: '#0FB5C4', c2: '#0894A1' },
+  { id: 'priere',    emoji: '🕌', titreKey: 'coran.theme.priere.titre',    sousKey: 'coran.theme.priere.sous',    route: '/(app)/docs/priere',    c1: '#E0387E', c2: '#C42968' },
 ];
 
 export default function CoranScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
+  const FAITS = [
+    { val: '114',   lbl: tr('coran.factSourates') },
+    { val: '6 236', lbl: tr('coran.factVersets') },
+    { val: '25',    lbl: tr('coran.factProphetes') },
+  ];
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
@@ -40,8 +41,8 @@ export default function CoranScreen() {
 
         {/* Header */}
         <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.header}>
-          <Text style={styles.headerTitle}>Savoir</Text>
-          <Text style={styles.headerSub}>Découvre le Coran et l'Islam dans la joie ✨</Text>
+          <Text style={styles.headerTitle}>{tr('coran.headerTitle')}</Text>
+          <Text style={styles.headerSub}>{tr('coran.headerSub')}</Text>
           <View style={styles.faits}>
             {FAITS.map((f, i) => (
               <View key={i} style={styles.fait}>
@@ -53,7 +54,7 @@ export default function CoranScreen() {
         </LinearGradient>
 
         <View style={styles.body}>
-          <Text style={[styles.sectionTitle, { color: T.text }]}>Explore les thèmes</Text>
+          <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('coran.exploreThemes')}</Text>
           {THEMES.map((t) => (
             <Pressable
               key={t.id}
@@ -64,8 +65,8 @@ export default function CoranScreen() {
                 <Text style={styles.cardEmoji}>{t.emoji}</Text>
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.cardTitre, { color: T.text }]}>{t.titre}</Text>
-                <Text style={styles.cardSous}>{t.sous}</Text>
+                <Text style={[styles.cardTitre, { color: T.text }]}>{tr(t.titreKey)}</Text>
+                <Text style={styles.cardSous}>{tr(t.sousKey)}</Text>
               </View>
               <Feather name="chevron-right" size={22} color="#C9CDD4" />
             </Pressable>

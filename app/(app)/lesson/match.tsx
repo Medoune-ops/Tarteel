@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
 import { correctFeedback, wrongFeedback } from '../../../constants/sounds';
+import { useT } from '../../../lib/i18n';
 
 const LEFT = [
   { id: 'allah', text: 'اللَّهِ', ring: '#34C724' },
@@ -21,6 +22,7 @@ const RIGHT = [
 
 export default function MatchScreen() {
   const router = useRouter();
+  const tr = useT();
   // 'allah' déjà matché dans le design d'origine
   const [matched, setMatched] = useState<Set<string>>(new Set(['allah']));
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export default function MatchScreen() {
       <LessonHeader progress={0.5} />
 
       <View style={styles.body}>
-        <Text style={styles.title}>Relie chaque mot à sa traduction</Text>
+        <Text style={styles.title}>{tr('match.title')}</Text>
 
         <View style={styles.columns}>
           {/* Gauche : arabe */}
@@ -97,7 +99,7 @@ export default function MatchScreen() {
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={() => router.push('/(app)/lesson/qcm')}>
-          <Text style={styles.ctaLabel}>Vérifier</Text>
+          <Text style={styles.ctaLabel}>{tr('match.verify')}</Text>
         </Pressable>
       </View>
     </View>

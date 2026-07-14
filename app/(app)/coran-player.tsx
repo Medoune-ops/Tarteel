@@ -10,6 +10,7 @@ import {
   useActiveTrack, useProgress, useIsPlaying, RepeatMode, audioControls,
   changeReciter, getCurrentReciterId, getCurrentSourates,
 } from '../../constants/trackPlayer';
+import { useT } from '../../lib/i18n';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 
@@ -27,6 +28,7 @@ function fmt(sec: number): string {
 export default function CoranPlayerScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
   const track = useActiveTrack();
   const { position, duration } = useProgress(500);
   const { playing } = useIsPlaying();
@@ -65,7 +67,7 @@ export default function CoranPlayerScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Feather name="chevron-down" size={26} color="#fff" />
         </Pressable>
-        <Text style={styles.headerSmall}>Lecture en cours</Text>
+        <Text style={styles.headerSmall}>{tr('coranPlayer.headerSmall')}</Text>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
@@ -73,7 +75,7 @@ export default function CoranPlayerScreen() {
           <View style={styles.emptyBox}>
             <Text style={{ fontSize: 40 }}>🎧</Text>
             <Text style={[styles.emptyText, { color: T.textSecondary }]}>
-              Aucune sourate en lecture. Choisis-en une dans la liste.
+              {tr('coranPlayer.noTrack')}
             </Text>
           </View>
         ) : (
@@ -120,12 +122,12 @@ export default function CoranPlayerScreen() {
               >
                 <Feather name="repeat" size={16} color={looping ? '#fff' : T.textSecondary} />
                 <Text style={[styles.loopText, { color: looping ? '#fff' : T.textSecondary }]}>
-                  {looping ? 'Boucle activée' : 'Boucle'}
+                  {looping ? tr('coranPlayer.loopOn') : tr('coranPlayer.loop')}
                 </Text>
               </Pressable>
             </View>
 
-            <Text style={[styles.optLabel, { color: T.textSecondary }]}>Vitesse</Text>
+            <Text style={[styles.optLabel, { color: T.textSecondary }]}>{tr('coranPlayer.speed')}</Text>
             <View style={styles.speedRow}>
               {SPEEDS.map((r) => {
                 const active = r === speed;
@@ -141,7 +143,7 @@ export default function CoranPlayerScreen() {
               })}
             </View>
 
-            <Text style={[styles.optLabel, { color: T.textSecondary }]}>Récitateur</Text>
+            <Text style={[styles.optLabel, { color: T.textSecondary }]}>{tr('coranPlayer.reciter')}</Text>
             <View style={styles.reciterRow}>
               {RECITERS.map((rc) => {
                 const active = rc.id === reciterId;

@@ -3,11 +3,13 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
+import { useT } from '../../../lib/i18n';
 
 const SPEEDS = ['0.5', '0.75', '1', '1.5'];
 
 export default function ListenScreen() {
   const router = useRouter();
+  const tr = useT();
   const [speed, setSpeed] = useState('0.75');
 
   return (
@@ -18,12 +20,12 @@ export default function ListenScreen() {
         {/* Verset */}
         <View style={styles.verseCard}>
           <Text style={styles.arabic}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
-          <Text style={styles.translation}>Au nom d'Allah, le Tout Miséricordieux</Text>
+          <Text style={styles.translation}>{tr('listen.translation')}</Text>
         </View>
 
         <View style={styles.instructionRow}>
           <Feather name="volume-2" size={22} color="#1B2333" />
-          <Text style={styles.instruction}>Écoute et répète cet ayat</Text>
+          <Text style={styles.instruction}>{tr('listen.instruction')}</Text>
         </View>
 
         {/* Sélecteur vitesse */}
@@ -50,14 +52,14 @@ export default function ListenScreen() {
         {/* Boucle */}
         <Pressable style={styles.loopChip}>
           <Feather name="repeat" size={18} color="#6B7280" />
-          <Text style={styles.loopText}>Boucle</Text>
+          <Text style={styles.loopText}>{tr('listen.loop')}</Text>
         </Pressable>
 
         {/* Micro */}
         <Pressable style={styles.micBtn} onPress={() => router.push('/(app)/lesson/arrange')}>
           <Feather name="mic" size={42} color="#fff" />
         </Pressable>
-        <Text style={styles.micLabel}>Appuie pour parler</Text>
+        <Text style={styles.micLabel}>{tr('listen.tapToSpeak')}</Text>
       </ScrollView>
     </View>
   );
