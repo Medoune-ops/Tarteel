@@ -7,9 +7,11 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { requestPasswordReset } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const tr = useT();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -42,12 +44,10 @@ export default function ForgotPasswordScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.card}>
-          <Text style={styles.title}>Mot de passe oublié ?</Text>
-          <Text style={styles.sub}>
-            Saisis ton adresse email.{'\n'}On t'envoie un lien pour réinitialiser.
-          </Text>
+          <Text style={styles.title}>{tr('forgot.title')}</Text>
+          <Text style={styles.sub}>{tr('forgot.sub')}</Text>
 
-          <Text style={styles.label}>ADRESSE EMAIL</Text>
+          <Text style={styles.label}>{tr('forgot.label')}</Text>
           <View style={styles.input}>
             <Feather name="mail" size={19} color="#9AA0AA" />
             <TextInput
@@ -67,7 +67,7 @@ export default function ForgotPasswordScreen() {
 
           <View style={styles.hint}>
             <Feather name="info" size={13} color="#9AA0AA" />
-            <Text style={styles.hintText}>Vérifie tes spams si tu ne reçois rien sous 2 min.</Text>
+            <Text style={styles.hintText}>{tr('forgot.hint')}</Text>
           </View>
 
           <View style={{ flex: 1 }} />
@@ -81,7 +81,7 @@ export default function ForgotPasswordScreen() {
               ? <ActivityIndicator color="#fff" />
               : (
                 <>
-                  <Text style={styles.ctaLabel}>Envoyer le lien</Text>
+                  <Text style={styles.ctaLabel}>{tr('forgot.send')}</Text>
                   <Feather name="send" size={18} color="#fff" />
                 </>
               )
@@ -89,7 +89,7 @@ export default function ForgotPasswordScreen() {
           </Pressable>
 
           <Pressable onPress={() => router.back()} style={styles.backLink}>
-            <Text style={styles.backLinkText}>Je me souviens — Se connecter</Text>
+            <Text style={styles.backLinkText}>{tr('forgot.rememberLogin')}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

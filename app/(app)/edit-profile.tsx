@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { useUserStore } from '../../store/userStore';
 import { useTheme } from '../../utils/useTheme';
 import { updateProfile, ApiError } from '../../lib/api';
+import { useT } from '../../lib/i18n';
 
 /** Initiales calculées à partir du nom (fallback avatar). */
 function initials(name: string): string {
@@ -19,6 +20,7 @@ function initials(name: string): string {
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const tr = useT();
   const T = useTheme();
   const storedName = useUserStore((s) => s.name);
   const storedUsername = useUserStore((s) => s.username);
@@ -58,7 +60,7 @@ export default function EditProfileScreen() {
         router.back();
         return;
       }
-      setError(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessaie.');
+      setError(e instanceof ApiError ? e.message : tr('editProfile.genericError'));
       setLoading(false);
     }
   };
@@ -69,7 +71,7 @@ export default function EditProfileScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Text style={[styles.back, { color: T.text }]}>‹</Text>
         </Pressable>
-        <Text style={[styles.headerTitle, { color: T.text }]}>Modifier le profil</Text>
+        <Text style={[styles.headerTitle, { color: T.text }]}>{tr('editProfile.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -80,14 +82,14 @@ export default function EditProfileScreen() {
             <Text style={styles.avatarInitials}>{initials(name || storedName)}</Text>
           </View>
 
-          <Text style={[styles.label, { color: T.sectionLabel }]}>NOM COMPLET</Text>
+          <Text style={[styles.label, { color: T.sectionLabel }]}>{tr('editProfile.fullNameLabel')}</Text>
           <View style={[styles.input, { backgroundColor: T.cardBg }]}>
             <Feather name="user" size={19} color="#9AA0AA" />
             <TextInput
               style={[styles.inputText, { color: T.text }]}
               value={name}
               onChangeText={setName}
-              placeholder="Ton nom"
+              placeholder={tr('editProfile.namePlaceholder')}
               placeholderTextColor="#9AA0AA"
               autoCapitalize="words"
               returnKeyType="done"
@@ -95,14 +97,14 @@ export default function EditProfileScreen() {
             />
           </View>
 
-          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>NOM D'UTILISATEUR</Text>
+          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>{tr('editProfile.usernameLabel')}</Text>
           <View style={[styles.input, { backgroundColor: T.cardBg }]}>
             <Feather name="at-sign" size={19} color="#9AA0AA" />
             <TextInput
               style={[styles.inputText, { color: T.text }]}
               value={username}
               onChangeText={setUsername}
-              placeholder="ton_pseudo"
+              placeholder={tr('editProfile.usernamePlaceholder')}
               placeholderTextColor="#9AA0AA"
               autoCapitalize="none"
               autoCorrect={false}
@@ -112,17 +114,17 @@ export default function EditProfileScreen() {
           </View>
           <Text style={[styles.note, { color: usernameValid ? T.textSecondary : '#E5484D' }]}>
             {usernameValid
-              ? 'Affiché dans les ligues à la place de ton nom complet.'
-              : '3 à 20 caractères : lettres, chiffres, « . » ou « _ ».'}
+              ? tr('editProfile.usernameHint')
+              : tr('editProfile.usernameRules')}
           </Text>
 
-          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>EMAIL</Text>
+          <Text style={[styles.label, { color: T.sectionLabel, marginTop: 18 }]}>{tr('editProfile.emailLabel')}</Text>
           <View style={[styles.input, styles.inputDisabled]}>
             <Feather name="mail" size={19} color="#9AA0AA" />
             <Text style={[styles.inputText, { color: '#9AA0AA' }]}>{email || '—'}</Text>
           </View>
           <Text style={[styles.note, { color: T.textSecondary }]}>
-            L'email ne peut pas être modifié depuis l'application.
+            {tr('editProfile.emailImmutable')}
           </Text>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
@@ -130,7 +132,7 @@ export default function EditProfileScreen() {
           <View style={{ flex: 1 }} />
 
           <Pressable style={[styles.cta, !canSave && styles.ctaDisabled]} onPress={save} disabled={!canSave}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaLabel}>Enregistrer</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaLabel}>{tr('editProfile.save')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

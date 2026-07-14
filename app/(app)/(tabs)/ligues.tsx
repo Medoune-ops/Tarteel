@@ -7,6 +7,7 @@ import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
 import { getOrJoinLeague, type LeagueView, type LeagueMember } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
+import { useT } from '../../../lib/i18n';
 
 // Style VISUEL du podium par rang (couleurs, hauteur de marche, anneau). Les
 // DONNÉES (nom, initiales, xp) viennent du backend ; seul l'habillage est ici.
@@ -83,6 +84,7 @@ function Ring({ size, ratio, color }: { size: number; ratio: number; color: stri
 
 export default function LiguesScreen() {
   const T = useTheme();
+  const tr = useT();
 
   // Vue de ligue chargée depuis le backend (GET /leagues/me, auto-join sinon).
   const [view, setView] = useState<LeagueView | null>(null);
@@ -121,7 +123,7 @@ export default function LiguesScreen() {
       <View style={[styles.screen, styles.centerState, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
         <ActivityIndicator size="large" color="#6B4DFF" />
-        <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement des ligues…</Text>
+        <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('ligues.loading')}</Text>
       </View>
     );
   }
@@ -130,9 +132,9 @@ export default function LiguesScreen() {
       <View style={[styles.screen, styles.centerState, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
         <Feather name="wifi-off" size={32} color={T.textSecondary} />
-        <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger les ligues.</Text>
+        <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('ligues.loadError')}</Text>
         <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>Réessayer</Text>
+          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -154,7 +156,7 @@ export default function LiguesScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: T.text }]}>Ligues</Text>
+          <Text style={[styles.title, { color: T.text }]}>{tr('ligues.title')}</Text>
           <View style={[styles.infoBtn, { backgroundColor: T.cardBg }]}>
             <Feather name="help-circle" size={20} color="#7A828F" />
           </View>
@@ -169,9 +171,10 @@ export default function LiguesScreen() {
               <Feather name="award" size={30} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.goldTitle}>Ligue {v.league?.nom ?? '—'}</Text>
+              <Text style={styles.goldTitle}>{tr('ligues.leagueName', { nom: v.league?.nom ?? '—' })}</Text>
               <Text style={styles.goldSub}>
-                {v.semaine != null ? `Semaine ${v.semaine} · ` : ''}{v.participants} participant{v.participants > 1 ? 's' : ''}
+                {v.semaine != null ? tr('ligues.weekLabel', { n: v.semaine }) : ''}
+                {tr(v.participants > 1 ? 'ligues.participants' : 'ligues.participant', { n: v.participants })}
               </Text>
             </View>
             <View style={styles.divisionBadge}>
@@ -184,7 +187,7 @@ export default function LiguesScreen() {
               <View style={styles.goldChipIcon}>
                 <Feather name="trending-up" size={15} color={lt.shadow} />
               </View>
-              <Text style={styles.goldChipText}>Top {v.promotionZone} → promotion</Text>
+              <Text style={styles.goldChipText}>{tr('ligues.promotionTop', { n: v.promotionZone })}</Text>
             </View>
             <View style={styles.goldChipLeft}>
               <Feather name="clock" size={14} color="#fff" />
@@ -259,7 +262,7 @@ export default function LiguesScreen() {
           <View style={[styles.zoneLine, T.isDark && { backgroundColor: '#1E4026' }]} />
           <View style={[styles.zonePill, { backgroundColor: T.isDark ? '#173322' : '#E3F7E6' }]}>
             <Feather name="chevrons-up" size={13} color="#2A9E1C" />
-            <Text style={[styles.zoneText, { color: T.isDark ? '#4ED83A' : '#2A9E1C' }]}>ZONE DE PROMOTION</Text>
+            <Text style={[styles.zoneText, { color: T.isDark ? '#4ED83A' : '#2A9E1C' }]}>{tr('ligues.promotionZone')}</Text>
           </View>
           <View style={[styles.zoneLine, T.isDark && { backgroundColor: '#1E4026' }]} />
         </View>
@@ -281,7 +284,7 @@ export default function LiguesScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.name, { color: T.text }, p.me && { color: T.text, fontFamily: 'Nunito_800ExtraBold' }]}>{p.name}</Text>
-                  {p.relegation && <Text style={styles.relegText}>Zone de relégation</Text>}
+                  {p.relegation && <Text style={styles.relegText}>{tr('ligues.relegationTag')}</Text>}
                 </View>
                 <View style={[styles.xpRow, p.me && [styles.xpRowMe, T.isDark && { backgroundColor: '#15131F' }]]}>
                   <Feather name="zap" size={15} color={p.me ? '#6B4DFF' : '#9AA0AA'} />
@@ -294,7 +297,7 @@ export default function LiguesScreen() {
                   <View style={[styles.zoneLine, { backgroundColor: T.isDark ? '#4A2330' : '#FBD5D5' }]} />
                   <View style={[styles.zonePill, { backgroundColor: T.isDark ? '#3A1F26' : '#FDE8E8' }]}>
                     <Feather name="chevrons-down" size={13} color="#FF4B4B" />
-                    <Text style={[styles.zoneText, { color: '#FF4B4B' }]}>ZONE DE RELÉGATION</Text>
+                    <Text style={[styles.zoneText, { color: '#FF4B4B' }]}>{tr('ligues.relegationZone')}</Text>
                   </View>
                   <View style={[styles.zoneLine, { backgroundColor: '#FBD5D5' }]} />
                 </View>
@@ -303,7 +306,7 @@ export default function LiguesScreen() {
           ))}
           {v.around.length === 0 && (
             <Text style={[styles.emptyList, { color: T.textSecondary }]}>
-              Termine une leçon pour gagner de l'XP et apparaître au classement.
+              {tr('ligues.emptyList')}
             </Text>
           )}
         </View>
@@ -318,9 +321,13 @@ export default function LiguesScreen() {
           <Text style={styles.myRankText}>{me?.rang ?? v.myRank ?? '—'}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.myLabel}>Ta position</Text>
+          <Text style={styles.myLabel}>{tr('ligues.myPosition')}</Text>
           <Text style={styles.myHint}>
-            {me?.promotion ? 'Tu es en zone de promotion !' : me?.relegation ? 'Attention, zone de relégation' : `${v.participants} participants cette semaine`}
+            {me?.promotion
+              ? tr('ligues.myHintPromotion')
+              : me?.relegation
+                ? tr('ligues.myHintRelegation')
+                : tr('ligues.myHintDefault', { n: v.participants })}
           </Text>
         </View>
         <View style={styles.myXp}>

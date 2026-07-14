@@ -9,29 +9,32 @@ import { useUserStore } from '../../../store/userStore';
 import { useTheme } from '../../../utils/useTheme';
 import { fetchActivity } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
+import { useT, t, type I18nKey } from '../../../lib/i18n';
 
 type Badge = { emoji: string; bg: string; bgDark: string; border: string; label: string; route?: Href };
 
 // Libellé du badge d'objectif de série.
 function streakGoalLabel(streak: number, goal: number | null): string {
-  if (goal == null) return 'Fixer un défi';
-  if (streak >= goal) return '🎯 Atteint !';
-  return `${streak}/${goal} j`;
+  if (goal == null) return t('profil.badge.streakGoalSet');
+  if (streak >= goal) return t('profil.badge.streakGoalReached');
+  return t('profil.badge.streakGoalProgress', { streak, goal });
 }
 
 function buildBadges(streak: number, streakGoal: number | null, sourates: number): Badge[] {
   return [
-    { emoji: '🎧', bg: '#E8E4FF', bgDark: '#241F3D', border: '#6B4DFF', label: 'Lecture libre', route: '/(app)/lecture-libre' },
+    { emoji: '🎧', bg: '#E8E4FF', bgDark: '#241F3D', border: '#6B4DFF', label: t('profil.badge.lectureLibre'), route: '/(app)/lecture-libre' },
     { emoji: '🔥', bg: '#FFE8E8', bgDark: '#3A1F26', border: '#FF4B4B', label: streakGoalLabel(streak, streakGoal), route: '/(app)/streak-goal' },
-    { emoji: '🎵', bg: '#F0E8FF', bgDark: '#2A2140', border: '#8A5CF0', label: 'Tajwid', route: '/(app)/tajwid' },
-    { emoji: '📖', bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: `${sourates} Sourate${sourates > 1 ? 's' : ''}`, route: '/(app)/sourates' },
-    { emoji: '🏆', bg: '#FFF3CD', bgDark: '#332A14', border: '#E0A02C', label: 'Mes podiums', route: '/(app)/podiums' },
+    { emoji: '🎵', bg: '#F0E8FF', bgDark: '#2A2140', border: '#8A5CF0', label: t('profil.badge.tajwid'), route: '/(app)/tajwid' },
+    { emoji: '📖', bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: t(sourates > 1 ? 'profil.badge.sourates' : 'profil.badge.sourate', { n: sourates }), route: '/(app)/sourates' },
+    { emoji: '🏆', bg: '#FFF3CD', bgDark: '#332A14', border: '#E0A02C', label: t('profil.badge.podiums'), route: '/(app)/podiums' },
   ];
 }
 
 export default function ProfilScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
+  const language = useUserStore((s) => s.language);
   const logout = useUserStore((s) => s.logout);
   const name = useUserStore((s) => s.name);
   const streak = useUserStore((s) => s.streak);
@@ -50,14 +53,18 @@ export default function ProfilScreen() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   // Décalage pour démarrer la semaine le lundi (getDay(): 0 = dimanche).
   const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7;
-  const monthLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const localeTag = language === 'en' ? 'en-US' : language === 'ar' ? 'ar' : 'fr-FR';
+  const monthLabel = now.toLocaleDateString(localeTag, { month: 'long', year: 'numeric' });
   const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; // "YYYY-MM"
   // Cases de la grille : décalage de début (null) puis les jours du mois.
   const calCells: (number | null)[] = [
     ...Array.from({ length: leadingBlanks }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
-  const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const WEEKDAY_KEYS: I18nKey[] = [
+    'profil.weekday.mon', 'profil.weekday.tue', 'profil.weekday.wed',
+    'profil.weekday.thu', 'profil.weekday.fri', 'profil.weekday.sat', 'profil.weekday.sun',
+  ];
 
   // Jours RÉELLEMENT actifs du mois (GET /me/activity) — set des numéros de jour.
   const [activeDays, setActiveDays] = useState<Set<number>>(new Set());
@@ -78,12 +85,12 @@ export default function ProfilScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Se déconnecter',
-      'Es-tu sûr de vouloir te déconnecter ?',
+      tr('profil.logoutConfirmTitle'),
+      tr('profil.logoutConfirmMsg'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: tr('profil.logoutCancel'), style: 'cancel' },
         {
-          text: 'Déconnexion',
+          text: tr('profil.logoutAction'),
           style: 'destructive',
           onPress: () => {
             logout();
@@ -105,7 +112,7 @@ export default function ProfilScreen() {
           <View style={styles.avatar}>
             <Otter size={84} />
           </View>
-          <Text style={styles.name}>{name || 'Toi'}</Text>
+          <Text style={styles.name}>{name || tr('profil.defaultName')}</Text>
           <View style={styles.stars}>
             {[0, 1, 2].map((i) => <Feather key={i} name="star" size={18} color="#FFC83D" />)}
           </View>
@@ -115,10 +122,10 @@ export default function ProfilScreen() {
           {/* Stats bar */}
           <View style={[styles.statsCard, { backgroundColor: T.cardBg }]}>
             {[
-              { value: xp.toLocaleString('fr-FR'), label: 'XP Total' },
-              { value: String(streak), label: 'Jours streak', flame: true },
-              { value: String(sourates), label: 'Sourates' },
-              { value: precision > 0 ? `${precision}%` : '—', label: 'Précision' },
+              { value: xp.toLocaleString(localeTag), label: tr('profil.xpTotal') },
+              { value: String(streak), label: tr('profil.streakDays'), flame: true },
+              { value: String(sourates), label: tr('profil.sourates') },
+              { value: precision > 0 ? `${precision}%` : '—', label: tr('profil.precision') },
             ].map((s, i) => (
               <View key={i} style={styles.statCol}>
                 <View style={styles.statValRow}>
@@ -137,13 +144,13 @@ export default function ProfilScreen() {
             const inLevel = xp % PER_LEVEL;
             return (
               <>
-                <Text style={[styles.sectionTitle, { color: T.text }]}>Progression Niveau {level}</Text>
+                <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('profil.levelProgress', { level })}</Text>
                 <View style={styles.levelRow}>
                   <View style={{ flex: 1 }}>
                     <ProgressBar progress={inLevel / PER_LEVEL} bgColor={T.isDark ? '#2A2940' : '#E2E4E9'} />
                   </View>
                   <Text style={[styles.levelText, { color: T.textSecondary }]}>
-                    {inLevel.toLocaleString('fr-FR')} / {PER_LEVEL.toLocaleString('fr-FR')} XP
+                    {inLevel.toLocaleString(localeTag)} / {PER_LEVEL.toLocaleString(localeTag)} XP
                   </Text>
                 </View>
               </>
@@ -151,7 +158,7 @@ export default function ProfilScreen() {
           })()}
 
           {/* Badges */}
-          <Text style={[styles.sectionTitle, { color: T.text }]}>Badges</Text>
+          <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('profil.badgesTitle')}</Text>
           <View style={styles.badgeGrid}>
             {badges.map((b, i) => (
               <Pressable
@@ -182,8 +189,8 @@ export default function ProfilScreen() {
 
           {/* En-tête jours de la semaine */}
           <View style={styles.calWeekHeader}>
-            {WEEKDAYS.map((w, i) => (
-              <Text key={i} style={[styles.calWeekday, { color: T.textTertiary }]}>{w}</Text>
+            {WEEKDAY_KEYS.map((w, i) => (
+              <Text key={i} style={[styles.calWeekday, { color: T.textTertiary }]}>{tr(w)}</Text>
             ))}
           </View>
 
@@ -213,7 +220,7 @@ export default function ProfilScreen() {
           {/* Déconnexion */}
           <Pressable style={[styles.logoutBtn, { backgroundColor: T.cardBg, borderColor: T.isDark ? '#4A2330' : '#FFD9D9' }]} onPress={handleLogout}>
             <Feather name="log-out" size={20} color="#FF4B4B" />
-            <Text style={styles.logoutText}>Se déconnecter</Text>
+            <Text style={styles.logoutText}>{tr('profil.logout')}</Text>
           </Pressable>
 
           <View style={{ height: 14 }} />

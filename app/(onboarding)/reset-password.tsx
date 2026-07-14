@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { confirmPasswordReset, ApiError } from '../../lib/api';
+import { useT, t } from '../../lib/i18n';
 
 type Strength = 'vide' | 'faible' | 'moyen' | 'fort';
 
@@ -28,12 +29,12 @@ const STRENGTH_COLOR: Record<Strength, string> = {
   moyen: '#F0A41E',
   fort: '#34C724',
 };
-const STRENGTH_LABEL: Record<Strength, string> = {
-  vide: '',
-  faible: 'Faible',
-  moyen: 'Moyen',
-  fort: 'Fort ✓',
-};
+function strengthLabel(s: Strength): string {
+  if (s === 'faible') return t('reset.strengthWeak');
+  if (s === 'moyen') return t('reset.strengthMedium');
+  if (s === 'fort') return t('reset.strengthStrong');
+  return '';
+}
 
 function StrengthBar({ strength }: { strength: Strength }) {
   const levels: Strength[] = ['faible', 'moyen', 'fort'];
@@ -90,6 +91,7 @@ function PwdField({ value, onChange, placeholder }: { value: string; onChange: (
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const tr = useT();
   const { token } = useLocalSearchParams<{ token?: string }>();
   const [pwd, setPwd] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -107,7 +109,7 @@ export default function ResetPasswordScreen() {
   const submit = async () => {
     if (!canSubmit || loading) return;
     if (!token) {
-      setError('Lien invalide ou expiré. Refais une demande de réinitialisation.');
+      setError(tr('reset.linkInvalid'));
       return;
     }
     setLoading(true);
@@ -118,8 +120,8 @@ export default function ResetPasswordScreen() {
     } catch (e) {
       setError(
         e instanceof ApiError
-          ? 'Lien invalide ou expiré. Refais une demande de réinitialisation.'
-          : 'Une erreur est survenue. Réessaie.',
+          ? tr('reset.linkInvalid')
+          : tr('reset.errGeneric'),
       );
       setLoading(false);
     }
@@ -139,36 +141,36 @@ export default function ResetPasswordScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Nouveau mot de passe</Text>
-          <Text style={styles.sub}>Choisis un mot de passe solide.</Text>
+          <Text style={styles.title}>{tr('reset.title')}</Text>
+          <Text style={styles.sub}>{tr('reset.sub')}</Text>
 
           {/* Nouveau MDP */}
-          <Text style={styles.label}>NOUVEAU MOT DE PASSE</Text>
-          <PwdField value={pwd} onChange={setPwd} placeholder="Mot de passe" />
+          <Text style={styles.label}>{tr('reset.newPasswordLabel')}</Text>
+          <PwdField value={pwd} onChange={setPwd} placeholder={tr('reset.password')} />
           {pwd.length > 0 && (
             <>
               <StrengthBar strength={strength} />
               <Text style={[styles.strengthLabel, { color: STRENGTH_COLOR[strength] }]}>
-                {STRENGTH_LABEL[strength]}
+                {strengthLabel(strength)}
               </Text>
             </>
           )}
 
           {/* Confirmation */}
-          <Text style={[styles.label, { marginTop: 18 }]}>CONFIRMER LE MOT DE PASSE</Text>
-          <PwdField value={confirm} onChange={setConfirm} placeholder="Confirmer le mot de passe" />
+          <Text style={[styles.label, { marginTop: 18 }]}>{tr('reset.confirmLabel')}</Text>
+          <PwdField value={confirm} onChange={setConfirm} placeholder={tr('reset.confirmPassword')} />
           {confirm.length > 0 && (
             <Text style={[styles.matchLabel, { color: matches ? '#34C724' : '#FF4B4B' }]}>
-              {matches ? 'Les mots de passe correspondent ✓' : 'Les mots de passe ne correspondent pas'}
+              {matches ? tr('reset.match') : tr('reset.noMatch')}
             </Text>
           )}
 
           {/* Critères */}
           <View style={styles.criteria}>
-            <CheckItem ok={hasMin8}    label="Au moins 8 caractères" />
-            <CheckItem ok={hasCase}    label="Une majuscule et une minuscule" />
-            <CheckItem ok={hasNumber}  label="Un chiffre" />
-            <CheckItem ok={hasSpecial} label="Un caractère spécial (!@#$…)" />
+            <CheckItem ok={hasMin8}    label={tr('reset.criteriaMin8')} />
+            <CheckItem ok={hasCase}    label={tr('reset.criteriaCase')} />
+            <CheckItem ok={hasNumber}  label={tr('reset.criteriaNumber')} />
+            <CheckItem ok={hasSpecial} label={tr('reset.criteriaSpecial')} />
           </View>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
@@ -183,7 +185,7 @@ export default function ResetPasswordScreen() {
               ? <ActivityIndicator color="#fff" />
               : (
                 <>
-                  <Text style={styles.ctaLabel}>Enregistrer le mot de passe</Text>
+                  <Text style={styles.ctaLabel}>{tr('reset.save')}</Text>
                   <Feather name="check" size={18} color="#fff" />
                 </>
               )

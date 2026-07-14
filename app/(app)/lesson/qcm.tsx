@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
 import { correctFeedback, wrongFeedback } from '../../../constants/sounds';
+import { useT } from '../../../lib/i18n';
 
 const OPTIONS = [
   { id: 'A', text: "Le Créateur de l'univers" },
@@ -16,6 +17,7 @@ const CORRECT_ID = 'C';
 
 export default function QcmScreen() {
   const router = useRouter();
+  const tr = useT();
   const [answer, setAnswer] = useState<string>('C');
 
   const choose = (id: string) => {
@@ -29,7 +31,7 @@ export default function QcmScreen() {
       <LessonHeader progress={0.65} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Que signifie ce mot ?</Text>
+        <Text style={styles.title}>{tr('qcm.title')}</Text>
 
         {/* Mot arabe */}
         <View style={styles.wordCard}>
@@ -69,7 +71,7 @@ export default function QcmScreen() {
         </View>
 
         <Pressable style={styles.cta} onPress={() => router.push('/(app)/lesson/voice')}>
-          <Text style={styles.ctaLabel}>Continuer</Text>
+          <Text style={styles.ctaLabel}>{tr('qcm.continue')}</Text>
         </Pressable>
         <View style={{ height: 24 }} />
       </ScrollView>

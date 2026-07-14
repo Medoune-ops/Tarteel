@@ -13,16 +13,17 @@ import { getLetterSound } from '../../../constants/letterSounds';
 import type { DiscoveryStep } from '../../../constants/lessonEngine';
 import { useTheme } from '../../../utils/useTheme';
 import DeviceStatusBar from '../../../components/StatusBar';
+import { useT, t } from '../../../lib/i18n';
 
 type Reponse = 'facile' | 'difficile' | 'oublie';
 /** État de la carte courante pendant la session vocale. */
 type CardPhase = 'idle' | 'recording' | 'analyzing' | 'correct' | 'wrong';
 
-const SCORES: Record<Reponse, { label: string; emoji: string; bg: string }> = {
-  facile:    { label: 'Facile',    emoji: '😊', bg: '#34C724' },
-  difficile: { label: 'Difficile', emoji: '😅', bg: '#F6B100' },
-  oublie:    { label: 'À revoir',  emoji: '😬', bg: '#FF6B6B' },
-};
+function scoreMeta(rep: Reponse): { label: string; emoji: string; bg: string } {
+  if (rep === 'facile') return { label: t('lettre.facile'), emoji: '😊', bg: '#34C724' };
+  if (rep === 'difficile') return { label: t('lettre.difficile'), emoji: '😅', bg: '#F6B100' };
+  return { label: t('lettre.oublie'), emoji: '😬', bg: '#FF6B6B' };
+}
 
 /** Verdict SRS calculé depuis le taux de réussite Whisper de la session. */
 function qualityFromRatio(ratio: number): Reponse {
@@ -49,6 +50,7 @@ function playCard(step: DiscoveryStep) {
  */
 export default function LettreRevisionScreen() {
   const router = useRouter();
+  const tr = useT();
   const T = useTheme();
   const { lessonId, titre } = useLocalSearchParams<{ lessonId: string; titre?: string }>();
 
@@ -113,7 +115,7 @@ export default function LettreRevisionScreen() {
     } catch {
       // Micro indisponible (web/simulateur…) : on bascule en mode manuel
       // plutôt que de laisser un bouton qui ne fait rien.
-      setCardError("Le micro n'est pas disponible sur cet appareil — mode lecture activé.");
+      setCardError(t('lettre.micUnavailable'));
       setMicDenied(true);
     }
   }, [recorder]);
@@ -127,10 +129,13 @@ export default function LettreRevisionScreen() {
       await recorder.stop();
       uri = recorder.uri;
     } catch { /* recorder déjà arrêté/détruit */ }
+    // iOS : le mode enregistrement (allowsRecording: true) coupe/atténue la
+    // lecture audio — on repasse en mode lecture avant de rejouer la carte.
+    await exitRecordingMode();
     setPhase('analyzing');
     try {
       if (!uri) {
-        setCardError("L'enregistrement a échoué — réessaie, ou vérifie ton micro.");
+        setCardError(t('lettre.recordingFailed'));
         setPhase('idle');
         return;
       }
@@ -149,8 +154,8 @@ export default function LettreRevisionScreen() {
       // avec un message clair au lieu d'un retour silencieux.
       setCardError(
         e instanceof ApiError && e.status === 503
-          ? 'La reconnaissance vocale est indisponible pour le moment.'
-          : "L'analyse a échoué (connexion ?) — appuie sur le micro pour réessayer.",
+          ? t('lettre.asrUnavailable')
+          : t('lettre.analysisFailed'),
       );
       setPhase('idle');
     }
@@ -196,9 +201,9 @@ export default function LettreRevisionScreen() {
       <View style={[styles.screen, styles.center, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
         <Feather name="wifi-off" size={32} color={T.textSecondary} />
-        <Text style={[styles.stateText, { color: T.text }]}>Impossible de charger la leçon.</Text>
+        <Text style={[styles.stateText, { color: T.text }]}>{tr('lettre.loadError')}</Text>
         <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>Réessayer</Text>
+          <Text style={styles.retryLabel}>{tr('lettre.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -215,9 +220,9 @@ export default function LettreRevisionScreen() {
     return (
       <View style={[styles.screen, styles.center, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
-        <Text style={[styles.stateText, { color: T.text }]}>Rien à réviser dans cette leçon.</Text>
+        <Text style={[styles.stateText, { color: T.text }]}>{tr('lettre.nothingToReview')}</Text>
         <Pressable style={styles.retryBtn} onPress={() => router.back()}>
-          <Text style={styles.retryLabel}>Retour</Text>
+          <Text style={styles.retryLabel}>{tr('lettre.back')}</Text>
         </Pressable>
       </View>
     );
@@ -226,20 +231,20 @@ export default function LettreRevisionScreen() {
   // ── Écran de fin ──
   if (finished) {
     const pct = Math.round((successes / cards.length) * 100);
-    const verdict = SCORES[applied ?? autoQuality];
+    const verdict = scoreMeta(applied ?? autoQuality);
     return (
       <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
         <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.resultGrad}>
           <Text style={styles.headerEmoji}>{micDenied ? '📖' : verdict.emoji}</Text>
-          <Text style={styles.headerTitle}>{titre ?? 'Révision'}</Text>
+          <Text style={styles.headerTitle}>{titre ?? tr('lettre.reviewDefault')}</Text>
           {!micDenied && (
             <>
               <View style={styles.resultCircle}>
                 <Text style={styles.resultPct}>{pct}%</Text>
-                <Text style={styles.resultSub}>Prononciation</Text>
+                <Text style={styles.resultSub}>{tr('lettre.pronunciation')}</Text>
               </View>
-              <Text style={styles.headerSub}>{successes}/{cards.length} cartes réussies</Text>
+              <Text style={styles.headerSub}>{tr('lettre.cardsSucceeded', { n: successes, total: cards.length })}</Text>
             </>
           )}
         </LinearGradient>
@@ -248,11 +253,11 @@ export default function LettreRevisionScreen() {
           {micDenied ? (
             // Fallback manuel : micro refusé → auto-évaluation classique.
             <>
-              <Text style={[styles.question, { color: T.text }]}>Comment tu t'es senti ?</Text>
-              {saveError && <Text style={styles.errorText}>Une erreur est survenue, réessaie.</Text>}
+              <Text style={[styles.question, { color: T.text }]}>{tr('lettre.howDidYouFeel')}</Text>
+              {saveError && <Text style={styles.errorText}>{tr('lettre.errGeneric')}</Text>}
               <View style={styles.btnsCol}>
                 {(['oublie', 'difficile', 'facile'] as Reponse[]).map((rep) => {
-                  const s = SCORES[rep];
+                  const s = scoreMeta(rep);
                   return (
                     <Pressable
                       key={rep}
@@ -273,7 +278,7 @@ export default function LettreRevisionScreen() {
               {saving && (
                 <View style={styles.center}>
                   <ActivityIndicator size="small" color="#6B4DFF" />
-                  <Text style={[styles.stateText, { color: T.textSecondary }]}>Mise à jour de ta maîtrise…</Text>
+                  <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('lettre.updatingMastery')}</Text>
                 </View>
               )}
               {applied && (
@@ -283,15 +288,15 @@ export default function LettreRevisionScreen() {
                     <Text style={styles.repBtnLabel}>{verdict.label}</Text>
                   </View>
                   <Text style={[styles.stateText, { color: T.textSecondary }]}>
-                    Verdict appliqué d'après ta prononciation réelle.
+                    {tr('lettre.verdictApplied')}
                   </Text>
                 </View>
               )}
               {saveError && (
                 <View style={styles.center}>
-                  <Text style={styles.errorText}>Impossible d'enregistrer le résultat.</Text>
+                  <Text style={styles.errorText}>{tr('lettre.saveError')}</Text>
                   <Pressable style={styles.retryBtn} onPress={() => applyReview(autoQuality)}>
-                    <Text style={styles.retryLabel}>Réessayer</Text>
+                    <Text style={styles.retryLabel}>{tr('lettre.retry')}</Text>
                   </Pressable>
                 </View>
               )}
@@ -304,11 +309,11 @@ export default function LettreRevisionScreen() {
             disabled={saving}
           >
             <Feather name="refresh-cw" size={16} color="#6B4DFF" />
-            <Text style={styles.restartTxt}>Recommencer</Text>
+            <Text style={styles.restartTxt}>{tr('lettre.restart')}</Text>
           </Pressable>
           {applied != null && (
             <Pressable style={styles.quitBtn} onPress={() => router.back()}>
-              <Text style={styles.quitTxt}>Terminer</Text>
+              <Text style={styles.quitTxt}>{tr('lettre.finish')}</Text>
             </Pressable>
           )}
         </View>
@@ -334,11 +339,11 @@ export default function LettreRevisionScreen() {
 
       <View style={styles.cardZone}>
         <Text style={[styles.consigne, { color: T.textSecondary }]}>
-          {phase === 'idle' && (micDenied ? 'Comment se lit cette lettre ?' : 'Prononce cette lettre à voix haute')}
-          {phase === 'recording' && 'Je t\'écoute…'}
-          {phase === 'analyzing' && 'Analyse de ta prononciation…'}
-          {phase === 'correct' && 'Bien prononcé !'}
-          {phase === 'wrong' && 'Écoute la bonne prononciation'}
+          {phase === 'idle' && (micDenied ? tr('lettre.howToReadLetter') : tr('lettre.pronounceAloud'))}
+          {phase === 'recording' && tr('lettre.listening')}
+          {phase === 'analyzing' && tr('lettre.analyzingPronunciation')}
+          {phase === 'correct' && tr('lettre.wellPronounced')}
+          {phase === 'wrong' && tr('lettre.listenCorrectPronunciation')}
         </Text>
 
         <View
@@ -354,7 +359,7 @@ export default function LettreRevisionScreen() {
             <>
               <Text style={styles.translit}>{card.translitteration}</Text>
               <Text style={[styles.traduction, { color: T.textSecondary }]}>{card.traduction}</Text>
-              <Pressable style={styles.audioBtn} onPress={() => playCard(card)} hitSlop={8}>
+              <Pressable style={styles.audioBtn} onPress={() => { exitRecordingMode(); playCard(card); }} hitSlop={8}>
                 <Feather name="volume-2" size={26} color="#2A9E1C" />
               </Pressable>
             </>
@@ -372,33 +377,33 @@ export default function LettreRevisionScreen() {
           // Fallback sans micro : révéler puis passer.
           showAnswer ? (
             <Pressable style={styles.nextBtn} onPress={next}>
-              <Text style={styles.nextLabel}>{index + 1 >= cards.length ? 'Terminer' : 'Suivant'}</Text>
+              <Text style={styles.nextLabel}>{index + 1 >= cards.length ? tr('lettre.finish') : tr('lettre.next')}</Text>
               <Feather name="arrow-right" size={18} color="#fff" />
             </Pressable>
           ) : (
             <Pressable style={[styles.nextBtn, { backgroundColor: '#6B4DFF', borderBottomColor: '#4A30CC' }]} onPress={() => { setPhase('wrong'); playCard(card); }}>
-              <Text style={styles.nextLabel}>Révéler</Text>
+              <Text style={styles.nextLabel}>{tr('lettre.reveal')}</Text>
               <Feather name="eye" size={18} color="#fff" />
             </Pressable>
           )
         ) : phase === 'idle' ? (
           <Pressable style={[styles.micBtn, { backgroundColor: '#6B4DFF' }]} onPress={startRecording}>
             <Feather name="mic" size={26} color="#fff" />
-            <Text style={styles.nextLabel}>Appuie et prononce</Text>
+            <Text style={styles.nextLabel}>{tr('lettre.tapAndPronounce')}</Text>
           </Pressable>
         ) : phase === 'recording' ? (
           <Pressable style={[styles.micBtn, { backgroundColor: '#FF4B4B' }]} onPress={stopAndJudge}>
             <Feather name="square" size={22} color="#fff" />
-            <Text style={styles.nextLabel}>J'ai fini</Text>
+            <Text style={styles.nextLabel}>{tr('lettre.imDone')}</Text>
           </Pressable>
         ) : phase === 'analyzing' ? (
           <View style={[styles.micBtn, { backgroundColor: '#9AA0AA' }]}>
             <ActivityIndicator size="small" color="#fff" />
-            <Text style={styles.nextLabel}>Analyse…</Text>
+            <Text style={styles.nextLabel}>{tr('lettre.analyzingShort')}</Text>
           </View>
         ) : (
           <Pressable style={styles.nextBtn} onPress={next}>
-            <Text style={styles.nextLabel}>{index + 1 >= cards.length ? 'Terminer' : 'Suivant'}</Text>
+            <Text style={styles.nextLabel}>{index + 1 >= cards.length ? tr('lettre.finish') : tr('lettre.next')}</Text>
             <Feather name="arrow-right" size={18} color="#fff" />
           </Pressable>
         )}

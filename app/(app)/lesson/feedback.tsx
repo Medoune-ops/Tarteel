@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
 import { useUserStore } from '../../../store/userStore';
 import { correctFeedback, wrongFeedback } from '../../../constants/sounds';
+import { useT } from '../../../lib/i18n';
 
 const WORDS_OK = ['بِسْمِ', 'اللَّهِ', 'الرَّحْمَٰنِ', 'الرَّحِيمِ'];
 
@@ -17,6 +18,7 @@ export default function FeedbackScreen() {
 }
 
 function FeedbackOk({ router }: { router: ReturnType<typeof useRouter> }) {
+  const tr = useT();
   // Carillon + vibration de réussite à l'apparition de l'écran.
   useEffect(() => { correctFeedback(); }, []);
 
@@ -28,7 +30,7 @@ function FeedbackOk({ router }: { router: ReturnType<typeof useRouter> }) {
           <Text style={styles.arabic}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
         </View>
 
-        <Text style={styles.analyseLabel}>Analyse de ta récitation :</Text>
+        <Text style={styles.analyseLabel}>{tr('feedback.analysis')}</Text>
         <View style={styles.tilesRow}>
           {WORDS_OK.map((w) => (
             <View key={w} style={styles.okTile}>
@@ -42,21 +44,21 @@ function FeedbackOk({ router }: { router: ReturnType<typeof useRouter> }) {
         <View style={styles.gaugeWrap}>
           <View style={styles.gauge}>
             <Text style={styles.gaugeScore}>94%</Text>
-            <Text style={styles.gaugeLabel}>Score</Text>
+            <Text style={styles.gaugeLabel}>{tr('feedback.score')}</Text>
           </View>
         </View>
       </ScrollView>
 
       {/* Footer vert */}
       <View style={styles.okFooter}>
-        <Text style={styles.okFooterTitle}>✓ Excellent !</Text>
-        <Text style={styles.okFooterSub}>Tajwid parfait · Toutes règles respectées</Text>
+        <Text style={styles.okFooterTitle}>{tr('feedback.okTitle')}</Text>
+        <Text style={styles.okFooterSub}>{tr('feedback.okSub')}</Text>
         <View style={styles.xpRow}>
-          <Text style={styles.xpText}>+15 XP gagnés</Text>
+          <Text style={styles.xpText}>{tr('feedback.xpGained', { n: 15 })}</Text>
           <Feather name="star" size={18} color="#F6B100" />
         </View>
         <Pressable style={styles.okCta} onPress={() => router.replace('/(app)/lesson/finish')}>
-          <Text style={styles.okCtaLabel}>Continuer</Text>
+          <Text style={styles.okCtaLabel}>{tr('feedback.continue')}</Text>
         </Pressable>
       </View>
     </View>
@@ -64,6 +66,7 @@ function FeedbackOk({ router }: { router: ReturnType<typeof useRouter> }) {
 }
 
 function FeedbackBad({ router }: { router: ReturnType<typeof useRouter> }) {
+  const tr = useT();
   const loseHeart = useUserStore((s) => s.loseHeart);
   const isPremium = useUserStore((s) => s.isPremium);
   const [heartsLeft, setHeartsLeft] = useState<number | null>(null);
@@ -95,7 +98,7 @@ function FeedbackBad({ router }: { router: ReturnType<typeof useRouter> }) {
           <Text style={styles.translation}>Ar-Rahman</Text>
         </View>
 
-        <Text style={styles.analyseLabel}>Analyse :</Text>
+        <Text style={styles.analyseLabel}>{tr('feedback.analysisShort')}</Text>
         <View style={styles.badTile}>
           <Text style={styles.badTileArabic}>الرَّحْمَٰنِ</Text>
           <Text style={styles.badTileLabel}>× Madd manqué</Text>
@@ -103,7 +106,7 @@ function FeedbackBad({ router }: { router: ReturnType<typeof useRouter> }) {
 
         <View style={styles.tajwidErrRow}>
           <Feather name="zap" size={18} color="#6B4DFF" />
-          <Text style={styles.tajwidErrTitle}>Erreur tajwid :</Text>
+          <Text style={styles.tajwidErrTitle}>{tr('feedback.tajwidErrorLabel')}</Text>
         </View>
         <Text style={styles.tajwidErrText}>
           Tu n'as pas allongé le son « الرَّ ».{'\n'}Le Madd Tabii impose 2 temps d'allongement.
@@ -112,23 +115,23 @@ function FeedbackBad({ router }: { router: ReturnType<typeof useRouter> }) {
 
       {/* Footer rouge */}
       <View style={styles.badFooter}>
-        <Text style={styles.badFooterTitle}>✕ Réponse incorrecte</Text>
-        <Text style={styles.badFooterSub}>Prononciation correcte : Ar-Raaah-maa-ni</Text>
+        <Text style={styles.badFooterTitle}>{tr('feedback.badTitle')}</Text>
+        <Text style={styles.badFooterSub}>{tr('feedback.badSub')}</Text>
         <View style={styles.badButtons}>
           <Pressable style={styles.replayBtn}>
             <Feather name="volume-2" size={19} color="#E03434" />
-            <Text style={styles.replayLabel}>Réécouter</Text>
+            <Text style={styles.replayLabel}>{tr('feedback.replay')}</Text>
           </Pressable>
           <Pressable style={styles.continueBad} onPress={onContinue}>
-            <Text style={styles.continueBadLabel}>Continuer →</Text>
+            <Text style={styles.continueBadLabel}>{tr('feedback.continueArrow')}</Text>
           </Pressable>
         </View>
         {!isPremium && (
           <View style={styles.lostHeartRow}>
-            <Text style={styles.lostHeartText}>Tu as perdu </Text>
+            <Text style={styles.lostHeartText}>{tr('feedback.lostHeart')}</Text>
             <Feather name="heart" size={14} color="#E03434" />
             <Text style={styles.lostHeartText}>
-              {heartsLeft === 0 ? ' · Plus de cœurs !' : ` · Il te reste ${heartsLeft ?? ''}`}
+              {heartsLeft === 0 ? tr('feedback.noHeartsLeft') : tr('feedback.heartsLeft', { n: heartsLeft ?? '' })}
             </Text>
           </View>
         )}

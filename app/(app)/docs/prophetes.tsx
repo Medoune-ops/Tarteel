@@ -3,10 +3,12 @@ import { View, Text, Pressable, ScrollView, StyleSheet, TextInput } from 'react-
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { DocHeader } from './_components';
-import { PROPHETES } from './_prophetes-data';
+import { PROPHETES, usePropheteLocalized, type Prophete } from './_prophetes-data';
+import { useT } from '../../../lib/i18n';
 
 export default function DocProphetes() {
   const router = useRouter();
+  const tr = useT();
   const [query, setQuery] = useState('');
 
   const resultats = useMemo(() => {
@@ -21,7 +23,7 @@ export default function DocProphetes() {
 
   return (
     <View style={styles.screen}>
-      <DocHeader emoji="👤" titre="Les Prophètes" sous="Les 25 prophètes cités dans le Coran" c1="#F0820C" c2="#D96E00" />
+      <DocHeader emoji="👤" titre={tr('docProphetes.headerTitre')} sous={tr('docProphetes.headerSous')} c1="#F0820C" c2="#D96E00" />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
@@ -30,7 +32,7 @@ export default function DocProphetes() {
           <Feather name="search" size={18} color="#A0A5AE" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher un prophète…"
+            placeholder={tr('docProphetes.searchPlaceholder')}
             placeholderTextColor="#A0A5AE"
             value={query}
             onChangeText={setQuery}
@@ -46,31 +48,34 @@ export default function DocProphetes() {
         {resultats.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🔍</Text>
-            <Text style={styles.emptyTitle}>Aucun prophète trouvé</Text>
+            <Text style={styles.emptyTitle}>{tr('docProphetes.noneFound')}</Text>
           </View>
-        ) : resultats.map((p, i) => (
-          <Pressable
-            key={p.id}
-            style={styles.card}
-            onPress={() => router.push(`/(app)/docs/prophete/${p.id}` as never)}
-          >
-            <View style={styles.num}>
-              <Text style={styles.numText}>{PROPHETES.indexOf(p) + 1}</Text>
-            </View>
-            <Text style={styles.emoji}>{p.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.nom} numberOfLines={1}>
-                {p.nom}{p.fr ? <Text style={styles.fr}>  ·  {p.fr}</Text> : null}
-              </Text>
-              <Text style={styles.titre} numberOfLines={1}>{p.titre}</Text>
-            </View>
-            <Text style={styles.arabe}>{p.arabe}</Text>
-          </Pressable>
+        ) : resultats.map((p) => (
+          <ProphetCard key={p.id} p={p} onPress={() => router.push(`/(app)/docs/prophete/${p.id}` as never)} />
         ))}
 
         <View style={{ height: 24 }} />
       </ScrollView>
     </View>
+  );
+}
+
+function ProphetCard({ p, onPress }: { p: Prophete; onPress: () => void }) {
+  const { titre } = usePropheteLocalized(p);
+  return (
+    <Pressable style={styles.card} onPress={onPress}>
+      <View style={styles.num}>
+        <Text style={styles.numText}>{PROPHETES.indexOf(p) + 1}</Text>
+      </View>
+      <Text style={styles.emoji}>{p.emoji}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.nom} numberOfLines={1}>
+          {p.nom}{p.fr ? <Text style={styles.fr}>  ·  {p.fr}</Text> : null}
+        </Text>
+        <Text style={styles.titre} numberOfLines={1}>{titre}</Text>
+      </View>
+      <Text style={styles.arabe}>{p.arabe}</Text>
+    </Pressable>
   );
 }
 

@@ -9,12 +9,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStore } from '../../store/userStore';
 import { playSound } from '../../constants/sounds';
 import { streakReward } from '../../constants/rewards';
+import { useT } from '../../lib/i18n';
 
 const PRESETS = [7, 14, 30, 50, 100, 365];
 const MAX_GOAL = 9999;
 
 export default function StreakGoalScreen() {
   const router = useRouter();
+  const tr = useT();
   const streak = useUserStore((s) => s.streak);
   const streakGoal = useUserStore((s) => s.streakGoal);
   const setStreakGoal = useUserStore((s) => s.setStreakGoal);
@@ -41,7 +43,7 @@ export default function StreakGoalScreen() {
     const gained = claimStreakReward();
     if (gained > 0) {
       playSound('finish');
-      Alert.alert('🎉 Objectif atteint !', `Tu remportes +${gained} XP. Fixe un nouvel objectif quand tu veux !`);
+      Alert.alert(tr('streakGoal.claimAlertTitle'), tr('streakGoal.claimAlertMsg', { n: gained }));
     }
   };
 
@@ -64,7 +66,7 @@ export default function StreakGoalScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Text style={styles.back}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Objectif de série</Text>
+        <Text style={styles.headerTitle}>{tr('streakGoal.headerTitle')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -73,8 +75,8 @@ export default function StreakGoalScreen() {
         {/* Carte série actuelle */}
         <LinearGradient colors={['#FF8A4B', '#FF4B4B']} style={styles.hero}>
           <Text style={styles.heroFlame}>🔥</Text>
-          <Text style={styles.heroStreak}>{streak} jours</Text>
-          <Text style={styles.heroLabel}>Série en cours</Text>
+          <Text style={styles.heroStreak}>{tr('streakGoal.heroStreak', { n: streak })}</Text>
+          <Text style={styles.heroLabel}>{tr('streakGoal.heroLabel')}</Text>
 
           {streakGoal != null && (
             <>
@@ -82,7 +84,7 @@ export default function StreakGoalScreen() {
                 <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
               </View>
               <Text style={styles.heroGoal}>
-                {goalReached ? '🎯 Objectif atteint !' : `${streak} / ${streakGoal} jours`}
+                {goalReached ? tr('streakGoal.goalReached') : tr('streakGoal.heroGoalProgress', { n: streak, goal: streakGoal })}
               </Text>
             </>
           )}
@@ -95,8 +97,8 @@ export default function StreakGoalScreen() {
               <Feather name="gift" size={24} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.claimTitle}>Récupère ton cadeau !</Text>
-              <Text style={styles.claimSub}>+{streakReward(streakGoal!).toLocaleString('fr-FR')} XP t'attendent</Text>
+              <Text style={styles.claimTitle}>{tr('streakGoal.claimTitle')}</Text>
+              <Text style={styles.claimSub}>{tr('streakGoal.claimSub', { n: streakReward(streakGoal!).toLocaleString('fr-FR') })}</Text>
             </View>
             <Feather name="chevron-right" size={22} color="#E0A02C" />
           </Pressable>
@@ -104,7 +106,7 @@ export default function StreakGoalScreen() {
 
         {/* Choix de l'objectif */}
         <Text style={styles.sectionLabel}>
-          {goalReached ? 'FIXER UN NOUVEL OBJECTIF' : 'CHOISIR UN OBJECTIF'}
+          {goalReached ? tr('streakGoal.sectionNewGoal') : tr('streakGoal.sectionChooseGoal')}
         </Text>
         <View style={styles.grid}>
           {PRESETS.map((p) => {
@@ -116,42 +118,41 @@ export default function StreakGoalScreen() {
                 onPress={() => pickPreset(p)}
               >
                 <Text style={[styles.presetDays, active && styles.presetTextActive]}>{p}</Text>
-                <Text style={[styles.presetUnit, active && styles.presetTextActive]}>jours</Text>
+                <Text style={[styles.presetUnit, active && styles.presetTextActive]}>{tr('streakGoal.unitDays')}</Text>
               </Pressable>
             );
           })}
         </View>
 
         {/* Objectif personnalisé */}
-        <Text style={styles.sectionLabel}>OU UN NOMBRE PERSONNALISÉ</Text>
+        <Text style={styles.sectionLabel}>{tr('streakGoal.sectionCustom')}</Text>
         <View style={[styles.customRow, customValid && styles.customRowActive]}>
           <Feather name="flag" size={20} color={customValid ? '#FF4B4B' : '#9AA0AA'} />
           <TextInput
             style={styles.customInput}
             value={custom}
             onChangeText={(v) => setCustom(v.replace(/\D/g, '').slice(0, 4))}
-            placeholder="Ex : 200"
+            placeholder={tr('streakGoal.customPlaceholder')}
             placeholderTextColor="#B8BCC4"
             keyboardType="number-pad"
             maxLength={4}
           />
-          <Text style={styles.customUnit}>jours</Text>
+          <Text style={styles.customUnit}>{tr('streakGoal.unitDays')}</Text>
         </View>
 
         <Text style={styles.note}>
-          C'est juste un défi motivant 💪 — ça ne change rien à ta série : 1 jour sans cours, elle gèle ;
-          2 jours, elle repart à zéro.
+          {tr('streakGoal.note')}
         </Text>
 
         {/* Aperçu du cadeau */}
         <View style={styles.rewardPreview}>
-          <Text style={styles.rewardPreviewLabel}>🎁 Cadeau à la clé</Text>
-          <Text style={styles.rewardPreviewValue}>+{streakReward(target).toLocaleString('fr-FR')} XP</Text>
+          <Text style={styles.rewardPreviewLabel}>{tr('streakGoal.rewardPreviewLabel')}</Text>
+          <Text style={styles.rewardPreviewValue}>{tr('streakGoal.rewardPreviewValue', { n: streakReward(target).toLocaleString('fr-FR') })}</Text>
         </View>
 
         <Pressable style={[styles.cta, !canSave && styles.ctaDisabled]} onPress={save} disabled={!canSave}>
           <Text style={styles.ctaText}>
-            {streakGoal === target ? 'Garder cet objectif' : `Viser ${target} jours`}
+            {streakGoal === target ? tr('streakGoal.ctaKeep') : tr('streakGoal.ctaAim', { n: target })}
           </Text>
         </Pressable>
 

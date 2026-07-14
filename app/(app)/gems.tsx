@@ -8,6 +8,7 @@ import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
 import { refillHeartsWithGems, buyStreakFreeze, buyDoubleXp, buyGemPack, type GemPackId } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import { useT } from '../../lib/i18n';
 
 // Coûts en gemmes (source de vérité : backend ; repris ici pour l'affichage).
 const REFILL_COST = 350;
@@ -59,6 +60,7 @@ function OptionCard({
 export default function GemsScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
   const gems = useUserStore((s) => s.gems);
   const streakFreezes = useUserStore((s) => s.streakFreezes);
   const doubleXpUntil = useUserStore((s) => s.doubleXpUntil);
@@ -77,11 +79,11 @@ export default function GemsScreen() {
     } catch (e) {
       const msg =
         e instanceof ApiError && e.code === 'INSUFFICIENT_GEMS'
-          ? "Tu n'as pas assez de gemmes pour ça."
+          ? tr('gems.errorInsufficient')
           : e instanceof ApiError && e.status !== 0
             ? e.message
-            : "Action impossible pour l'instant. Réessaie.";
-      Alert.alert('Oups', msg);
+            : tr('gems.errorGeneric');
+      Alert.alert(tr('gems.errorTitle'), msg);
     } finally {
       setBusy(null);
     }
@@ -98,53 +100,53 @@ export default function GemsScreen() {
         </Pressable>
         <Text style={styles.gemBig}>💎</Text>
         <Text style={styles.headerCount}>{gems}</Text>
-        <Text style={styles.headerTitle}>Mes gemmes</Text>
-        <Text style={styles.headerSub}>Utilise-les pour progresser plus vite</Text>
+        <Text style={styles.headerTitle}>{tr('gems.headerTitle')}</Text>
+        <Text style={styles.headerSub}>{tr('gems.headerSub')}</Text>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.sectionTitle, { color: T.text }]}>Dépenser mes gemmes</Text>
+        <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('gems.sectionSpend')}</Text>
 
         <OptionCard
           emoji="❤️" tint="#FF4B4B" cardBg={T.cardBg} textColor={T.text}
-          title="Convertir en cœurs"
-          hint={`${REFILL_COST} 💎 → tous tes cœurs`}
+          title={tr('gems.refillTitle')}
+          hint={tr('gems.refillHint', { cost: REFILL_COST })}
           cta={String(REFILL_COST)}
-          onPress={() => run('refill', refillHeartsWithGems, 'Cœurs rechargés', 'Tes cœurs sont de nouveau au maximum !')}
+          onPress={() => run('refill', refillHeartsWithGems, tr('gems.refillOkTitle'), tr('gems.refillOkMsg'))}
           loading={busy === 'refill'}
           disabled={gems < REFILL_COST}
         />
 
         <OptionCard
           emoji="❄️" tint="#1CB0F6" cardBg={T.cardBg} textColor={T.text}
-          title="Geler ma série"
-          hint={`${FREEZE_COST} 💎 · protège un jour manqué · tu en as ${streakFreezes}`}
+          title={tr('gems.freezeTitle')}
+          hint={tr('gems.freezeHint', { cost: FREEZE_COST, count: streakFreezes })}
           cta={String(FREEZE_COST)}
-          onPress={() => run('freeze', buyStreakFreeze, 'Gel acheté', 'Ta série est protégée pour un jour manqué.')}
+          onPress={() => run('freeze', buyStreakFreeze, tr('gems.freezeOkTitle'), tr('gems.freezeOkMsg'))}
           loading={busy === 'freeze'}
           disabled={gems < FREEZE_COST}
         />
 
         <OptionCard
           emoji="⚡" tint="#E8A800" cardBg={T.cardBg} textColor={T.text}
-          title="Double XP · 15 min"
-          hint={doubleXpActive ? 'Boost déjà actif ✨' : `${DOUBLE_XP_COST} 💎 · XP ×2 pendant 15 min`}
+          title={tr('gems.xpTitle')}
+          hint={doubleXpActive ? tr('gems.xpActiveHint') : tr('gems.xpHint', { cost: DOUBLE_XP_COST })}
           cta={String(DOUBLE_XP_COST)}
-          onPress={() => run('xp', buyDoubleXp, 'Double XP activé', 'Tu gagnes 2× plus d\'XP pendant 15 minutes !')}
+          onPress={() => run('xp', buyDoubleXp, tr('gems.xpOkTitle'), tr('gems.xpOkMsg'))}
           loading={busy === 'xp'}
           disabled={gems < DOUBLE_XP_COST || doubleXpActive}
         />
 
-        <Text style={[styles.sectionTitle, { color: T.text }]}>Obtenir plus de gemmes</Text>
+        <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('gems.sectionGet')}</Text>
 
         {PACKS.map((p) => (
           <OptionCard
             key={p.id}
             emoji="💎" tint="#6B4DFF" cardBg={T.cardBg} textColor={T.text}
-            title={`${p.gems.toLocaleString('fr-FR')} gemmes`}
-            hint="Recharge ton solde de gemmes"
-            cta="Acheter"
-            onPress={() => run(`pack-${p.id}`, () => buyGemPack(p.id), 'Gemmes ajoutées', `+${p.gems.toLocaleString('fr-FR')} 💎 sur ton solde.`)}
+            title={tr('gems.packTitle', { count: p.gems.toLocaleString('fr-FR') })}
+            hint={tr('gems.packHint')}
+            cta={tr('gems.packCta')}
+            onPress={() => run(`pack-${p.id}`, () => buyGemPack(p.id), tr('gems.packOkTitle'), tr('gems.packOkMsg', { count: p.gems.toLocaleString('fr-FR') }))}
             loading={busy === `pack-${p.id}`}
           />
         ))}

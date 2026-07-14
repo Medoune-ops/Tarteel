@@ -10,6 +10,7 @@ import {
   fetchRevisions, fetchSourates, fetchLettreRevisions,
   type SourateRevisionView, type SourateListItem, type LettreRevisionView,
 } from '../../../lib/api';
+import { useT, t } from '../../../lib/i18n';
 
 // Couleurs par état SRS (maitrise/revoir/difficile) — même palette que le mock d'origine.
 const ETAT_COLORS: Record<SourateRevisionView['etat'], { couleur: string; couleurDark: string; bg: string }> = {
@@ -20,13 +21,13 @@ const ETAT_COLORS: Record<SourateRevisionView['etat'], { couleur: string; couleu
 // Sourate trouvée par la recherche mais pas encore apprise : neutre, pas de SRS.
 const NON_APPRISE_COLOR = { couleur: '#8A8F99', couleurDark: '#6B7078', bg: '#EDEEF1' };
 
-/** "Aujourd'hui" / "Dans N jours" / "En retard" à partir d'une date ISO (ou null = jamais révisé → due maintenant). */
+/** "Aujourd'hui" / "Dans N jours" à partir d'une date ISO (ou null = jamais révisé → due maintenant). */
 function formatProchaineRevision(iso: string | null): string {
-  if (!iso) return "Aujourd'hui";
+  if (!iso) return t('revisions.dueToday');
   const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
-  if (days <= 0) return "Aujourd'hui";
-  if (days === 1) return 'Dans 1 jour';
-  return `Dans ${days} jours`;
+  if (days <= 0) return t('revisions.dueToday');
+  if (days === 1) return t('revisions.dueInOneDay');
+  return t('revisions.dueInDays', { n: days });
 }
 
 /** Fusion sourate (toujours présente) + état SRS (seulement si apprise). */
@@ -60,12 +61,13 @@ function ScoreRing({ score, color, trackColor }: { score: number; color: string;
 }
 
 function EtatBadge({ etat }: { etat: string | null }) {
+  const tr = useT();
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    maitrise: { label: '✓ Maîtrisé', color: '#2A9E1C', bg: '#DEF5E5' },
-    revoir:   { label: '↺ À revoir', color: '#6B4DFF', bg: '#EDE8FF' },
-    difficile:{ label: '⚡ Difficile', color: '#F0820C', bg: '#FFF0E0' },
+    maitrise: { label: tr('revisions.etat.maitrise'), color: '#2A9E1C', bg: '#DEF5E5' },
+    revoir:   { label: tr('revisions.etat.revoir'), color: '#6B4DFF', bg: '#EDE8FF' },
+    difficile:{ label: tr('revisions.etat.difficile'), color: '#F0820C', bg: '#FFF0E0' },
   };
-  const s = etat ? map[etat] : { label: 'Non apprise', color: '#8A8F99', bg: '#EDEEF1' };
+  const s = etat ? map[etat] : { label: tr('revisions.etat.nonApprise'), color: '#8A8F99', bg: '#EDEEF1' };
   return (
     <View style={[styles.etatBadge, { backgroundColor: s.bg }]}>
       <Text style={[styles.etatText, { color: s.color }]}>{s.label}</Text>
@@ -76,6 +78,7 @@ function EtatBadge({ etat }: { etat: string | null }) {
 export default function RevisionsScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
   const [query, setQuery] = useState('');
   const [toutes, setToutes] = useState<SourateListItem[] | null>(null);
   const [revisions, setRevisions] = useState<SourateRevisionView[] | null>(null);
@@ -126,9 +129,9 @@ export default function RevisionsScreen() {
     };
   }, [revisions]);
   const STATS = [
-    { label: 'Sourates', value: String(stats.total), icon: 'book-open' as const, color: '#6B4DFF' },
-    { label: 'Maîtrisées', value: String(stats.maitrisees), icon: 'award' as const, color: '#34C724' },
-    { label: 'À revoir', value: String(stats.aRevoir), icon: 'alert-circle' as const, color: '#F0820C' },
+    { label: tr('revisions.statSourates'), value: String(stats.total), icon: 'book-open' as const, color: '#6B4DFF' },
+    { label: tr('revisions.statMaitrisees'), value: String(stats.maitrisees), icon: 'award' as const, color: '#34C724' },
+    { label: tr('revisions.statARevoir'), value: String(stats.aRevoir), icon: 'alert-circle' as const, color: '#F0820C' },
   ];
 
   const urgentes = (revisions ?? []).filter((s) => formatProchaineRevision(s.prochaineRevision) === "Aujourd'hui");
@@ -160,9 +163,9 @@ export default function RevisionsScreen() {
       <View style={[styles.screen, styles.centerState, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
         <Feather name="wifi-off" size={34} color="#9AA0AA" />
-        <Text style={[styles.stateText, { color: T.text }]}>Impossible de charger tes révisions.</Text>
+        <Text style={[styles.stateText, { color: T.text }]}>{tr('revisions.loadError')}</Text>
         <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>Réessayer</Text>
+          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -183,8 +186,8 @@ export default function RevisionsScreen() {
 
         {/* Header */}
         <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.header}>
-          <Text style={styles.headerTitle}>Révisions</Text>
-          <Text style={styles.headerSub}>Répétition espacée · SRS</Text>
+          <Text style={styles.headerTitle}>{tr('revisions.headerTitle')}</Text>
+          <Text style={styles.headerSub}>{tr('revisions.headerSub')}</Text>
           <View style={styles.statsRow}>
             {STATS.map((s, i) => (
               <View key={i} style={styles.statBox}>
@@ -203,7 +206,7 @@ export default function RevisionsScreen() {
             <Feather name="search" size={18} color="#A0A5AE" />
             <TextInput
               style={[styles.searchInput, { color: T.text }]}
-              placeholder="Rechercher une sourate…"
+              placeholder={tr('revisions.searchPlaceholder')}
               placeholderTextColor="#A0A5AE"
               value={query}
               onChangeText={setQuery}
@@ -220,17 +223,19 @@ export default function RevisionsScreen() {
           {!enRecherche && urgentes.length > 0 && (
             <>
               <View style={styles.sectionRow}>
-                <Text style={[styles.sectionTitle, { color: T.text }]}>À réviser aujourd'hui</Text>
+                <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('revisions.todayTitle')}</Text>
                 <View style={styles.urgentPill}>
-                  <Text style={styles.urgentPillText}>{urgentes.length} sourate{urgentes.length > 1 ? 's' : ''}</Text>
+                  <Text style={styles.urgentPillText}>
+                    {tr(urgentes.length > 1 ? 'revisions.todayPillMany' : 'revisions.todayPillOne', { n: urgentes.length })}
+                  </Text>
                 </View>
               </View>
               <View style={[styles.urgentBanner, { backgroundColor: T.cardBg }]}>
                 <Text style={styles.urgentIcon}>🔔</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.urgentBannerTitle, { color: T.text }]}>C'est l'heure de réviser !</Text>
+                  <Text style={[styles.urgentBannerTitle, { color: T.text }]}>{tr('revisions.todayBannerTitle')}</Text>
                   <Text style={styles.urgentBannerSub}>
-                    {urgentes.map(s => s.nom).join(' · ')} t'attendent
+                    {tr('revisions.todayBannerSub', { noms: urgentes.map(s => s.nom).join(' · ') })}
                   </Text>
                 </View>
                 <Pressable
@@ -240,7 +245,7 @@ export default function RevisionsScreen() {
                     params: { numero: urgentes[0].numero, apprise: '1' },
                   })}
                 >
-                  <Text style={styles.urgentBtnText}>Commencer</Text>
+                  <Text style={styles.urgentBtnText}>{tr('revisions.start')}</Text>
                 </Pressable>
               </View>
             </>
@@ -249,10 +254,10 @@ export default function RevisionsScreen() {
           {/* Alphabet & Harakat */}
           {!enRecherche && (
             <>
-              <Text style={[styles.sectionTitle, { color: T.text }]}>Alphabet & Harakat</Text>
+              <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('revisions.alphabetTitle')}</Text>
               {lettres.length === 0 && (
                 <Text style={[styles.emptySub, { textAlign: 'left', paddingHorizontal: 2, marginBottom: 16 }]}>
-                  Termine une leçon d'alphabet ou d'harakat dans le parcours pour la voir apparaître ici.
+                  {tr('revisions.alphabetEmpty')}
                 </Text>
               )}
               {lettres.map((l) => {
@@ -295,14 +300,14 @@ export default function RevisionsScreen() {
 
           {/* Liste toutes sourates */}
           <Text style={[styles.sectionTitle, { color: T.text }]}>
-            {enRecherche ? `Résultats (${resultats.length})` : 'Mes sourates'}
+            {enRecherche ? tr('revisions.searchResults', { n: resultats.length }) : tr('revisions.mySourates')}
           </Text>
 
           {resultats.length === 0 ? (
             <View style={styles.empty}>
               <Text style={styles.emptyEmoji}>🔍</Text>
-              <Text style={[styles.emptyTitle, { color: T.text }]}>Aucune sourate trouvée</Text>
-              <Text style={styles.emptySub}>Essaie un autre nom ou numéro</Text>
+              <Text style={[styles.emptyTitle, { color: T.text }]}>{tr('revisions.noneFound')}</Text>
+              <Text style={styles.emptySub}>{tr('revisions.tryAnother')}</Text>
             </View>
           ) : resultats.map((s) => {
             const c = s.revision ? ETAT_COLORS[s.revision.etat] : NON_APPRISE_COLOR;
@@ -334,7 +339,7 @@ export default function RevisionsScreen() {
                     </Text>
                   )}
                 </View>
-                <Text style={styles.cardVersets}>{s.nombreVersets} versets</Text>
+                <Text style={styles.cardVersets}>{tr('revisions.versets', { n: s.nombreVersets })}</Text>
               </View>
 
               {/* Score ring — seulement pour une sourate apprise (suivie en SRS) */}

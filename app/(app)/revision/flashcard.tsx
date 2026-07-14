@@ -4,7 +4,7 @@ import { reviewRegainHeart } from '../../../lib/api/gems';
 import { fetchVersets, reciteVerset, reviewSourate, type Verset as ApiVerset } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { useUserStore, MAX_HEARTS } from '../../../store/userStore';
-import { t } from '../../../lib/i18n';
+import { t, useT } from '../../../lib/i18n';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat,
@@ -31,11 +31,11 @@ const SEGMENT_SILENCE_MS = 1400;
 /** Silence long = l'utilisateur bloque → on affiche l'aide automatiquement. */
 const BLOCK_SILENCE_MS = 3000;
 
-const SCORES: Record<Reponse, { label: string; emoji: string; bg: string; pts: number }> = {
-  facile:    { label: 'Facile',    emoji: '😊', bg: '#34C724', pts: 10 },
-  difficile: { label: 'Difficile', emoji: '😅', bg: '#F6B100', pts: 5  },
-  oublie:    { label: 'À revoir',  emoji: '😬', bg: '#FF6B6B', pts: 0  },
-};
+function scoreMeta(rep: Reponse): { label: string; emoji: string; bg: string; pts: number } {
+  if (rep === 'facile') return { label: t('flashcard.facile'), emoji: '😊', bg: '#34C724', pts: 10 };
+  if (rep === 'difficile') return { label: t('flashcard.difficile'), emoji: '😅', bg: '#F6B100', pts: 5 };
+  return { label: t('flashcard.oublie'), emoji: '😬', bg: '#FF6B6B', pts: 0 };
+}
 
 // ── Onde sonore animée (pendant l'enregistrement micro) ─────────────────────
 function WaveBar({ delay }: { delay: number }) {
@@ -70,28 +70,28 @@ function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, 
    *  apprise) — entraînement libre, juste le score de fluidité Whisper. */
   apprise: boolean;
 }) {
-  const verdict = SCORES[suggestion];
+  const verdict = scoreMeta(suggestion);
   const fluidite = Math.max(0, Math.round(((total - aides) / total) * 100));
   return (
     <View style={styles.screen}>
       <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.resultGrad}>
         <Text style={styles.resultEmoji}>{verdict.emoji}</Text>
         <Text style={styles.resultMention}>
-          {suggestion === 'facile' ? 'Maîtrisé !' : suggestion === 'difficile' ? 'Presque !' : 'À revoir'}
+          {suggestion === 'facile' ? t('flashcard.masteredExcl') : suggestion === 'difficile' ? t('flashcard.almostExcl') : t('flashcard.toReview')}
         </Text>
         <View style={styles.resultCircle}>
           <Text style={styles.resultPct}>{fluidite}%</Text>
-          <Text style={styles.resultSub}>Fluidité</Text>
+          <Text style={styles.resultSub}>{t('flashcard.fluidity')}</Text>
         </View>
         <View style={styles.resultStats}>
           <View style={styles.resultStat}>
             <Text style={styles.resultStatVal}>{total - aides}/{total}</Text>
-            <Text style={styles.resultStatLbl}>Versets fluides</Text>
+            <Text style={styles.resultStatLbl}>{t('flashcard.fluentVersets')}</Text>
           </View>
           <View style={styles.resultDivider} />
           <View style={styles.resultStat}>
             <Text style={styles.resultStatVal}>{aides}</Text>
-            <Text style={styles.resultStatLbl}>Aides utilisées</Text>
+            <Text style={styles.resultStatLbl}>{t('flashcard.helpsUsed')}</Text>
           </View>
         </View>
       </LinearGradient>
@@ -99,11 +99,11 @@ function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, 
       <View style={styles.resultBottom}>
         {apprise ? (
           <>
-            <Text style={styles.confirmTitle}>L'app pense : <Text style={{ color: verdict.bg }}>{verdict.label}</Text></Text>
-            <Text style={styles.confirmSub}>Et toi, comment tu t'es senti ?</Text>
+            <Text style={styles.confirmTitle}>{t('flashcard.appThinksBefore')}<Text style={{ color: verdict.bg }}>{verdict.label}</Text></Text>
+            <Text style={styles.confirmSub}>{t('flashcard.howDidYouFeel')}</Text>
             <View style={styles.btnsRow}>
               {(['oublie', 'difficile', 'facile'] as Reponse[]).map((rep) => {
-                const s = SCORES[rep];
+                const s = scoreMeta(rep);
                 const isSuggestion = rep === suggestion;
                 return (
                   <Pressable
@@ -129,20 +129,20 @@ function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, 
           </>
         ) : (
           <Text style={styles.confirmSub}>
-            Entraînement libre — termine cette sourate dans le parcours pour suivre sa révision (SRS).
+            {t('flashcard.freeTraining')}
           </Text>
         )}
 
         <Pressable style={styles.restartBtn} onPress={onRestart}>
           <Feather name="refresh-cw" size={16} color="#6B4DFF" />
-          <Text style={styles.restartTxt}>Réciter à nouveau</Text>
+          <Text style={styles.restartTxt}>{t('flashcard.reciteAgain')}</Text>
         </Pressable>
         <Pressable
           style={[styles.quitBtn, apprise && !choisi && styles.quitBtnDisabled]}
           onPress={onQuitter}
           disabled={apprise && !choisi}
         >
-          <Text style={styles.quitTxt}>Terminer</Text>
+          <Text style={styles.quitTxt}>{t('flashcard.finish')}</Text>
         </Pressable>
       </View>
     </View>
@@ -151,6 +151,7 @@ function ResultScreen({ aides, total, suggestion, choisi, onChoisir, onRestart, 
 
 export default function FlashcardScreen() {
   const router = useRouter();
+  const tr = useT();
   // `numero` = numéro de sourate (1–114) ; `apprise` ('1'/'0') vient de l'écran
   // Révisions — une sourate non apprise n'a pas de suivi SRS (voir ResultScreen).
   const { numero, apprise: appriseParam } = useLocalSearchParams<{ numero?: string; apprise?: string }>();
@@ -352,12 +353,12 @@ export default function FlashcardScreen() {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <Feather name="wifi-off" size={34} color="#9AA0AA" />
-        <Text style={styles.stateText}>Impossible de charger la sourate.</Text>
+        <Text style={styles.stateText}>{tr('flashcard.loadError')}</Text>
         <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>Réessayer</Text>
+          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
         </Pressable>
         <Pressable onPress={() => router.back()}>
-          <Text style={styles.backLink}>Retour</Text>
+          <Text style={styles.backLink}>{tr('flashcard.back')}</Text>
         </Pressable>
       </View>
     );
@@ -366,7 +367,7 @@ export default function FlashcardScreen() {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <ActivityIndicator size="large" color="#6B4DFF" />
-        <Text style={styles.stateText}>Chargement de la sourate…</Text>
+        <Text style={styles.stateText}>{tr('flashcard.loading')}</Text>
       </View>
     );
   }
@@ -435,7 +436,7 @@ export default function FlashcardScreen() {
         {phase === 'recitation' && (
           <>
             <ProgressBar current={position + 1} total={versets.length} />
-            <Text style={styles.headerCount}>Verset {position + 1} / {versets.length}</Text>
+            <Text style={styles.headerCount}>{tr('flashcard.verseCount', { n: position + 1, total: versets.length })}</Text>
           </>
         )}
       </LinearGradient>
@@ -446,15 +447,13 @@ export default function FlashcardScreen() {
           // ── Écran prêt ──
           <View style={styles.pretCard}>
             <Text style={styles.pretEmoji}>🎙️</Text>
-            <Text style={styles.pretTitle}>Récite de mémoire</Text>
+            <Text style={styles.pretTitle}>{tr('flashcard.reciteFromMemory')}</Text>
             <Text style={styles.pretDesc}>
-              Récite la sourate à voix haute, verset après verset.{'\n'}
-              L'app t'écoute et enchaîne toute seule.{'\n'}
-              Si tu bloques, elle t'affiche le verset automatiquement.
+              {tr('flashcard.reciteDesc')}
             </Text>
             {micDenied && (
               <Text style={styles.micDenied}>
-                ⚠️ Autorise le micro dans les réglages pour commencer
+                {tr('flashcard.micDenied')}
               </Text>
             )}
           </View>
@@ -469,13 +468,13 @@ export default function FlashcardScreen() {
             >
               <View style={styles.aideBadge}>
                 <Feather name="help-circle" size={13} color="#F0820C" />
-                <Text style={styles.aideBadgeText}>Petit coup de pouce</Text>
+                <Text style={styles.aideBadgeText}>{tr('flashcard.helpBadge')}</Text>
               </View>
               <Text style={styles.aideArabe}>{versetCourant.texteArabe}</Text>
               {!!versetCourant.translitteration && (
                 <Text style={styles.aideTranslit}>{versetCourant.translitteration.texte}</Text>
               )}
-              <Text style={styles.aideHint}>Relis-le à voix haute, l'app t'écoute…</Text>
+              <Text style={styles.aideHint}>{tr('flashcard.helpHint')}</Text>
             </Animated.View>
           </View>
         ) : subPhase === 'analyzing' ? (
@@ -483,8 +482,8 @@ export default function FlashcardScreen() {
           <View style={styles.cardWrap}>
             <Animated.View key="analyzing" entering={FadeIn.duration(200)} style={styles.fluideCard}>
               <ActivityIndicator size="large" color="#6B4DFF" />
-              <Text style={styles.fluideText}>Analyse de ta récitation…</Text>
-              <Text style={styles.fluideSub}>Un instant</Text>
+              <Text style={styles.fluideText}>{tr('flashcard.analyzing')}</Text>
+              <Text style={styles.fluideSub}>{tr('flashcard.oneMoment')}</Text>
             </Animated.View>
           </View>
         ) : (
@@ -494,8 +493,8 @@ export default function FlashcardScreen() {
               <View style={styles.wave}>
                 {[0, 80, 160, 240, 320, 240, 160, 80, 0].map((d, i) => <WaveBar key={i} delay={d} />)}
               </View>
-              <Text style={styles.fluideText}>Récite le verset {position + 1} 🎙️</Text>
-              <Text style={styles.fluideSub}>L'app t'écoute…</Text>
+              <Text style={styles.fluideText}>{tr('flashcard.reciteVerse', { n: position + 1 })}</Text>
+              <Text style={styles.fluideSub}>{tr('flashcard.appListening')}</Text>
             </Animated.View>
           </View>
         )}
@@ -506,12 +505,12 @@ export default function FlashcardScreen() {
         {phase === 'pret' ? (
           <Pressable style={styles.micBtn} onPress={demarrer}>
             <Feather name="mic" size={22} color="#fff" />
-            <Text style={styles.micBtnText}>Commencer la récitation</Text>
+            <Text style={styles.micBtnText}>{tr('flashcard.startRecitation')}</Text>
           </Pressable>
         ) : (
           <Pressable style={styles.finBtn} onPress={terminerTot}>
             <Feather name="check-circle" size={20} color="#6B4DFF" />
-            <Text style={styles.finBtnText}>J'ai terminé</Text>
+            <Text style={styles.finBtnText}>{tr('flashcard.finished')}</Text>
           </Pressable>
         )}
       </View>

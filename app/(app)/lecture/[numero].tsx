@@ -8,6 +8,7 @@ import { fetchVersets, type SourateVersets } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
 import { useTheme } from '../../../utils/useTheme';
+import { useT } from '../../../lib/i18n';
 
 // Tag de verrouillage d'écran (empêche la mise en veille pendant la récitation).
 const KEEP_AWAKE_TAG = 'lecture-libre';
@@ -18,6 +19,7 @@ const KEEP_AWAKE_TAG = 'lecture-libre';
 export default function LectureSourateScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
   const { numero } = useLocalSearchParams<{ numero?: string }>();
 
   const [data, setData] = useState<SourateVersets | null>(null);
@@ -100,9 +102,9 @@ export default function LectureSourateScreen() {
     return (
       <View style={[styles.screen, styles.center, { backgroundColor: T.pageBg }]}>
         <Feather name="wifi-off" size={32} color={T.textTertiary} />
-        <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger la sourate.</Text>
-        <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>Réessayer</Text></Pressable>
-        <Pressable style={styles.backLink} onPress={() => router.back()}><Text style={styles.backLinkText}>Retour</Text></Pressable>
+        <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('lectureNumero.loadError')}</Text>
+        <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>{tr('lectureNumero.retry')}</Text></Pressable>
+        <Pressable style={styles.backLink} onPress={() => router.back()}><Text style={styles.backLinkText}>{tr('lectureNumero.back')}</Text></Pressable>
       </View>
     );
   }
@@ -110,7 +112,7 @@ export default function LectureSourateScreen() {
     return (
       <View style={[styles.screen, styles.center, { backgroundColor: T.pageBg }]}>
         <ActivityIndicator size="large" color="#6B4DFF" />
-        <Text style={[styles.stateText, { color: T.textSecondary }]}>Chargement de la sourate…</Text>
+        <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('lectureNumero.loading')}</Text>
       </View>
     );
   }
@@ -127,7 +129,7 @@ export default function LectureSourateScreen() {
         </Pressable>
         <Text style={styles.headerArabe}>{s.nomArabe}</Text>
         <Text style={styles.headerNom}>{s.numero}. {s.nom}</Text>
-        <Text style={styles.headerSub}>{s.nombreVersets} versets</Text>
+        <Text style={styles.headerSub}>{tr('lectureNumero.versetsCount', { n: s.nombreVersets })}</Text>
       </LinearGradient>
 
       {/* Barre de lecture continue (sourate entière) */}
@@ -135,14 +137,14 @@ export default function LectureSourateScreen() {
         <Pressable style={[styles.autoBar, autoPlaying && styles.autoBarActive]} onPress={toggleAuto}>
           <Feather name={autoPlaying ? 'pause' : 'play'} size={18} color="#fff" />
           <Text style={styles.autoLabel}>
-            {autoPlaying ? 'Lecture en cours — appuie pour arrêter' : 'Écouter la sourate en entier'}
+            {autoPlaying ? tr('lectureNumero.playingStop') : tr('lectureNumero.playFull')}
           </Text>
         </Pressable>
       )}
 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {!hasAudio && (
-          <Text style={[styles.hint, { color: T.textSecondary }]}>Récitation audio bientôt disponible pour cette sourate.</Text>
+          <Text style={[styles.hint, { color: T.textSecondary }]}>{tr('lectureNumero.audioSoon')}</Text>
         )}
         {data.versets.map((v) => {
           const active = playing === v.id;
