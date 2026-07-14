@@ -662,7 +662,10 @@ export default function ParcoursScreen() {
     setLoadError(false);
     try {
       // SWR : le cache est affiché immédiatement, le refresh arrive en fond.
-      const all = await swrFetch('sections', fetchSections, applyAll);
+      // Clé de cache incluant la langue : sinon un changement de langue en
+      // session resservirait le cache figé dans l'ancienne langue.
+      const lang = useUserStore.getState().language;
+      const all = await swrFetch(`sections:${lang}`, () => fetchSections(lang), applyAll);
       applyAll(all);
     } catch {
       // On ne montre l'erreur que si on n'a rien à afficher.

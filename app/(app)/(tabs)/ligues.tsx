@@ -7,7 +7,7 @@ import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
 import { getOrJoinLeague, type LeagueView, type LeagueMember } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
-import { useT } from '../../../lib/i18n';
+import { useT, type I18nKey } from '../../../lib/i18n';
 
 // Style VISUEL du podium par rang (couleurs, hauteur de marche, anneau). Les
 // DONNÉES (nom, initiales, xp) viennent du backend ; seul l'habillage est ici.
@@ -37,15 +37,30 @@ const LEAGUE_THEME: Record<string, LeagueTheme> = {
   diamant:  { colors: ['#7FE7FF', '#3BC4E6', '#1E97C7'], shadow: '#1E97C7' },
 };
 
-/** Choisit l'habillage de la carte à partir du nom de ligue (fallback = or). */
-function leagueTheme(nom?: string | null): LeagueTheme {
+/** Normalise un nom de ligue backend (français, avec accents) en clé stable. */
+function leagueKey(nom?: string | null): string {
   // NFD sépare lettre + accent ; ̀-ͯ = plage des diacritiques combinants.
-  const key = (nom ?? '')
+  return (nom ?? '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
-  return LEAGUE_THEME[key] ?? LEAGUE_THEME.or;
 }
+
+/** Choisit l'habillage de la carte à partir du nom de ligue (fallback = or). */
+function leagueTheme(nom?: string | null): LeagueTheme {
+  return LEAGUE_THEME[leagueKey(nom)] ?? LEAGUE_THEME.or;
+}
+
+/** Libellé de ligue traduit (le backend renvoie toujours le nom en français). */
+const LEAGUE_NAME_KEYS: Record<string, I18nKey> = {
+  bronze: 'ligues.name.bronze',
+  argent: 'ligues.name.argent',
+  or: 'ligues.name.or',
+  emeraude: 'ligues.name.emeraude',
+  saphir: 'ligues.name.saphir',
+  rubis: 'ligues.name.rubis',
+  diamant: 'ligues.name.diamant',
+};
 
 /** Formate un délai (ms) en "Jj Hh" (ex: 3 j 14 h). */
 function formatCountdown(ms: number): string {
@@ -143,6 +158,10 @@ export default function LiguesScreen() {
   const v = view!;
   // Habillage de la carte d'en-tête selon la vraie ligue (bronze/argent/or/…).
   const lt = leagueTheme(v.league?.nom);
+  // Le backend renvoie toujours le nom en français ("Or", "Argent"…) : on le
+  // traduit via la clé normalisée, avec repli sur le nom brut si inconnu.
+  const leagueNameKey = LEAGUE_NAME_KEYS[leagueKey(v.league?.nom)];
+  const leagueDisplayName = leagueNameKey ? tr(leagueNameKey) : (v.league?.nom ?? '—');
   // Podium ordonné (2,1,3) à partir des données backend.
   const podiumByRank = new Map(v.podium.map((m) => [m.rang, m]));
   const podiumDisplay = PODIUM_ORDER
@@ -171,7 +190,7 @@ export default function LiguesScreen() {
               <Feather name="award" size={30} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.goldTitle}>{tr('ligues.leagueName', { nom: v.league?.nom ?? '—' })}</Text>
+              <Text style={styles.goldTitle}>{tr('ligues.leagueName', { nom: leagueDisplayName })}</Text>
               <Text style={styles.goldSub}>
                 {v.semaine != null ? tr('ligues.weekLabel', { n: v.semaine }) : ''}
                 {tr(v.participants > 1 ? 'ligues.participants' : 'ligues.participant', { n: v.participants })}
