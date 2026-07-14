@@ -26,3 +26,11 @@ export type { ReciteVersetResult, ReciteStepResult, SourateRevisionView, Revisio
 export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';
 export { bootstrapSession } from './session';
 export { getDeviceId } from './tokens';
+export {
+  fetchHousehold, createHousehold, deleteHousehold, leaveHousehold, transferHousehold,
+  inviteToHousehold, acceptHouseholdInvite, declineHouseholdInvite,
+  cancelHouseholdInvite, removeHouseholdMember,
+} from './household';
+export type {
+  HouseholdView, HouseholdMemberView, HouseholdInvitationView, ReceivedInvitationView,
+} from './household';

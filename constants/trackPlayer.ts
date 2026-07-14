@@ -61,6 +61,16 @@ export function getCurrentReciterId(): string { return currentReciterId; }
 /** Initialise le lecteur (idempotent) + contrôles écran verrouillé. */
 export async function setupTrackPlayer(): Promise<void> {
   if (!AUDIO_AVAILABLE || isSetup) return;
+  // Enregistre le service de lecture (contrôles écran verrouillé / arrière-plan)
+  // À LA DEMANDE — jamais au démarrage de l'app — pour ne rien charger de natif
+  // dans Expo Go. `require` dynamique : le module n'est évalué que dans un dev
+  // build où RNTP est disponible.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    TrackPlayer.registerPlaybackService(() => require('../playbackService').default);
+  } catch {
+    // Déjà enregistré (rare) → on continue.
+  }
   try {
     await TrackPlayer.setupPlayer();
   } catch {

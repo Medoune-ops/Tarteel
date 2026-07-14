@@ -100,6 +100,16 @@ export default function SubscriptionScreen() {
             {tr('subscription.ctaNote', { price: PLANS.find((p) => p.id === plan)?.prix ?? '' })}
           </Text>
 
+          {/* Plan familial : partage le premium avec jusqu'à 5 comptes. */}
+          <Pressable style={styles.familyLink} onPress={() => router.push('/(app)/household' as never)}>
+            <Text style={styles.familyEmoji}>👨‍👩‍👧‍👦</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.familyTitle}>{tr('household.subscriptionLinkTitle')}</Text>
+              <Text style={styles.familyHint}>{tr('household.subscriptionLinkHint')}</Text>
+            </View>
+            <Text style={styles.familyChevron}>›</Text>
+          </Pressable>
+
           <View style={{ height: 24 }} />
         </View>
       </ScrollView>
@@ -156,4 +166,12 @@ const styles = StyleSheet.create({
   },
   ctaText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#fff' },
   ctaNote: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#8A8F99', textAlign: 'center', marginTop: 12 },
+  familyLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18,
+    backgroundColor: '#F2EEFF', borderRadius: 16, padding: 14,
+  },
+  familyEmoji: { fontSize: 26 },
+  familyTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#1B2333' },
+  familyHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12.5, color: '#7A6BA8', marginTop: 2 },
+  familyChevron: { fontSize: 24, color: '#6B4DFF' },
 });
