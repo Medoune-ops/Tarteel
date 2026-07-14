@@ -14,16 +14,17 @@ import {
   type HouseholdView,
 } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import { useT } from '../../lib/i18n';
 
-function errMsg(e: unknown): string {
-  return e instanceof ApiError && e.status !== 0 ? e.message : "Action impossible. Réessaie.";
+function errMsg(e: unknown, fallback: string): string {
+  return e instanceof ApiError && e.status !== 0 ? e.message : fallback;
 }
 
-// Plans familiaux (prix alignés sur le backend : 3,99 €/mois, 39,99 €/an).
+// Plans familiaux : clés i18n (titre/détail/prix traduits & localisés).
 const FAMILY_PLANS = [
-  { id: 'famille_annuel' as const, titre: 'Familial annuel', prix: '39,99 €/an', detail: '≈ 3,33 €/mois · 2 mois offerts', best: true },
-  { id: 'famille_mensuel' as const, titre: 'Familial mensuel', prix: '3,99 €/mois', detail: 'Sans engagement', best: false },
-];
+  { id: 'famille_annuel' as const, titleKey: 'household.planAnnualTitle', detailKey: 'household.planAnnualDetail', priceKey: 'household.planAnnualPrice', best: true },
+  { id: 'famille_mensuel' as const, titleKey: 'household.planMonthlyTitle', detailKey: 'household.planMonthlyDetail', priceKey: 'household.planMonthlyPrice', best: false },
+] as const;
 
 // Écran « Plan familial » (foyer). Créer un foyer, inviter jusqu'à 5 comptes,
 // gérer les membres et les invitations, s'abonner au plan familial (tous les
@@ -31,6 +32,7 @@ const FAMILY_PLANS = [
 export default function HouseholdScreen() {
   const router = useRouter();
   const T = useTheme();
+  const tr = useT();
 
   const [data, setData] = useState<HouseholdView | null>(null);
   const [error, setError] = useState(false);
@@ -59,49 +61,49 @@ export default function HouseholdScreen() {
     try {
       await fn();
       await load();
-      if (okMsg) Alert.alert('Plan familial', okMsg);
+      if (okMsg) Alert.alert(tr('household.title'), okMsg);
     } catch (e) {
-      Alert.alert('Plan familial', errMsg(e));
+      Alert.alert(tr('household.title'), errMsg(e, tr('household.actionError')));
     } finally {
       setBusy(null);
     }
-  }, [busy, load]);
+  }, [busy, load, tr]);
 
   const onInvite = () => {
     const e = email.trim();
     if (!e) return;
-    run('invite', () => inviteToHousehold(e), 'Invitation envoyée ✉️').then(() => setEmail(''));
+    run('invite', () => inviteToHousehold(e), tr('household.invitedMsg')).then(() => setEmail(''));
   };
 
   const confirmRemoveMember = (userId: string, name: string) => {
-    Alert.alert('Retirer ce membre', `Retirer ${name} du foyer ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Retirer', style: 'destructive', onPress: () => run(`rm-${userId}`, () => removeHouseholdMember(userId)) },
+    Alert.alert(tr('household.removeMemberTitle'), tr('household.removeMemberMsg', { name }), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      { text: tr('household.remove'), style: 'destructive', onPress: () => run(`rm-${userId}`, () => removeHouseholdMember(userId)) },
     ]);
   };
 
   const confirmDelete = () => {
-    Alert.alert('Supprimer le foyer', 'Tous les membres seront détachés et perdront le premium familial. Continuer ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => run('delete', deleteHousehold, 'Foyer supprimé') },
+    Alert.alert(tr('household.deleteBtn'), tr('household.deleteMsg'), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      { text: tr('household.delete'), style: 'destructive', onPress: () => run('delete', deleteHousehold, tr('household.deletedMsg')) },
     ]);
   };
 
   const confirmLeave = () => {
-    Alert.alert('Quitter le foyer', 'Tu perdras le premium familial. Continuer ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Quitter', style: 'destructive', onPress: () => run('leave', leaveHousehold, 'Tu as quitté le foyer') },
+    Alert.alert(tr('household.leaveBtn'), tr('household.leaveMsg'), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      { text: tr('household.leave'), style: 'destructive', onPress: () => run('leave', leaveHousehold, tr('household.leftMsg')) },
     ]);
   };
 
   // Active le plan familial choisi (paiement) → tout le foyer devient premium.
   const subscribeFamily = (planId: 'famille_mensuel' | 'famille_annuel', titre: string, prix: string) => {
     Alert.alert(
-      'Activer le plan familial',
-      `${titre} — ${prix}\nJusqu'à 5 comptes du foyer deviennent premium. Continuer ?`,
+      tr('household.activateTitle'),
+      tr('household.activateConfirmMsg', { plan: titre, price: prix }),
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Activer', onPress: () => run('sub', () => subscribePremium(planId), 'Abonnement familial activé 🎉 Tout le foyer est premium.') },
+        { text: tr('common.cancel'), style: 'cancel' },
+        { text: tr('household.activate'), onPress: () => run('sub', () => subscribePremium(planId), tr('household.activatedMsg')) },
       ],
     );
   };
@@ -119,25 +121,25 @@ export default function HouseholdScreen() {
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
         <Text style={styles.headerEmoji}>👨‍👩‍👧‍👦</Text>
-        <Text style={styles.headerTitle}>Plan familial</Text>
-        <Text style={styles.headerSub}>Jusqu'à 5 comptes premium sous un même foyer</Text>
+        <Text style={styles.headerTitle}>{tr('household.title')}</Text>
+        <Text style={styles.headerSub}>{tr('household.headerSub')}</Text>
       </LinearGradient>
 
       {notDeployed ? (
         <View style={styles.stateBox}>
           <Text style={{ fontSize: 44 }}>🏡</Text>
           <Text style={[styles.stateText, { color: T.text, fontFamily: 'Nunito_800ExtraBold' }]}>
-            Le plan familial arrive bientôt
+            {tr('household.notDeployedTitle')}
           </Text>
           <Text style={[styles.stateText, { color: T.textSecondary }]}>
-            Cette fonctionnalité sera disponible dès la prochaine mise à jour du service.
+            {tr('household.notDeployedSub')}
           </Text>
         </View>
       ) : error ? (
         <View style={styles.stateBox}>
           <Feather name="wifi-off" size={32} color={T.textTertiary} />
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>Impossible de charger le foyer.</Text>
-          <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>Réessayer</Text></Pressable>
+          <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('household.loadError')}</Text>
+          <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>{tr('common.retry')}</Text></Pressable>
         </View>
       ) : !data ? (
         <View style={styles.stateBox}><ActivityIndicator size="large" color="#6B4DFF" /></View>
@@ -146,24 +148,24 @@ export default function HouseholdScreen() {
           {/* Invitations reçues */}
           {received.length > 0 && (
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: T.text }]}>Invitations reçues</Text>
+              <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('household.receivedTitle')}</Text>
               {received.map((inv) => (
                 <View key={inv.token} style={[styles.card, { backgroundColor: T.cardBg }]}>
-                  <Text style={[styles.cardTitle, { color: T.text }]}>{inv.invitedBy} t'invite dans son foyer</Text>
+                  <Text style={[styles.cardTitle, { color: T.text }]}>{tr('household.invitesYou', { name: inv.invitedBy })}</Text>
                   <View style={styles.rowBtns}>
                     <Pressable
                       style={[styles.btn, styles.btnPrimary]}
-                      onPress={() => run(`acc-${inv.token}`, () => acceptHouseholdInvite(inv.token), 'Tu as rejoint le foyer 🎉')}
+                      onPress={() => run(`acc-${inv.token}`, () => acceptHouseholdInvite(inv.token), tr('household.acceptedMsg'))}
                       disabled={busy != null}
                     >
-                      <Text style={styles.btnPrimaryText}>Accepter</Text>
+                      <Text style={styles.btnPrimaryText}>{tr('household.accept')}</Text>
                     </Pressable>
                     <Pressable
                       style={[styles.btn, styles.btnGhost, { borderColor: T.border }]}
                       onPress={() => run(`dec-${inv.token}`, () => declineHouseholdInvite(inv.token))}
                       disabled={busy != null}
                     >
-                      <Text style={[styles.btnGhostText, { color: T.textSecondary }]}>Refuser</Text>
+                      <Text style={[styles.btnGhostText, { color: T.textSecondary }]}>{tr('household.decline')}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -176,16 +178,16 @@ export default function HouseholdScreen() {
             <View style={styles.section}>
               <View style={[styles.card, { backgroundColor: T.cardBg }]}>
                 <Text style={{ fontSize: 40, textAlign: 'center' }}>🏡</Text>
-                <Text style={[styles.cardTitle, { color: T.text, textAlign: 'center' }]}>Crée ton foyer</Text>
+                <Text style={[styles.cardTitle, { color: T.text, textAlign: 'center' }]}>{tr('household.createTitle')}</Text>
                 <Text style={[styles.cardHint, { textAlign: 'center' }]}>
-                  Rassemble jusqu'à 5 comptes. Avec l'abonnement familial, tout le foyer devient premium.
+                  {tr('household.createHint')}
                 </Text>
                 <Pressable
                   style={[styles.btn, styles.btnPrimary, { marginTop: 14 }]}
-                  onPress={() => run('create', createHousehold, 'Foyer créé 🏡')}
+                  onPress={() => run('create', createHousehold, tr('household.createdMsg'))}
                   disabled={busy != null}
                 >
-                  {busy === 'create' ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>Créer un foyer</Text>}
+                  {busy === 'create' ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>{tr('household.createBtn')}</Text>}
                 </Pressable>
               </View>
             </View>
@@ -199,12 +201,14 @@ export default function HouseholdScreen() {
                 <Feather name={h.subscriptionActive ? 'check-circle' : 'star'} size={22} color={h.subscriptionActive ? '#2A9E1C' : '#6B4DFF'} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.subTitle, { color: T.text }]}>
-                    {h.subscriptionActive ? 'Abonnement familial actif' : 'Abonnement familial inactif'}
+                    {h.subscriptionActive ? tr('household.subActive') : tr('household.subInactive')}
                   </Text>
                   <Text style={styles.cardHint}>
                     {h.subscriptionActive
-                      ? `Tout le foyer est premium${h.subscriptionUntil ? ` · jusqu'au ${new Date(h.subscriptionUntil).toLocaleDateString('fr-FR')}` : ''}`
-                      : 'Choisis un plan pour rendre tous les membres premium.'}
+                      ? (h.subscriptionUntil
+                          ? tr('household.subActiveHintUntil', { date: new Date(h.subscriptionUntil).toLocaleDateString() })
+                          : tr('household.subActiveHint'))
+                      : tr('household.subInactiveHint')}
                   </Text>
                 </View>
               </View>
@@ -213,32 +217,32 @@ export default function HouseholdScreen() {
               {h.isOwner && (
                 <View style={styles.section}>
                   <Text style={[styles.sectionTitle, { color: T.text }]}>
-                    {h.subscriptionActive ? 'Renouveler / changer de plan' : 'Activer le plan familial'}
+                    {h.subscriptionActive ? tr('household.renewTitle') : tr('household.activateTitle')}
                   </Text>
                   {FAMILY_PLANS.map((p) => (
                     <Pressable
                       key={p.id}
                       style={[styles.planCard, { backgroundColor: T.cardBg, borderColor: p.best ? '#6B4DFF' : T.border }]}
-                      onPress={() => subscribeFamily(p.id, p.titre, p.prix)}
+                      onPress={() => subscribeFamily(p.id, tr(p.titleKey), tr(p.priceKey))}
                       disabled={busy != null}
                     >
                       <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <Text style={[styles.planTitle, { color: T.text }]}>{p.titre}</Text>
+                          <Text style={[styles.planTitle, { color: T.text }]}>{tr(p.titleKey)}</Text>
                           {p.best && (
-                            <View style={styles.planBadge}><Text style={styles.planBadgeText}>Le + avantageux</Text></View>
+                            <View style={styles.planBadge}><Text style={styles.planBadgeText}>{tr('household.planBest')}</Text></View>
                           )}
                         </View>
-                        <Text style={styles.cardHint}>{p.detail}</Text>
+                        <Text style={styles.cardHint}>{tr(p.detailKey)}</Text>
                       </View>
                       <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                        <Text style={[styles.planPrice, { color: T.text }]}>{p.prix}</Text>
+                        <Text style={[styles.planPrice, { color: T.text }]}>{tr(p.priceKey)}</Text>
                         {busy === 'sub' ? <ActivityIndicator color="#6B4DFF" /> : <Feather name="chevron-right" size={20} color="#6B4DFF" />}
                       </View>
                     </Pressable>
                   ))}
                   <Text style={[styles.cardHint, { marginTop: 6 }]}>
-                    Paiement sécurisé · jusqu'à 5 comptes premium · annulable à tout moment.
+                    {tr('household.planFootnote')}
                   </Text>
                 </View>
               )}
@@ -246,7 +250,7 @@ export default function HouseholdScreen() {
               {/* Membres */}
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: T.text }]}>
-                  Membres ({h.members.length}/{h.maxMembers})
+                  {tr('household.membersTitle', { n: h.members.length, max: h.maxMembers })}
                 </Text>
                 <View style={[styles.card, { backgroundColor: T.cardBg }]}>
                   {h.members.map((m, i) => (
@@ -254,18 +258,18 @@ export default function HouseholdScreen() {
                       <View style={styles.avatar}><Text style={styles.avatarText}>{m.avatarInitials || m.displayName.slice(0, 2).toUpperCase()}</Text></View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.memberName, { color: T.text }]}>
-                          {m.displayName}{m.isMe ? ' (toi)' : ''}
+                          {m.displayName}{m.isMe ? tr('household.you') : ''}
                         </Text>
-                        <Text style={styles.cardHint}>{m.role === 'owner' ? 'Propriétaire' : 'Membre'} · {m.email}</Text>
+                        <Text style={styles.cardHint}>{m.role === 'owner' ? tr('household.roleOwner') : tr('household.roleMember')} · {m.email}</Text>
                       </View>
                       {/* Le propriétaire peut retirer/transférer les autres membres */}
                       {h.isOwner && !m.isMe && (
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                           <Pressable
                             hitSlop={8}
-                            onPress={() => Alert.alert('Transférer la propriété', `Faire de ${m.displayName} le propriétaire du foyer ?`, [
-                              { text: 'Annuler', style: 'cancel' },
-                              { text: 'Transférer', onPress: () => run(`tr-${m.userId}`, () => transferHousehold(m.userId), 'Propriété transférée') },
+                            onPress={() => Alert.alert(tr('household.transferTitle'), tr('household.transferMsg', { name: m.displayName }), [
+                              { text: tr('common.cancel'), style: 'cancel' },
+                              { text: tr('household.transfer'), onPress: () => run(`tr-${m.userId}`, () => transferHousehold(m.userId), tr('household.transferredMsg')) },
                             ])}
                           >
                             <Feather name="award" size={20} color="#6B4DFF" />
@@ -283,14 +287,14 @@ export default function HouseholdScreen() {
               {/* Invitations en attente (propriétaire) */}
               {h.isOwner && (
                 <View style={styles.section}>
-                  <Text style={[styles.sectionTitle, { color: T.text }]}>Inviter un compte</Text>
+                  <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('household.inviteTitle')}</Text>
                   <View style={[styles.card, { backgroundColor: T.cardBg }]}>
                     <View style={[styles.inviteRow, { backgroundColor: T.inputBg, borderColor: T.border }]}>
                       <TextInput
                         style={[styles.input, { color: T.text }]}
                         value={email}
                         onChangeText={setEmail}
-                        placeholder="email@exemple.com"
+                        placeholder={tr('household.invitePlaceholder')}
                         placeholderTextColor={T.textTertiary}
                         autoCapitalize="none"
                         keyboardType="email-address"
@@ -301,17 +305,17 @@ export default function HouseholdScreen() {
                         onPress={onInvite}
                         disabled={busy != null || full}
                       >
-                        {busy === 'invite' ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>Inviter</Text>}
+                        {busy === 'invite' ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>{tr('household.invite')}</Text>}
                       </Pressable>
                     </View>
-                    {full && <Text style={[styles.cardHint, { marginTop: 8 }]}>Le foyer est complet (5 comptes max).</Text>}
+                    {full && <Text style={[styles.cardHint, { marginTop: 8 }]}>{tr('household.full')}</Text>}
 
                     {h.invitations.map((inv) => (
                       <View key={inv.id} style={[styles.memberRow, styles.divider, { borderTopColor: T.divider }]}>
                         <Feather name="mail" size={18} color={T.textTertiary} />
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.memberName, { color: T.text }]}>{inv.email}</Text>
-                          <Text style={styles.cardHint}>Invitation en attente</Text>
+                          <Text style={styles.cardHint}>{tr('household.pendingInvite')}</Text>
                         </View>
                         <Pressable hitSlop={8} onPress={() => run(`cancel-${inv.id}`, () => cancelHouseholdInvite(inv.id))}>
                           <Feather name="x" size={20} color="#FF4B4B" />
@@ -327,12 +331,12 @@ export default function HouseholdScreen() {
                 {h.isOwner ? (
                   <Pressable style={[styles.dangerBtn, { borderColor: T.isDark ? '#4A2330' : '#FFD9D9' }]} onPress={confirmDelete} disabled={busy != null}>
                     <Feather name="trash-2" size={18} color="#FF4B4B" />
-                    <Text style={styles.dangerText}>Supprimer le foyer</Text>
+                    <Text style={styles.dangerText}>{tr('household.deleteBtn')}</Text>
                   </Pressable>
                 ) : (
                   <Pressable style={[styles.dangerBtn, { borderColor: T.isDark ? '#4A2330' : '#FFD9D9' }]} onPress={confirmLeave} disabled={busy != null}>
                     <Feather name="log-out" size={18} color="#FF4B4B" />
-                    <Text style={styles.dangerText}>Quitter le foyer</Text>
+                    <Text style={styles.dangerText}>{tr('household.leaveBtn')}</Text>
                   </Pressable>
                 )}
               </View>

@@ -104,8 +104,8 @@ export default function SubscriptionScreen() {
           <Pressable style={styles.familyLink} onPress={() => router.push('/(app)/household' as never)}>
             <Text style={styles.familyEmoji}>👨‍👩‍👧‍👦</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.familyTitle}>Plan familial</Text>
-              <Text style={styles.familyHint}>Partage le premium avec jusqu'à 5 comptes</Text>
+              <Text style={styles.familyTitle}>{tr('household.subscriptionLinkTitle')}</Text>
+              <Text style={styles.familyHint}>{tr('household.subscriptionLinkHint')}</Text>
             </View>
             <Text style={styles.familyChevron}>›</Text>
           </Pressable>
