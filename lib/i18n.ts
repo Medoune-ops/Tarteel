@@ -373,6 +373,7 @@ const fr = {
   'docCoran.s4P2Bold': '« Hâfiz »',
   'docCoran.s4P2After': '. Il apporte la paix du cœur, la guidance et d\'innombrables récompenses.',
   'docCoran.s4Quote': '« Ce Livre, nul doute en lui, est un guide pour les pieux. » (Sourate Al-Baqara, 2:2)',
+  'docCoran.s4QuoteArabe': 'ذَٰلِكَ ٱلْكِتَـٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ',
 
   // ─── Doc : La Prière ───────────────────────────────────────────────────────
   'docPriere.headerTitre': 'La Prière',
@@ -1333,6 +1334,7 @@ const en: Dict = {
   'docCoran.s4P2Bold': '"Hafiz"',
   'docCoran.s4P2After': '. It brings peace of heart, guidance, and countless rewards.',
   'docCoran.s4Quote': '"This Book, no doubt in it, is a guide for the righteous." (Surah Al-Baqarah, 2:2)',
+  'docCoran.s4QuoteArabe': 'ذَٰلِكَ ٱلْكِتَـٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ',
 
   // ─── Doc: Prayer ────────────────────────────────────────────────────────────
   'docPriere.headerTitre': 'Prayer',

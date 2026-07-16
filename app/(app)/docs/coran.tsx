@@ -47,7 +47,7 @@ export default function DocCoran() {
           <P>
             {tr('docCoran.s4P2Before')}<B>{tr('docCoran.s4P2Bold')}</B>{tr('docCoran.s4P2After')}
           </P>
-          <Quote accent={C}>{tr('docCoran.s4Quote')}</Quote>
+          <Quote accent={C} arabe={tr('docCoran.s4QuoteArabe')}>{tr('docCoran.s4Quote')}</Quote>
         </Section>
 
       </DocScroll>
