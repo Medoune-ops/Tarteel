@@ -42,8 +42,9 @@ export default function PropheteDetail() {
           <Quote accent={C} arabe={p.versetArabe}>{verset}</Quote>
         )}
 
-        {/* Rappel */}
+        {/* Rappel — traduction + version arabe (RTL) */}
         <View style={styles.note}>
+          <Text style={styles.noteArabe}>{tr('docProphete.noteArabe')}</Text>
           <Text style={styles.noteText}>
             🤍 {tr('docProphete.note')}
           </Text>
@@ -74,5 +75,9 @@ const styles = StyleSheet.create({
   sectionTitre: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, color: C, marginBottom: 10 },
   para: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, color: '#3A4150', lineHeight: 24, marginBottom: 12 },
   note: { backgroundColor: '#FFF8F0', borderRadius: 14, padding: 16, borderLeftWidth: 4, borderLeftColor: C },
+  noteArabe: {
+    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 20, lineHeight: 34, color: '#8A5A20',
+    textAlign: 'right', writingDirection: 'rtl', marginBottom: 8,
+  },
   noteText: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#8A5A20', lineHeight: 22 },
 });
