@@ -47,14 +47,27 @@ export function B({ children }: { children: React.ReactNode }) {
  * Citation / encadré mis en valeur. `arabe` est optionnel : quand la citation
  * est un verset du Coran, on affiche aussi son texte arabe original (RTL) au
  * dessus de la traduction, comme partout ailleurs dans l'app (lecture-libre,
- * lecteur de sourate…).
+ * lecteur de sourate…). `arabeSize`/`arabeLineHeight` permettent de réduire la
+ * taille sur une page précise sans changer les autres (défauts inchangés).
  */
-export function Quote({ children, accent = '#6B4DFF', arabe }: {
+export function Quote({ children, accent = '#6B4DFF', arabe, arabeSize, arabeLineHeight }: {
   children: React.ReactNode; accent?: string; arabe?: string;
+  arabeSize?: number; arabeLineHeight?: number;
 }) {
   return (
     <View style={[s.quote, { borderLeftColor: accent, backgroundColor: `${accent}12` }]}>
-      {arabe && <Text style={[s.quoteArabe, { color: accent }]}>{arabe}</Text>}
+      {arabe && (
+        <Text
+          style={[
+            s.quoteArabe,
+            { color: accent },
+            arabeSize != null && { fontSize: arabeSize },
+            arabeLineHeight != null && { lineHeight: arabeLineHeight },
+          ]}
+        >
+          {arabe}
+        </Text>
+      )}
       <Text style={[s.quoteText, { color: accent }]}>{children}</Text>
     </View>
   );
