@@ -427,6 +427,7 @@ const fr = {
   'docProphete.numOf25': 'sur 25',
   'docProphete.hisStory': 'Son histoire',
   'docProphete.note': 'Que la paix soit sur lui. Chaque prophète a transmis le même message : adorer Allah unique et faire le bien.',
+  'docProphete.noteArabe': 'عَلَيْهِ ٱلسَّلَامُ. كُلُّ نَبِيٍّ بَلَّغَ نَفْسَ ٱلرِّسَالَةِ: عِبَادَةُ ٱللَّهِ ٱلْوَاحِدِ وَفِعْلُ ٱلْخَيْرِ',
 
   // ─── Doc : L'Islam ─────────────────────────────────────────────────────────
   'docIslam.headerTitre': "L'Islam",
@@ -1391,6 +1392,7 @@ const en: Dict = {
   'docProphete.numOf25': 'of 25',
   'docProphete.hisStory': 'His story',
   'docProphete.note': 'May peace be upon him. Every prophet conveyed the same message: worship the one Allah and do good.',
+  'docProphete.noteArabe': 'عَلَيْهِ ٱلسَّلَامُ. كُلُّ نَبِيٍّ بَلَّغَ نَفْسَ ٱلرِّسَالَةِ: عِبَادَةُ ٱللَّهِ ٱلْوَاحِدِ وَفِعْلُ ٱلْخَيْرِ',
 
   // ─── Doc: Islam ─────────────────────────────────────────────────────────────
   'docIslam.headerTitre': 'Islam',
