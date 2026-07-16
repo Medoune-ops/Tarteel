@@ -73,7 +73,7 @@ export default function DocPriere() {
             <B>{tr('docPriere.s5PBold')}</B>
             {tr('docPriere.s5PAfter')}
           </P>
-          <Quote accent={C}>
+          <Quote accent={C} arabe={tr('docPriere.s5QuoteArabe')}>
             {tr('docPriere.s5Quote')}
           </Quote>
         </Section>
