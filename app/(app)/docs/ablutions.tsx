@@ -58,7 +58,7 @@ export default function DocAblutions() {
 
         <Section titre={tr('docAblutions.s4Titre')} accent={C}>
           <P>{tr('docAblutions.s4P1')}</P>
-          <Quote accent={C}>
+          <Quote accent={C} arabe={tr('docAblutions.s4QuoteArabe')}>
             {tr('docAblutions.s4Quote')}
           </Quote>
         </Section>

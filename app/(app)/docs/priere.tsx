@@ -62,7 +62,7 @@ export default function DocPriere() {
 
         <Section titre={tr('docPriere.s4Titre')} accent={C}>
           <P>{tr('docPriere.s4P1')}</P>
-          <Quote accent={C}>
+          <Quote accent={C} arabe={tr('docPriere.s4QuoteArabe')}>
             {tr('docPriere.s4Quote')}
           </Quote>
         </Section>

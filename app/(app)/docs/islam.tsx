@@ -65,7 +65,7 @@ export default function DocIslam() {
           <P>
             {tr('docIslam.s4P1Before')}<B>{tr('docIslam.s4P1Bold1')}</B>{tr('docIslam.s4P1Mid1')}<B>{tr('docIslam.s4P1Bold2')}</B>{tr('docIslam.s4P1Mid2')}<B>{tr('docIslam.s4P1Bold3')}</B>{tr('docIslam.s4P1After')}
           </P>
-          <Quote accent={C}>
+          <Quote accent={C} arabe={tr('docIslam.s4QuoteArabe')}>
             {tr('docIslam.s4Quote')}
           </Quote>
         </Section>
