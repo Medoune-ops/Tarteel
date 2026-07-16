@@ -166,17 +166,19 @@ export default function ProfilScreen() {
                 style={({ pressed }) => [
                   styles.badge,
                   { backgroundColor: T.isDark ? b.bgDark : b.bg, borderColor: b.border },
-                  b.route && pressed && { opacity: 0.7 },
+                  b.route && pressed && { transform: [{ scale: 0.96 }], opacity: 0.9 },
                 ]}
                 onPress={b.route ? () => router.push(b.route!) : undefined}
               >
-                <Text style={styles.badgeEmoji}>{b.emoji}</Text>
-                <Text style={[styles.badgeLabel, { color: T.isDark ? b.border : T.text }]}>{b.label}</Text>
                 {b.route && (
-                  <View style={styles.badgeArrow}>
-                    <Feather name="chevron-right" size={12} color={b.border} />
+                  <View style={[styles.badgeChevron, { backgroundColor: b.border }]}>
+                    <Feather name="chevron-right" size={10} color="#fff" />
                   </View>
                 )}
+                <View style={[styles.badgeMedal, { backgroundColor: T.cardBg, borderColor: b.border }]}>
+                  <Text style={styles.badgeEmoji}>{b.emoji}</Text>
+                </View>
+                <Text style={[styles.badgeLabel, { color: T.isDark ? b.border : T.text }]} numberOfLines={2}>{b.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -253,15 +255,25 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 24, marginBottom: 10 },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   levelText: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
-  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
   badge: {
-    width: '31.5%', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8,
-    alignItems: 'center', justifyContent: 'center', gap: 6,
+    width: '30%', borderRadius: 18, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6,
+    alignItems: 'center', justifyContent: 'flex-start', gap: 8,
     borderBottomWidth: 4, borderWidth: 1.5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,
   },
-  badgeEmoji: { fontSize: 30 },
-  badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, textAlign: 'center' },
-  badgeArrow: { position: 'absolute', top: 6, right: 6 },
+  badgeMedal: {
+    width: 48, height: 48, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5,
+  },
+  badgeEmoji: { fontSize: 24 },
+  badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, textAlign: 'center', lineHeight: 15 },
+  badgeChevron: {
+    position: 'absolute', top: 8, right: 8,
+    width: 16, height: 16, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
   calTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   calWeekHeader: { flexDirection: 'row', marginBottom: 6 },
   // 7 colonnes = 100 %/7. Pas de `gap` (sinon 7×largeur + gaps > 100 % et la
