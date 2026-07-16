@@ -43,10 +43,31 @@ export function B({ children }: { children: React.ReactNode }) {
   return <Text style={s.b}>{children}</Text>;
 }
 
-/** Citation / encadré mis en valeur. */
-export function Quote({ children, accent = '#6B4DFF' }: { children: React.ReactNode; accent?: string }) {
+/**
+ * Citation / encadré mis en valeur. `arabe` est optionnel : quand la citation
+ * est un verset du Coran, on affiche aussi son texte arabe original (RTL) au
+ * dessus de la traduction, comme partout ailleurs dans l'app (lecture-libre,
+ * lecteur de sourate…). `arabeSize`/`arabeLineHeight` permettent de réduire la
+ * taille sur une page précise sans changer les autres (défauts inchangés).
+ */
+export function Quote({ children, accent = '#6B4DFF', arabe, arabeSize, arabeLineHeight }: {
+  children: React.ReactNode; accent?: string; arabe?: string;
+  arabeSize?: number; arabeLineHeight?: number;
+}) {
   return (
     <View style={[s.quote, { borderLeftColor: accent, backgroundColor: `${accent}12` }]}>
+      {arabe && (
+        <Text
+          style={[
+            s.quoteArabe,
+            { color: accent },
+            arabeSize != null && { fontSize: arabeSize },
+            arabeLineHeight != null && { lineHeight: arabeLineHeight },
+          ]}
+        >
+          {arabe}
+        </Text>
+      )}
       <Text style={[s.quoteText, { color: accent }]}>{children}</Text>
     </View>
   );
@@ -98,6 +119,10 @@ const s = StyleSheet.create({
     borderLeftWidth: 4, borderRadius: 10, padding: 14, marginBottom: 10,
   },
   quoteText: { fontFamily: 'Nunito_700Bold', fontSize: 15, lineHeight: 24, fontStyle: 'italic' },
+  quoteArabe: {
+    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 15, lineHeight: 26,
+    textAlign: 'right', writingDirection: 'rtl', marginBottom: 6,
+  },
   step: { flexDirection: 'row', gap: 14, marginBottom: 14 },
   stepNum: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   stepNumText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, color: '#fff' },

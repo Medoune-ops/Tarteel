@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert, TextInput,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -120,11 +121,15 @@ export default function HouseholdScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
-        <Text style={styles.headerEmoji}>👨‍👩‍👧‍👦</Text>
-        <Text style={styles.headerTitle}>{tr('household.title')}</Text>
-        <Text style={styles.headerSub}>{tr('household.headerSub')}</Text>
+        {/* maxWidth : garde le contenu lisible/centré sur grand écran (tablette/web) */}
+        <View style={styles.headerInner}>
+          <Text style={styles.headerEmoji}>👨‍👩‍👧‍👦</Text>
+          <Text style={styles.headerTitle}>{tr('household.title')}</Text>
+          <Text style={styles.headerSub}>{tr('household.headerSub')}</Text>
+        </View>
       </LinearGradient>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {notDeployed ? (
         <View style={styles.stateBox}>
           <Text style={{ fontSize: 44 }}>🏡</Text>
@@ -144,14 +149,20 @@ export default function HouseholdScreen() {
       ) : !data ? (
         <View style={styles.stateBox}><ActivityIndicator size="large" color="#6B4DFF" /></View>
       ) : (
-        <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Invitations reçues */}
           {received.length > 0 && (
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('household.receivedTitle')}</Text>
               {received.map((inv) => (
                 <View key={inv.token} style={[styles.card, { backgroundColor: T.cardBg }]}>
-                  <Text style={[styles.cardTitle, { color: T.text }]}>{tr('household.invitesYou', { name: inv.invitedBy })}</Text>
+                  <Text style={[styles.cardTitle, { color: T.text }]} numberOfLines={2} ellipsizeMode="tail">
+                    {tr('household.invitesYou', { name: inv.invitedBy })}
+                  </Text>
                   <View style={styles.rowBtns}>
                     <Pressable
                       style={[styles.btn, styles.btnPrimary]}
@@ -228,12 +239,22 @@ export default function HouseholdScreen() {
                     >
                       <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <Text style={[styles.planTitle, { color: T.text }]}>{tr(p.titleKey)}</Text>
+                          {/* flexShrink+numberOfLines : le badge (largeur fixe) ne pousse jamais
+                              le titre hors de la carte, même avec un texte traduit plus long. */}
+                          <Text
+                            style={[styles.planTitle, { color: T.text, flexShrink: 1 }]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {tr(p.titleKey)}
+                          </Text>
                           {p.best && (
-                            <View style={styles.planBadge}><Text style={styles.planBadgeText}>{tr('household.planBest')}</Text></View>
+                            <View style={[styles.planBadge, { flexShrink: 0 }]}>
+                              <Text style={styles.planBadgeText}>{tr('household.planBest')}</Text>
+                            </View>
                           )}
                         </View>
-                        <Text style={styles.cardHint}>{tr(p.detailKey)}</Text>
+                        <Text style={styles.cardHint} numberOfLines={2}>{tr(p.detailKey)}</Text>
                       </View>
                       <View style={{ alignItems: 'flex-end', gap: 4 }}>
                         <Text style={[styles.planPrice, { color: T.text }]}>{tr(p.priceKey)}</Text>
@@ -257,10 +278,14 @@ export default function HouseholdScreen() {
                     <View key={m.userId} style={[styles.memberRow, i > 0 && [styles.divider, { borderTopColor: T.divider }]]}>
                       <View style={styles.avatar}><Text style={styles.avatarText}>{m.avatarInitials || m.displayName.slice(0, 2).toUpperCase()}</Text></View>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.memberName, { color: T.text }]}>
+                        {/* numberOfLines={1} : un nom/email long ne fait jamais grandir la
+                            ligne au point de désaligner les boutons transférer/retirer. */}
+                        <Text style={[styles.memberName, { color: T.text }]} numberOfLines={1} ellipsizeMode="tail">
                           {m.displayName}{m.isMe ? tr('household.you') : ''}
                         </Text>
-                        <Text style={styles.cardHint}>{m.role === 'owner' ? tr('household.roleOwner') : tr('household.roleMember')} · {m.email}</Text>
+                        <Text style={styles.cardHint} numberOfLines={1} ellipsizeMode="tail">
+                          {m.role === 'owner' ? tr('household.roleOwner') : tr('household.roleMember')} · {m.email}
+                        </Text>
                       </View>
                       {/* Le propriétaire peut retirer/transférer les autres membres */}
                       {h.isOwner && !m.isMe && (
@@ -314,7 +339,9 @@ export default function HouseholdScreen() {
                       <View key={inv.id} style={[styles.memberRow, styles.divider, { borderTopColor: T.divider }]}>
                         <Feather name="mail" size={18} color={T.textTertiary} />
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.memberName, { color: T.text }]}>{inv.email}</Text>
+                          <Text style={[styles.memberName, { color: T.text }]} numberOfLines={1} ellipsizeMode="tail">
+                            {inv.email}
+                          </Text>
                           <Text style={styles.cardHint}>{tr('household.pendingInvite')}</Text>
                         </View>
                         <Pressable hitSlop={8} onPress={() => run(`cancel-${inv.id}`, () => cancelHouseholdInvite(inv.id))}>
@@ -345,6 +372,7 @@ export default function HouseholdScreen() {
           <View style={{ height: 24 }} />
         </ScrollView>
       )}
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -352,6 +380,9 @@ export default function HouseholdScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { paddingTop: 16, paddingBottom: 22, paddingHorizontal: 24, alignItems: 'center' },
+  // Contenu du header borné + centré : sur tablette/web (react-native-web), le
+  // dégradé reste plein écran mais le texte ne s'étire pas sur toute la largeur.
+  headerInner: { width: '100%', maxWidth: 480, alignItems: 'center' },
   backBtn: { position: 'absolute', top: 16, left: 16, zIndex: 2 },
   headerEmoji: { fontSize: 34, marginTop: 6 },
   headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 4 },
@@ -362,7 +393,9 @@ const styles = StyleSheet.create({
   retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#6B4DFF' },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
 
-  body: { padding: 18 },
+  // width 100% + maxWidth + alignSelf center : pleine largeur sur téléphone,
+  // colonne centrée et lisible sur tablette/web (au lieu de cartes étirées).
+  body: { padding: 18, width: '100%', maxWidth: 560, alignSelf: 'center' },
   section: { marginBottom: 8 },
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, marginTop: 16, marginBottom: 10 },
   card: {
