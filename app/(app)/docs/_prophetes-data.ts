@@ -10,6 +10,13 @@ export type Prophete = {
   titreEn: string;      // accroche courte (en)
   histoireFr: string[]; // paragraphes (fr)
   histoireEn: string[]; // paragraphes (en)
+  // Verset coranique cité dans l'histoire (optionnel — seuls certains prophètes
+  // ont une invocation/parole directement citée dans le récit). `versetFr`/
+  // `versetEn` reprennent la traduction + référence, comme les autres citations
+  // de l'app (ex: docCoran.s2Quote).
+  versetFr?: string;
+  versetEn?: string;
+  versetArabe?: string;
 };
 
 const PROPHETES_DATA: Prophete[] = [
@@ -297,6 +304,9 @@ const PROPHETES_DATA: Prophete[] = [
       "At sea, he was swallowed by an enormous whale. In the darkness, he called upon Allah: \"There is no god but You, glory to You, I have been among the wrongdoers.\"",
       "Allah saved him and returned him to his people, who eventually believed. This is an example of the power of repentance.",
     ],
+    versetFr: '« Il n\'y a de divinité que Toi, gloire à Toi, j\'ai été parmi les injustes. » (Sourate Al-Anbiyâ, 21:87)',
+    versetEn: '"There is no god but You, glory to You, I have been among the wrongdoers." (Surah Al-Anbiya, 21:87)',
+    versetArabe: 'لَّآ إِلَـٰهَ إِلَّآ أَنتَ سُبْحَـٰنَكَ إِنِّى كُنتُ مِنَ ٱلظَّـٰلِمِينَ',
   },
   {
     id: 'zakariya', nom: 'Zakariyyâ', arabe: 'زكريا', fr: 'Zacharie', emoji: '🤍',
@@ -356,13 +366,14 @@ const PROPHETES_DATA: Prophete[] = [
   },
 ];
 
-/** Sélectionne titre/histoire selon la langue courante de l'app (fr par défaut). */
+/** Sélectionne titre/histoire/verset cité selon la langue courante de l'app (fr par défaut). */
 export function usePropheteLocalized(p: Prophete) {
   const language = useUserStore((s) => s.language);
   const en = language === 'en' || language === 'ar'; // arabe UI pas encore traduit → fallback anglais, comme lib/i18n.ts
   return {
     titre: en ? p.titreEn : p.titreFr,
     histoire: en ? p.histoireEn : p.histoireFr,
+    verset: en ? p.versetEn : p.versetFr,
   };
 }
 

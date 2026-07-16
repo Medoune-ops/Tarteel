@@ -15,7 +15,7 @@ export default function DocAblutions() {
           <P>
             {tr('docAblutions.s1P1Before')}<B>{tr('docAblutions.s1P1Wudu')}</B>{tr('docAblutions.s1P1After')}
           </P>
-          <Quote accent={C}>
+          <Quote accent={C} arabe={tr('docAblutions.s1QuoteArabe')}>
             {tr('docAblutions.s1Quote')}
           </Quote>
         </Section>
@@ -58,7 +58,7 @@ export default function DocAblutions() {
 
         <Section titre={tr('docAblutions.s4Titre')} accent={C}>
           <P>{tr('docAblutions.s4P1')}</P>
-          <Quote accent={C}>
+          <Quote accent={C} arabe={tr('docAblutions.s4QuoteArabe')}>
             {tr('docAblutions.s4Quote')}
           </Quote>
         </Section>

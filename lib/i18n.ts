@@ -311,6 +311,7 @@ const fr = {
   'docAblutions.s1P1Wudu': 'Wudû',
   'docAblutions.s1P1After': " (الوضوء) est la purification que le musulman accomplit avant la prière. Il nettoie le corps mais symbolise aussi la purification de l'âme et la préparation à se présenter devant Allah dans un état de propreté.",
   'docAblutions.s1Quote': '« Allah aime ceux qui se repentent et ceux qui se purifient. » (Sourate Al-Baqara, 2:222)',
+  'docAblutions.s1QuoteArabe': 'وَيَسْـَٔلُونَكَ عَنِ ٱلْمَحِيضِ ۖ قُلْ هُوَ أَذًى فَٱعْتَزِلُوا۟ ٱلنِّسَآءَ فِى ٱلْمَحِيضِ ۖ وَلَا تَقْرَبُوهُنَّ حَتَّىٰ يَطْهُرْنَ ۖ فَإِذَا تَطَهَّرْنَ فَأْتُوهُنَّ مِنْ حَيْثُ أَمَرَكُمُ ٱللَّهُ ۚ إِنَّ ٱللَّهَ يُحِبُّ ٱلتَّوَّٰبِينَ وَيُحِبُّ ٱلْمُتَطَهِّرِينَ',
   'docAblutions.s2Titre': 'Les étapes du Wudû',
   'docAblutions.step1Titre': "L'intention (niyya)",
   'docAblutions.step1Text': "Avoir l'intention dans son cœur de se purifier pour Allah, puis dire « Bismillah » (au nom d'Allah).",
@@ -335,6 +336,7 @@ const fr = {
   'docAblutions.s4Titre': "L'invocation après le Wudû",
   'docAblutions.s4P1': 'À la fin des ablutions, il est recommandé de dire :',
   'docAblutions.s4Quote': '« Ash-hadu an lâ ilâha illa Llâh, wa ash-hadu anna Muhammadan ʿabduhu wa rasûluh. »\n(J\'atteste qu\'il n\'y a de divinité qu\'Allah, et que Muhammad est Son serviteur et messager.)',
+  'docAblutions.s4QuoteArabe': 'أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ',
 
   // ─── Doc : Le Coran ────────────────────────────────────────────────────────
   'docCoran.headerTitre': 'Le Saint Coran',
@@ -348,6 +350,7 @@ const fr = {
   'docCoran.s2Titre': 'Comment a-t-il été révélé ?',
   'docCoran.s2P1': "La révélation a commencé en l'an 610, dans la grotte de Hira près de La Mecque, lorsque l'ange Jibril apparut au Prophète Muhammad ﷺ et lui dit :",
   'docCoran.s2Quote': '« Lis, au nom de ton Seigneur qui a créé. » (Sourate Al-\'Alaq, 96:1)',
+  'docCoran.s2QuoteArabe': 'ٱقْرَأْ بِٱسْمِ رَبِّكَ ٱلَّذِى خَلَقَ',
   'docCoran.s2P2': "La révélation s'est ensuite poursuivie progressivement pendant environ 23 ans, verset par verset, selon les événements et les besoins de la communauté. Les compagnons mémorisaient et notaient chaque révélation. Après le décès du Prophète ﷺ, le Coran fut rassemblé en un seul livre sous le calife Abou Bakr, puis unifié sous Othman.",
   'docCoran.s3Titre': 'Sa structure',
   'docCoran.s3P1Before': 'Le Coran est divisé en ',
@@ -371,6 +374,7 @@ const fr = {
   'docCoran.s4P2Bold': '« Hâfiz »',
   'docCoran.s4P2After': '. Il apporte la paix du cœur, la guidance et d\'innombrables récompenses.',
   'docCoran.s4Quote': '« Ce Livre, nul doute en lui, est un guide pour les pieux. » (Sourate Al-Baqara, 2:2)',
+  'docCoran.s4QuoteArabe': 'ذَٰلِكَ ٱلْكِتَـٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ',
 
   // ─── Doc : La Prière ───────────────────────────────────────────────────────
   'docPriere.headerTitre': 'La Prière',
@@ -407,11 +411,13 @@ const fr = {
   'docPriere.s4Titre': 'La fin de la prière (Tashahhud)',
   'docPriere.s4P1': 'Après la dernière rakʿa, assis, on récite le Tashahhud puis on salue :',
   'docPriere.s4Quote': '« As-salâmu ʿalaykum wa rahmatu Llâh » (Que la paix et la miséricorde d\'Allah soient sur vous)\n— en tournant la tête à droite, puis à gauche. La prière est terminée.',
+  'docPriere.s4QuoteArabe': 'ٱلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ ٱللَّهِ',
   'docPriere.s5Titre': 'Pourquoi prier ?',
   'docPriere.s5PBefore': 'La prière purifie le cœur, rappelle Allah tout au long de la journée et apporte la sérénité. C\'est un moment de paix, de gratitude et de connexion, à vivre avec',
   'docPriere.s5PBold': ' joie et amour',
   'docPriere.s5PAfter': ', pas comme une corvée. 🌸',
   'docPriere.s5Quote': '« En vérité, c\'est par le rappel d\'Allah que les cœurs se tranquillisent. » (Sourate Ar-Raʿd, 13:28)',
+  'docPriere.s5QuoteArabe': 'ٱلَّذِينَ ءَامَنُوا۟ وَتَطْمَئِنُّ قُلُوبُهُم بِذِكْرِ ٱللَّهِ ۗ أَلَا بِذِكْرِ ٱللَّهِ تَطْمَئِنُّ ٱلْقُلُوبُ',
 
   // ─── Doc : Les Prophètes (liste) ───────────────────────────────────────────
   'docProphetes.headerTitre': 'Les Prophètes',
@@ -421,6 +427,7 @@ const fr = {
   'docProphete.numOf25': 'sur 25',
   'docProphete.hisStory': 'Son histoire',
   'docProphete.note': 'Que la paix soit sur lui. Chaque prophète a transmis le même message : adorer Allah unique et faire le bien.',
+  'docProphete.noteArabe': 'عَلَيْهِ ٱلسَّلَامُ. كُلُّ نَبِيٍّ بَلَّغَ نَفْسَ ٱلرِّسَالَةِ: عِبَادَةُ ٱللَّهِ ٱلْوَاحِدِ وَفِعْلُ ٱلْخَيْرِ',
 
   // ─── Doc : L'Islam ─────────────────────────────────────────────────────────
   'docIslam.headerTitre': "L'Islam",
@@ -464,6 +471,7 @@ const fr = {
   'docIslam.s4P1Bold3': 'générosité',
   'docIslam.s4P1After': ', le respect des parents et des voisins, la patience et la justice. Le sourire, la douceur et l\'entraide font partie intégrante de la foi.',
   'docIslam.s4Quote': '« Les meilleurs d\'entre vous sont ceux qui ont le meilleur comportement. » — Prophète Muhammad ﷺ',
+  'docIslam.s4QuoteArabe': 'إِنَّ خِيَارَكُمْ أَحَاسِنُكُمْ أَخْلَاقًا',
 
   // ─── Onboarding : Splash ───────────────────────────────────────────────────
   'splash.subtitle': 'Apprends le Coran',
@@ -1268,6 +1276,7 @@ const en: Dict = {
   'docAblutions.s1P1Wudu': 'Wudu',
   'docAblutions.s1P1After': ' (الوضوء) is the purification a Muslim performs before prayer. It cleanses the body but also symbolizes the purification of the soul and preparing to stand before Allah in a state of cleanliness.',
   'docAblutions.s1Quote': '"Allah loves those who repent and those who purify themselves." (Surah Al-Baqarah, 2:222)',
+  'docAblutions.s1QuoteArabe': 'وَيَسْـَٔلُونَكَ عَنِ ٱلْمَحِيضِ ۖ قُلْ هُوَ أَذًى فَٱعْتَزِلُوا۟ ٱلنِّسَآءَ فِى ٱلْمَحِيضِ ۖ وَلَا تَقْرَبُوهُنَّ حَتَّىٰ يَطْهُرْنَ ۖ فَإِذَا تَطَهَّرْنَ فَأْتُوهُنَّ مِنْ حَيْثُ أَمَرَكُمُ ٱللَّهُ ۚ إِنَّ ٱللَّهَ يُحِبُّ ٱلتَّوَّٰبِينَ وَيُحِبُّ ٱلْمُتَطَهِّرِينَ',
   'docAblutions.s2Titre': 'The steps of Wudu',
   'docAblutions.step1Titre': 'The intention (niyyah)',
   'docAblutions.step1Text': 'Intend in your heart to purify yourself for Allah, then say "Bismillah" (in the name of Allah).',
@@ -1292,6 +1301,7 @@ const en: Dict = {
   'docAblutions.s4Titre': 'The invocation after Wudu',
   'docAblutions.s4P1': 'At the end of the ablutions, it is recommended to say:',
   'docAblutions.s4Quote': '"Ash-hadu an lâ ilâha illa Llâh, wa ash-hadu anna Muhammadan ʿabduhu wa rasûluh."\n(I bear witness that there is no god but Allah, and that Muhammad is His servant and messenger.)',
+  'docAblutions.s4QuoteArabe': 'أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ',
 
   // ─── Doc: The Quran ─────────────────────────────────────────────────────────
   'docCoran.headerTitre': 'The Holy Quran',
@@ -1305,6 +1315,7 @@ const en: Dict = {
   'docCoran.s2Titre': 'How was it revealed?',
   'docCoran.s2P1': 'The revelation began in the year 610, in the cave of Hira near Mecca, when the angel Jibril appeared to the Prophet Muhammad ﷺ and said to him:',
   'docCoran.s2Quote': '"Read, in the name of your Lord who created." (Surah Al-\'Alaq, 96:1)',
+  'docCoran.s2QuoteArabe': 'ٱقْرَأْ بِٱسْمِ رَبِّكَ ٱلَّذِى خَلَقَ',
   'docCoran.s2P2': "The revelation then continued gradually for about 23 years, verse by verse, according to the community's events and needs. The companions memorized and wrote down each revelation. After the Prophet's ﷺ death, the Quran was gathered into a single book under Caliph Abu Bakr, then unified under Uthman.",
   'docCoran.s3Titre': 'Its structure',
   'docCoran.s3P1Before': 'The Quran is divided into ',
@@ -1328,6 +1339,7 @@ const en: Dict = {
   'docCoran.s4P2Bold': '"Hafiz"',
   'docCoran.s4P2After': '. It brings peace of heart, guidance, and countless rewards.',
   'docCoran.s4Quote': '"This Book, no doubt in it, is a guide for the righteous." (Surah Al-Baqarah, 2:2)',
+  'docCoran.s4QuoteArabe': 'ذَٰلِكَ ٱلْكِتَـٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ',
 
   // ─── Doc: Prayer ────────────────────────────────────────────────────────────
   'docPriere.headerTitre': 'Prayer',
@@ -1364,11 +1376,13 @@ const en: Dict = {
   'docPriere.s4Titre': 'The end of the prayer (Tashahhud)',
   'docPriere.s4P1': 'After the last rak\'ah, seated, one recites the Tashahhud then greets:',
   'docPriere.s4Quote': '"As-salamu alaykum wa rahmatu Llah" (May the peace and mercy of Allah be upon you)\n— turning the head to the right, then to the left. The prayer is complete.',
+  'docPriere.s4QuoteArabe': 'ٱلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ ٱللَّهِ',
   'docPriere.s5Titre': 'Why pray?',
   'docPriere.s5PBefore': 'Prayer purifies the heart, brings Allah to mind throughout the day, and brings serenity. It is a moment of peace, gratitude, and connection, to be lived with',
   'docPriere.s5PBold': ' joy and love',
   'docPriere.s5PAfter': ', not as a chore. 🌸',
   'docPriere.s5Quote': '"Verily, it is in the remembrance of Allah that hearts find peace." (Surah Ar-Ra\'d, 13:28)',
+  'docPriere.s5QuoteArabe': 'ٱلَّذِينَ ءَامَنُوا۟ وَتَطْمَئِنُّ قُلُوبُهُم بِذِكْرِ ٱللَّهِ ۗ أَلَا بِذِكْرِ ٱللَّهِ تَطْمَئِنُّ ٱلْقُلُوبُ',
 
   // ─── Doc: The Prophets (list) ───────────────────────────────────────────────
   'docProphetes.headerTitre': 'The Prophets',
@@ -1378,6 +1392,7 @@ const en: Dict = {
   'docProphete.numOf25': 'of 25',
   'docProphete.hisStory': 'His story',
   'docProphete.note': 'May peace be upon him. Every prophet conveyed the same message: worship the one Allah and do good.',
+  'docProphete.noteArabe': 'عَلَيْهِ ٱلسَّلَامُ. كُلُّ نَبِيٍّ بَلَّغَ نَفْسَ ٱلرِّسَالَةِ: عِبَادَةُ ٱللَّهِ ٱلْوَاحِدِ وَفِعْلُ ٱلْخَيْرِ',
 
   // ─── Doc: Islam ─────────────────────────────────────────────────────────────
   'docIslam.headerTitre': 'Islam',
@@ -1421,6 +1436,7 @@ const en: Dict = {
   'docIslam.s4P1Bold3': 'generosity',
   'docIslam.s4P1After': ', respect for parents and neighbors, patience, and justice. Smiling, gentleness, and mutual support are an integral part of the faith.',
   'docIslam.s4Quote': '"The best among you are those with the best character." — Prophet Muhammad ﷺ',
+  'docIslam.s4QuoteArabe': 'إِنَّ خِيَارَكُمْ أَحَاسِنُكُمْ أَخْلَاقًا',
 
   // ─── Onboarding: Splash ─────────────────────────────────────────────────────
   'splash.subtitle': 'Learn the Quran',
