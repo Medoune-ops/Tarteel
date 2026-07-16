@@ -39,7 +39,7 @@ export default function PropheteDetail() {
 
         {/* Verset cité dans l'histoire (seulement quand le récit en cite un). */}
         {p.versetArabe && verset && (
-          <Quote accent={C} arabe={p.versetArabe} arabeSize={16} arabeLineHeight={28}>{verset}</Quote>
+          <Quote accent={C} arabe={p.versetArabe} arabeSize={13} arabeLineHeight={22}>{verset}</Quote>
         )}
 
         {/* Rappel — traduction + version arabe (RTL) */}
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   para: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, color: '#3A4150', lineHeight: 24, marginBottom: 12 },
   note: { backgroundColor: '#FFF8F0', borderRadius: 14, padding: 16, borderLeftWidth: 4, borderLeftColor: C },
   noteArabe: {
-    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 14, lineHeight: 24, color: '#8A5A20',
+    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 12, lineHeight: 20, color: '#8A5A20',
     textAlign: 'right', writingDirection: 'rtl', marginBottom: 8,
   },
   noteText: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#8A5A20', lineHeight: 22 },
