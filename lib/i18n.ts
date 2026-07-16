@@ -311,6 +311,7 @@ const fr = {
   'docAblutions.s1P1Wudu': 'Wudû',
   'docAblutions.s1P1After': " (الوضوء) est la purification que le musulman accomplit avant la prière. Il nettoie le corps mais symbolise aussi la purification de l'âme et la préparation à se présenter devant Allah dans un état de propreté.",
   'docAblutions.s1Quote': '« Allah aime ceux qui se repentent et ceux qui se purifient. » (Sourate Al-Baqara, 2:222)',
+  'docAblutions.s1QuoteArabe': 'وَيَسْـَٔلُونَكَ عَنِ ٱلْمَحِيضِ ۖ قُلْ هُوَ أَذًى فَٱعْتَزِلُوا۟ ٱلنِّسَآءَ فِى ٱلْمَحِيضِ ۖ وَلَا تَقْرَبُوهُنَّ حَتَّىٰ يَطْهُرْنَ ۖ فَإِذَا تَطَهَّرْنَ فَأْتُوهُنَّ مِنْ حَيْثُ أَمَرَكُمُ ٱللَّهُ ۚ إِنَّ ٱللَّهَ يُحِبُّ ٱلتَّوَّٰبِينَ وَيُحِبُّ ٱلْمُتَطَهِّرِينَ',
   'docAblutions.s2Titre': 'Les étapes du Wudû',
   'docAblutions.step1Titre': "L'intention (niyya)",
   'docAblutions.step1Text': "Avoir l'intention dans son cœur de se purifier pour Allah, puis dire « Bismillah » (au nom d'Allah).",
@@ -348,6 +349,7 @@ const fr = {
   'docCoran.s2Titre': 'Comment a-t-il été révélé ?',
   'docCoran.s2P1': "La révélation a commencé en l'an 610, dans la grotte de Hira près de La Mecque, lorsque l'ange Jibril apparut au Prophète Muhammad ﷺ et lui dit :",
   'docCoran.s2Quote': '« Lis, au nom de ton Seigneur qui a créé. » (Sourate Al-\'Alaq, 96:1)',
+  'docCoran.s2QuoteArabe': 'ٱقْرَأْ بِٱسْمِ رَبِّكَ ٱلَّذِى خَلَقَ',
   'docCoran.s2P2': "La révélation s'est ensuite poursuivie progressivement pendant environ 23 ans, verset par verset, selon les événements et les besoins de la communauté. Les compagnons mémorisaient et notaient chaque révélation. Après le décès du Prophète ﷺ, le Coran fut rassemblé en un seul livre sous le calife Abou Bakr, puis unifié sous Othman.",
   'docCoran.s3Titre': 'Sa structure',
   'docCoran.s3P1Before': 'Le Coran est divisé en ',
@@ -412,6 +414,7 @@ const fr = {
   'docPriere.s5PBold': ' joie et amour',
   'docPriere.s5PAfter': ', pas comme une corvée. 🌸',
   'docPriere.s5Quote': '« En vérité, c\'est par le rappel d\'Allah que les cœurs se tranquillisent. » (Sourate Ar-Raʿd, 13:28)',
+  'docPriere.s5QuoteArabe': 'ٱلَّذِينَ ءَامَنُوا۟ وَتَطْمَئِنُّ قُلُوبُهُم بِذِكْرِ ٱللَّهِ ۗ أَلَا بِذِكْرِ ٱللَّهِ تَطْمَئِنُّ ٱلْقُلُوبُ',
 
   // ─── Doc : Les Prophètes (liste) ───────────────────────────────────────────
   'docProphetes.headerTitre': 'Les Prophètes',
@@ -1268,6 +1271,7 @@ const en: Dict = {
   'docAblutions.s1P1Wudu': 'Wudu',
   'docAblutions.s1P1After': ' (الوضوء) is the purification a Muslim performs before prayer. It cleanses the body but also symbolizes the purification of the soul and preparing to stand before Allah in a state of cleanliness.',
   'docAblutions.s1Quote': '"Allah loves those who repent and those who purify themselves." (Surah Al-Baqarah, 2:222)',
+  'docAblutions.s1QuoteArabe': 'وَيَسْـَٔلُونَكَ عَنِ ٱلْمَحِيضِ ۖ قُلْ هُوَ أَذًى فَٱعْتَزِلُوا۟ ٱلنِّسَآءَ فِى ٱلْمَحِيضِ ۖ وَلَا تَقْرَبُوهُنَّ حَتَّىٰ يَطْهُرْنَ ۖ فَإِذَا تَطَهَّرْنَ فَأْتُوهُنَّ مِنْ حَيْثُ أَمَرَكُمُ ٱللَّهُ ۚ إِنَّ ٱللَّهَ يُحِبُّ ٱلتَّوَّٰبِينَ وَيُحِبُّ ٱلْمُتَطَهِّرِينَ',
   'docAblutions.s2Titre': 'The steps of Wudu',
   'docAblutions.step1Titre': 'The intention (niyyah)',
   'docAblutions.step1Text': 'Intend in your heart to purify yourself for Allah, then say "Bismillah" (in the name of Allah).',
@@ -1305,6 +1309,7 @@ const en: Dict = {
   'docCoran.s2Titre': 'How was it revealed?',
   'docCoran.s2P1': 'The revelation began in the year 610, in the cave of Hira near Mecca, when the angel Jibril appeared to the Prophet Muhammad ﷺ and said to him:',
   'docCoran.s2Quote': '"Read, in the name of your Lord who created." (Surah Al-\'Alaq, 96:1)',
+  'docCoran.s2QuoteArabe': 'ٱقْرَأْ بِٱسْمِ رَبِّكَ ٱلَّذِى خَلَقَ',
   'docCoran.s2P2': "The revelation then continued gradually for about 23 years, verse by verse, according to the community's events and needs. The companions memorized and wrote down each revelation. After the Prophet's ﷺ death, the Quran was gathered into a single book under Caliph Abu Bakr, then unified under Uthman.",
   'docCoran.s3Titre': 'Its structure',
   'docCoran.s3P1Before': 'The Quran is divided into ',
@@ -1369,6 +1374,7 @@ const en: Dict = {
   'docPriere.s5PBold': ' joy and love',
   'docPriere.s5PAfter': ', not as a chore. 🌸',
   'docPriere.s5Quote': '"Verily, it is in the remembrance of Allah that hearts find peace." (Surah Ar-Ra\'d, 13:28)',
+  'docPriere.s5QuoteArabe': 'ٱلَّذِينَ ءَامَنُوا۟ وَتَطْمَئِنُّ قُلُوبُهُم بِذِكْرِ ٱللَّهِ ۗ أَلَا بِذِكْرِ ٱللَّهِ تَطْمَئِنُّ ٱلْقُلُوبُ',
 
   // ─── Doc: The Prophets (list) ───────────────────────────────────────────────
   'docProphetes.headerTitre': 'The Prophets',

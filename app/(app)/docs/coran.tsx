@@ -24,7 +24,7 @@ export default function DocCoran() {
 
         <Section titre={tr('docCoran.s2Titre')} accent={C}>
           <P>{tr('docCoran.s2P1')}</P>
-          <Quote accent={C}>{tr('docCoran.s2Quote')}</Quote>
+          <Quote accent={C} arabe={tr('docCoran.s2QuoteArabe')}>{tr('docCoran.s2Quote')}</Quote>
           <P>{tr('docCoran.s2P2')}</P>
         </Section>
 
