@@ -120,8 +120,8 @@ const s = StyleSheet.create({
   },
   quoteText: { fontFamily: 'Nunito_700Bold', fontSize: 15, lineHeight: 24, fontStyle: 'italic' },
   quoteArabe: {
-    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 24, lineHeight: 42,
-    textAlign: 'right', writingDirection: 'rtl', marginBottom: 8,
+    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 15, lineHeight: 26,
+    textAlign: 'right', writingDirection: 'rtl', marginBottom: 6,
   },
   step: { flexDirection: 'row', gap: 14, marginBottom: 14 },
   stepNum: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
