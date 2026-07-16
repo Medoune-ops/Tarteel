@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { DocHeader } from '../_components';
+import { DocHeader, Quote } from '../_components';
 import { PROPHETES, usePropheteLocalized } from '../_prophetes-data';
 import { useT } from '../../../../lib/i18n';
 
@@ -10,7 +10,7 @@ export default function PropheteDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const tr = useT();
   const p = PROPHETES.find((x) => x.id === id) ?? PROPHETES[0];
-  const { titre, histoire } = usePropheteLocalized(p);
+  const { titre, histoire, verset } = usePropheteLocalized(p);
   const numero = PROPHETES.indexOf(p) + 1;
 
   return (
@@ -36,6 +36,11 @@ export default function PropheteDetail() {
             <Text key={i} style={styles.para}>{para}</Text>
           ))}
         </View>
+
+        {/* Verset cité dans l'histoire (seulement quand le récit en cite un). */}
+        {p.versetArabe && verset && (
+          <Quote accent={C} arabe={p.versetArabe}>{verset}</Quote>
+        )}
 
         {/* Rappel */}
         <View style={styles.note}>

@@ -336,6 +336,7 @@ const fr = {
   'docAblutions.s4Titre': "L'invocation après le Wudû",
   'docAblutions.s4P1': 'À la fin des ablutions, il est recommandé de dire :',
   'docAblutions.s4Quote': '« Ash-hadu an lâ ilâha illa Llâh, wa ash-hadu anna Muhammadan ʿabduhu wa rasûluh. »\n(J\'atteste qu\'il n\'y a de divinité qu\'Allah, et que Muhammad est Son serviteur et messager.)',
+  'docAblutions.s4QuoteArabe': 'أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ',
 
   // ─── Doc : Le Coran ────────────────────────────────────────────────────────
   'docCoran.headerTitre': 'Le Saint Coran',
@@ -410,6 +411,7 @@ const fr = {
   'docPriere.s4Titre': 'La fin de la prière (Tashahhud)',
   'docPriere.s4P1': 'Après la dernière rakʿa, assis, on récite le Tashahhud puis on salue :',
   'docPriere.s4Quote': '« As-salâmu ʿalaykum wa rahmatu Llâh » (Que la paix et la miséricorde d\'Allah soient sur vous)\n— en tournant la tête à droite, puis à gauche. La prière est terminée.',
+  'docPriere.s4QuoteArabe': 'ٱلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ ٱللَّهِ',
   'docPriere.s5Titre': 'Pourquoi prier ?',
   'docPriere.s5PBefore': 'La prière purifie le cœur, rappelle Allah tout au long de la journée et apporte la sérénité. C\'est un moment de paix, de gratitude et de connexion, à vivre avec',
   'docPriere.s5PBold': ' joie et amour',
@@ -468,6 +470,7 @@ const fr = {
   'docIslam.s4P1Bold3': 'générosité',
   'docIslam.s4P1After': ', le respect des parents et des voisins, la patience et la justice. Le sourire, la douceur et l\'entraide font partie intégrante de la foi.',
   'docIslam.s4Quote': '« Les meilleurs d\'entre vous sont ceux qui ont le meilleur comportement. » — Prophète Muhammad ﷺ',
+  'docIslam.s4QuoteArabe': 'إِنَّ خِيَارَكُمْ أَحَاسِنُكُمْ أَخْلَاقًا',
 
   // ─── Onboarding : Splash ───────────────────────────────────────────────────
   'splash.subtitle': 'Apprends le Coran',
@@ -1297,6 +1300,7 @@ const en: Dict = {
   'docAblutions.s4Titre': 'The invocation after Wudu',
   'docAblutions.s4P1': 'At the end of the ablutions, it is recommended to say:',
   'docAblutions.s4Quote': '"Ash-hadu an lâ ilâha illa Llâh, wa ash-hadu anna Muhammadan ʿabduhu wa rasûluh."\n(I bear witness that there is no god but Allah, and that Muhammad is His servant and messenger.)',
+  'docAblutions.s4QuoteArabe': 'أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ',
 
   // ─── Doc: The Quran ─────────────────────────────────────────────────────────
   'docCoran.headerTitre': 'The Holy Quran',
@@ -1371,6 +1375,7 @@ const en: Dict = {
   'docPriere.s4Titre': 'The end of the prayer (Tashahhud)',
   'docPriere.s4P1': 'After the last rak\'ah, seated, one recites the Tashahhud then greets:',
   'docPriere.s4Quote': '"As-salamu alaykum wa rahmatu Llah" (May the peace and mercy of Allah be upon you)\n— turning the head to the right, then to the left. The prayer is complete.',
+  'docPriere.s4QuoteArabe': 'ٱلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ ٱللَّهِ',
   'docPriere.s5Titre': 'Why pray?',
   'docPriere.s5PBefore': 'Prayer purifies the heart, brings Allah to mind throughout the day, and brings serenity. It is a moment of peace, gratitude, and connection, to be lived with',
   'docPriere.s5PBold': ' joy and love',
@@ -1429,6 +1434,7 @@ const en: Dict = {
   'docIslam.s4P1Bold3': 'generosity',
   'docIslam.s4P1After': ', respect for parents and neighbors, patience, and justice. Smiling, gentleness, and mutual support are an integral part of the faith.',
   'docIslam.s4Quote': '"The best among you are those with the best character." — Prophet Muhammad ﷺ',
+  'docIslam.s4QuoteArabe': 'إِنَّ خِيَارَكُمْ أَحَاسِنُكُمْ أَخْلَاقًا',
 
   // ─── Onboarding: Splash ─────────────────────────────────────────────────────
   'splash.subtitle': 'Learn the Quran',
