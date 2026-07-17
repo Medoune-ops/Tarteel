@@ -339,7 +339,12 @@ export default function RevisionsScreen() {
                     </Text>
                   )}
                 </View>
-                <Text style={styles.cardVersets}>{tr('revisions.versets', { n: s.nombreVersets })}</Text>
+                <Text style={styles.cardVersets}>
+                  {tr('revisions.versets', { n: s.nombreVersets })}
+                  {s.revision && s.revision.segmentsTotal > 1
+                    ? ` · ${tr('revisions.segmentsBadge', { due: s.revision.segmentsDue, total: s.revision.segmentsTotal })}`
+                    : ''}
+                </Text>
               </View>
 
               {/* Score ring — seulement pour une sourate apprise (suivie en SRS) */}
