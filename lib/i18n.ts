@@ -225,6 +225,12 @@ const fr = {
   'finish.streakDays': 'Série de {n} jours consécutifs !',
   'finish.continue': 'Continuer',
 
+  'gift.title': 'Tu as reçu un cadeau !',
+  'gift.hearts': '{n} cœur(s)',
+  'gift.gems': '{n} gemme(s)',
+  'gift.premium': 'Tarteel Plus',
+  'gift.continue': 'Génial !',
+
   // ─── Feedback vocal (leçon) ────────────────────────────────────────────────
   'feedback.analysis': 'Analyse de ta récitation :',
   'feedback.score': 'Score',
@@ -1208,6 +1214,12 @@ const en: Dict = {
   'finish.streakDay': '{n} day streak!',
   'finish.streakDays': '{n} day streak!',
   'finish.continue': 'Continue',
+
+  'gift.title': 'You received a gift!',
+  'gift.hearts': '{n} heart(s)',
+  'gift.gems': '{n} gem(s)',
+  'gift.premium': 'Tarteel Plus',
+  'gift.continue': 'Awesome!',
 
   // ─── Voice feedback (lesson) ────────────────────────────────────────────────
   'feedback.analysis': 'Analysis of your recitation:',
