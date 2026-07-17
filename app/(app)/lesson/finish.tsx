@@ -35,7 +35,6 @@ export default function FinishScreen() {
   }>();
 
   // Valeurs affichées : par défaut, l'état courant du store (déjà hydraté).
-  const xp = useUserStore((s) => s.xp);
   const streak = useUserStore((s) => s.streak);
   const precision = useUserStore((s) => s.precision);
 
@@ -45,8 +44,11 @@ export default function FinishScreen() {
   // Précision de CETTE leçon si on a les compteurs, sinon précision globale du store.
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : precision;
 
-  // XP gagnés sur cette leçon : delta avant/après l'appel /lesson/complete.
+  // XP gagnés sur cette leçon : lus directement de la réponse serveur (pas un
+  // delta client) — c'est ce qui permet aussi de savoir si le boost ×2 était
+  // actif, une info qu'un simple diff avant/après ne peut pas donner.
   const [xpGained, setXpGained] = useState<number | null>(null);
+  const [doubleXpWasActive, setDoubleXpWasActive] = useState(false);
   // Évite un double appel (StrictMode / re-render).
   const completedRef = useRef(false);
 
@@ -54,15 +56,15 @@ export default function FinishScreen() {
     if (completedRef.current) return;
     completedRef.current = true;
     if (!params.lessonId) return; // maquette / pas de leçon réelle : rien à enregistrer
-    const xpBefore = useUserStore.getState().xp;
     completeLesson({
       lessonId: params.lessonId,
       correctAnswers: correct,
       totalAnswers: total,
       durationMs: durationMs || undefined,
     })
-      .then(() => {
-        setXpGained(useUserStore.getState().xp - xpBefore);
+      .then((data) => {
+        setXpGained(data.xpGained ?? 0);
+        setDoubleXpWasActive(!!data.doubleXpWasActive);
         // Leçon validée → parcours, classement et calendrier d'activité ont
         // changé : forcer un vrai re-fetch au prochain affichage.
         invalidate('sections');
@@ -133,7 +135,14 @@ export default function FinishScreen() {
       <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.statsCard}>
         <View style={styles.statCol}>
           <Feather name="zap" size={28} color="#E0A800" />
-          <Text style={styles.statVal}>{xpGained != null ? `+${xpGained}` : '+0'} XP</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.statVal}>{xpGained != null ? `+${xpGained}` : '+0'} XP</Text>
+            {doubleXpWasActive && (
+              <View style={styles.doubleXpBadge}>
+                <Text style={styles.doubleXpBadgeText}>×2</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.statLabel}>{tr('finish.xpGained')}</Text>
         </View>
         <View style={styles.statCol}>
@@ -183,6 +192,10 @@ const styles = StyleSheet.create({
   statCol: { alignItems: 'center' },
   statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#2A9E1C', marginTop: 4 },
   statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99' },
+  doubleXpBadge: {
+    backgroundColor: '#6B4DFF', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2,
+  },
+  doubleXpBadgeText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 13, color: '#fff' },
   streakBadge: {
     width: '100%', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 16, padding: 18,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24,

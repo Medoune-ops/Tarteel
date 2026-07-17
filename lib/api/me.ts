@@ -34,6 +34,10 @@ export interface MeResponse {
   objectif?: 'lire' | 'hifz' | 'tafsir' | 'complet';
   dailyMinutes?: number;
   voiceEnabled?: boolean;
+  /** Présents uniquement sur la réponse de POST /lesson/complete (voir completeLesson). */
+  xpGained?: number;
+  /** true si le boost ×2 XP (100 gemmes) était actif pendant CETTE complétion. */
+  doubleXpWasActive?: boolean;
 }
 
 export interface OnboardingInput {
@@ -168,4 +172,26 @@ export async function deleteAccount(password: string): Promise<void> {
   await apiFetch('/me', { method: 'DELETE', json: { password } });
   await clearTokens();
   useUserStore.getState().logout();
+}
+
+export interface PendingGift {
+  id: string;
+  kind: 'hearts' | 'gems' | 'premium';
+  amount: number;
+}
+
+/**
+ * `GET /me/pending-gift` — cadeau admin (cœurs/gemmes/premium) pas encore vu.
+ * Pollé par `app/(app)/_layout.tsx` toutes les ~15s tant que l'app est ouverte,
+ * pour déclencher la modale cadeau animée sans attendre un push (fonctionne
+ * sur Expo Go, pas de build natif requis).
+ */
+export async function fetchPendingGift(): Promise<PendingGift | null> {
+  const data = await apiFetch<{ gift: PendingGift | null }>('/me/pending-gift');
+  return data.gift;
+}
+
+/** `POST /me/pending-gift/:id/ack` — marque le cadeau vu, pour ne jamais rejouer son animation. */
+export async function ackPendingGift(giftId: string): Promise<void> {
+  await apiFetch(`/me/pending-gift/${giftId}/ack`, { method: 'POST' });
 }
