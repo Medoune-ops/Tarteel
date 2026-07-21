@@ -31,6 +31,19 @@ export async function subscribePremium(
   return res;
 }
 
+/**
+ * POST /billing/cancel — annule l'abonnement premium PERSONNEL (effet
+ * immédiat). Si le premium de l'utilisateur vient uniquement d'un plan
+ * familial, le serveur refuse (409) — il doit quitter le foyer à la place.
+ */
+export async function cancelSubscription(): Promise<{ isPremium: boolean; premiumUntil: string | null }> {
+  const res = await apiFetch<{ isPremium: boolean; premiumUntil: string | null }>('/billing/cancel', {
+    method: 'POST',
+  });
+  await fetchMe(); // isPremium désormais servi par le serveur
+  return res;
+}
+
 /** POST /billing/repair-streak — restaure la série cassée (payant). */
 export async function repairStreak(): Promise<{ streak: number }> {
   const res = await apiFetch<{ streak: number }>('/billing/repair-streak', {
