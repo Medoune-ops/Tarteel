@@ -214,6 +214,14 @@ const fr = {
   'revisions.etat.difficile': '⚡ Difficile',
   'revisions.etat.nonApprise': 'Non apprise',
   'revisions.segmentsBadge': '{due}/{total} blocs à réviser',
+  'revisions.tabGuidee': 'Révision guidée',
+  'revisions.tabLibre': 'Révision libre',
+  'revisions.guidedBadge': 'Chaînage progressif',
+  'revisions.guidedStepPreview': 'Nouveaux versets {debut}-{fin} à consolider',
+  'revisions.guidedDone': 'Chaînage de {nom} terminé — récite-la en entier !',
+  'revisions.guidedRestart': 'Revoir',
+  'revisions.guidedNoneTitle': 'Aucune sourate en cours',
+  'revisions.guidedNoneSub': 'Termine une leçon dans le parcours pour démarrer ta révision guidée.',
 
   // ─── Écran de fin de leçon ─────────────────────────────────────────────────
   'finish.title': 'Leçon terminée !',
@@ -619,6 +627,20 @@ const fr = {
   'flashcard.replayAudio': 'Réécouter',
   'flashcard.noAudioFallback': 'Audio indisponible pour ce verset — texte affiché à la place.',
   'flashcard.clozeHint': 'Complète les mots manquants de mémoire',
+
+  // ─── Révision guidée (chaînage progressif) ─────────────────────────────────
+  'guided.loadError': 'Impossible de charger la révision guidée.',
+  'guided.doneTitle': 'Chaînage terminé !',
+  'guided.doneSub': 'Tu as assemblé toute la sourate {nom} d\'un bloc. Bravo !',
+  'guided.progress': '{done}/{total} leçons consolidées',
+  'guided.consolidatedBadge': 'Déjà maîtrisé',
+  'guided.newBadge': 'Nouveau',
+  'guided.assembleTitle': 'Prêt à assembler ?',
+  'guided.recording': 'Récite le bloc entier…',
+  'guided.stopAndSend': "J'ai terminé",
+  'guided.startAssemble': 'Commencer',
+  'guided.selfAssessPrompt': "Comment tu t'es senti ?",
+  'guided.continue': 'Continuer',
 
   // ─── Setup : Plan ──────────────────────────────────────────────────────────
   'plan.title': 'Ton plan est prêt !',
@@ -1204,6 +1226,14 @@ const en: Dict = {
   'revisions.etat.difficile': '⚡ Difficult',
   'revisions.etat.nonApprise': 'Not learned',
   'revisions.segmentsBadge': '{due}/{total} blocks to review',
+  'revisions.tabGuidee': 'Guided review',
+  'revisions.tabLibre': 'Free review',
+  'revisions.guidedBadge': 'Progressive chaining',
+  'revisions.guidedStepPreview': 'New verses {debut}-{fin} to consolidate',
+  'revisions.guidedDone': '{nom} chaining complete — recite it all in one go!',
+  'revisions.guidedRestart': 'Review again',
+  'revisions.guidedNoneTitle': 'No sourate in progress',
+  'revisions.guidedNoneSub': 'Finish a lesson in the learning path to start your guided review.',
 
   // ─── Lesson finish screen ───────────────────────────────────────────────────
   'finish.title': 'Lesson complete!',
@@ -1609,6 +1639,20 @@ const en: Dict = {
   'flashcard.replayAudio': 'Replay',
   'flashcard.noAudioFallback': 'Audio unavailable for this verse — showing text instead.',
   'flashcard.clozeHint': 'Fill in the missing words from memory',
+
+  // ─── Guided review (progressive chaining) ──────────────────────────────────
+  'guided.loadError': 'Could not load the guided review.',
+  'guided.doneTitle': 'Chaining complete!',
+  'guided.doneSub': 'You assembled all of {nom} in one go. Well done!',
+  'guided.progress': '{done}/{total} lessons consolidated',
+  'guided.consolidatedBadge': 'Already mastered',
+  'guided.newBadge': 'New',
+  'guided.assembleTitle': 'Ready to assemble?',
+  'guided.recording': 'Recite the whole block…',
+  'guided.stopAndSend': "I'm done",
+  'guided.startAssemble': 'Start',
+  'guided.selfAssessPrompt': 'How did that feel?',
+  'guided.continue': 'Continue',
 
   // ─── Setup: Plan ────────────────────────────────────────────────────────────
   'plan.title': 'Your plan is ready!',

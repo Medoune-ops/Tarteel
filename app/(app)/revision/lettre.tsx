@@ -11,6 +11,7 @@ import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../.
 import { playRemoteAudio, stopRemoteAudio } from '../../../constants/sounds';
 import { getLetterSound } from '../../../constants/letterSounds';
 import type { DiscoveryStep } from '../../../constants/lessonEngine';
+import ArabicText from '../../../components/ArabicText';
 import { useTheme } from '../../../utils/useTheme';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useT, t } from '../../../lib/i18n';
@@ -356,7 +357,7 @@ export default function LettreRevisionScreen() {
             phase === 'wrong' && styles.cardKo,
           ]}
         >
-          <Text style={[styles.arabe, { color: T.text }]}>{card.arabe}</Text>
+          <ArabicText style={[styles.arabe, { color: T.text }]} harakatColor={T.isDark ? '#B9A8FF' : '#6B4DFF'}>{card.arabe}</ArabicText>
           {showAnswer && (
             <>
               <Text style={styles.translit}>{card.translitteration}</Text>
@@ -439,7 +440,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#FF4B4B',
     textAlign: 'center', paddingHorizontal: 12,
   },
-  arabe: { fontSize: 84, lineHeight: 120, textAlign: 'center' },
+  arabe: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 84, lineHeight: 120, textAlign: 'center' },
   translit: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#6B4DFF' },
   traduction: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, textAlign: 'center' },
   audioBtn: {

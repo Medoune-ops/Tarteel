@@ -23,11 +23,12 @@ export type { GemsStatus, GemLedgerEntry, GemPackId } from './gems';
 export type { PodiumEntry, LigueTier } from './rewards';
 export {
   reciteVerset, reciteVersetRange, reciteLessonStep, fetchRevisions, fetchSourateSegments,
-  reviewSegment, fetchLettreRevisions, reviewLettre, reciteLettreStep,
+  reviewSegment, reviewSourate, fetchGuidedRevision, advanceGuidedRevision,
+  fetchLettreRevisions, reviewLettre, reciteLettreStep,
 } from './revision';
 export type {
   ReciteVersetResult, ReciteStepResult, SourateRevisionView, SegmentRevisionView,
-  SourateSegmentsView, RevisionQuality, LettreRevisionView,
+  SourateSegmentsView, RevisionQuality, LettreRevisionView, GuidedRevisionView,
 } from './revision';
 export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';
 export { bootstrapSession } from './session';

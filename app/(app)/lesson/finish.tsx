@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Otter from '../../../components/Otter';
 import Confetti from '../../../components/Confetti';
+import CountUp from '../../../components/CountUp';
 import { playSound } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
 import { completeLesson } from '../../../lib/api';
@@ -63,6 +64,7 @@ export default function FinishScreen() {
       durationMs: durationMs || undefined,
     })
       .then((data) => {
+        console.log('[finish] completeLesson OK', data);
         setXpGained(data.xpGained ?? 0);
         setDoubleXpWasActive(!!data.doubleXpWasActive);
         // Leçon validée → parcours, classement et calendrier d'activité ont
@@ -71,7 +73,10 @@ export default function FinishScreen() {
         invalidate('league');
         invalidate(`activity:${new Date().toISOString().slice(0, 7)}`);
       })
-      .catch(() => { /* hors-ligne : la progression reste locale, resync au prochain /me */ });
+      .catch((err) => {
+        console.log('[finish] completeLesson FAILED', err);
+        /* hors-ligne : la progression reste locale, resync au prochain /me */
+      });
   }, []);
 
   const otterScale = useSharedValue(0);
@@ -95,13 +100,13 @@ export default function FinishScreen() {
       ),
     );
     levelProgress.value = withDelay(
-      600,
+      1150,
       withTiming(LEVEL_TARGET, { duration: 900, easing: Easing.out(Easing.cubic) }),
     );
 
     // Fanfare de fin à l'apparition + petit "tick" quand la barre de niveau démarre.
     playSound('finish');
-    const tick = setTimeout(() => playSound('progress'), 620);
+    const tick = setTimeout(() => playSound('progress'), 1170);
     return () => clearTimeout(tick);
   }, []);
 
@@ -131,12 +136,21 @@ export default function FinishScreen() {
         {tr('finish.title')}
       </Animated.Text>
 
-      {/* Stats */}
-      <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.statsCard}>
-        <View style={styles.statCol}>
-          <Feather name="zap" size={28} color="#E0A800" />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.statVal}>{xpGained != null ? `+${xpGained}` : '+0'} XP</Text>
+      {/* Stats — chaque colonne apparaît en séquence, puis sa valeur défile indépendamment */}
+      <View style={styles.statsCard}>
+        <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.statCol}>
+          <View style={[styles.statIconWrap, { backgroundColor: '#FFF3D6' }]}>
+            <Feather name="zap" size={24} color="#E0A800" />
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+            <CountUp
+              value={xpGained ?? 0}
+              prefix="+"
+              suffix=" XP"
+              delay={550}
+              duration={850}
+              style={styles.statVal}
+            />
             {doubleXpWasActive && (
               <View style={styles.doubleXpBadge}>
                 <Text style={styles.doubleXpBadgeText}>×2</Text>
@@ -144,21 +158,37 @@ export default function FinishScreen() {
             )}
           </View>
           <Text style={styles.statLabel}>{tr('finish.xpGained')}</Text>
-        </View>
-        <View style={styles.statCol}>
-          <Feather name="target" size={28} color="#E0584F" />
-          <Text style={styles.statVal}>{accuracy}%</Text>
+        </Animated.View>
+        <View style={styles.statDivider} />
+        <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.statCol}>
+          <View style={[styles.statIconWrap, { backgroundColor: '#FCE4E2' }]}>
+            <Feather name="target" size={24} color="#E0584F" />
+          </View>
+          <CountUp value={accuracy} suffix="%" delay={700} duration={850} style={[styles.statVal, { marginTop: 10 }]} />
           <Text style={styles.statLabel}>{tr('finish.accuracy')}</Text>
-        </View>
-        <View style={styles.statCol}>
-          <Feather name="clock" size={28} color="#6B7280" />
-          <Text style={styles.statVal}>{durationMs > 0 ? formatDuration(durationMs) : '—'}</Text>
+        </Animated.View>
+        <View style={styles.statDivider} />
+        <Animated.View entering={FadeInDown.delay(750).springify()} style={styles.statCol}>
+          <View style={[styles.statIconWrap, { backgroundColor: '#EBEDF0' }]}>
+            <Feather name="clock" size={24} color="#6B7280" />
+          </View>
+          {durationMs > 0 ? (
+            <CountUp
+              value={durationMs}
+              format={formatDuration}
+              delay={850}
+              duration={850}
+              style={[styles.statVal, { marginTop: 10 }]}
+            />
+          ) : (
+            <Text style={[styles.statVal, { marginTop: 10 }]}>—</Text>
+          )}
           <Text style={styles.statLabel}>{tr('finish.duration')}</Text>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
 
       {/* Streak */}
-      <Animated.View entering={FadeInDown.delay(650).springify()} style={styles.streakBadge}>
+      <Animated.View entering={FadeInDown.delay(1000).springify()} style={styles.streakBadge}>
         <Text style={{ fontSize: 20 }}>🔥</Text>
         <Text style={styles.streakText}>
           {streak > 0 ? tr(streak > 1 ? 'finish.streakDays' : 'finish.streakDay', { n: streak }) : tr('finish.streakStart')}
@@ -166,13 +196,13 @@ export default function FinishScreen() {
       </Animated.View>
 
       {/* Niveau */}
-      <Animated.View entering={FadeInDown.delay(800)} style={styles.levelTrack}>
+      <Animated.View entering={FadeInDown.delay(1150)} style={styles.levelTrack}>
         <Animated.View style={[styles.levelFill, levelStyle]} />
       </Animated.View>
 
       <View style={{ flex: 1 }} />
 
-      <Animated.View entering={FadeInDown.delay(950).springify()} style={{ width: '100%' }}>
+      <Animated.View entering={FadeInDown.delay(1300).springify()} style={{ width: '100%' }}>
         <Pressable style={styles.cta} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
           <Text style={styles.ctaLabel}>{tr('finish.continue')}</Text>
         </Pressable>
@@ -187,11 +217,17 @@ const styles = StyleSheet.create({
   title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 38, color: '#fff', textAlign: 'center', marginTop: 18 },
   statsCard: {
     width: '100%', backgroundColor: 'rgba(255,255,255,0.96)', borderRadius: 22, padding: 24,
-    flexDirection: 'row', justifyContent: 'space-around', marginTop: 28,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginTop: 28,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 6,
   },
-  statCol: { alignItems: 'center' },
-  statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#2A9E1C', marginTop: 4 },
-  statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99' },
+  statCol: { alignItems: 'center', flex: 1 },
+  statIconWrap: {
+    width: 48, height: 48, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  statDivider: { width: 1, height: 48, backgroundColor: '#EDEDF2' },
+  statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#1B2333' },
+  statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99', marginTop: 2 },
   doubleXpBadge: {
     backgroundColor: '#6B4DFF', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2,
   },

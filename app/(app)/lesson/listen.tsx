@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
+import ArabicText from '../../../components/ArabicText';
 import { useT } from '../../../lib/i18n';
 
 const SPEEDS = ['0.5', '0.75', '1', '1.5'];
@@ -19,7 +20,7 @@ export default function ListenScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Verset */}
         <View style={styles.verseCard}>
-          <Text style={styles.arabic}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
+          <ArabicText style={styles.arabic}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</ArabicText>
           <Text style={styles.translation}>{tr('listen.translation')}</Text>
         </View>
 

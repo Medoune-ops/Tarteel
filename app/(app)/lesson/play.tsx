@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming,
 } from 'react-native-reanimated';
 import LessonHeader from '../../../components/LessonHeader';
+import ArabicText from '../../../components/ArabicText';
 import { useUserStore } from '../../../store/userStore';
 import {
   type Lesson,
@@ -439,7 +440,7 @@ function DiscoveryView({
         )}
 
         <View style={styles.verseCard}>
-          <Text style={styles.arabic}>{step.arabe}</Text>
+          <ArabicText style={styles.arabic}>{step.arabe}</ArabicText>
           <Text style={styles.translit}>{step.translitteration}</Text>
           <Text style={styles.traduction}>{step.traduction}</Text>
         </View>
@@ -523,7 +524,7 @@ function WrittenView({
 
         <Text style={styles.consigne}>{step.consigne}</Text>
         <View style={styles.wordCard}>
-          <Text style={styles.arabicSmall}>{step.arabe}</Text>
+          <ArabicText style={styles.arabicSmall}>{step.arabe}</ArabicText>
           {!!step.translitteration && <Text style={styles.translit}>{step.translitteration}</Text>}
         </View>
 
@@ -901,7 +902,7 @@ function VoiceView({
         <Text style={styles.consigne}>{step.consigne ?? t('play.reciteDefault')}</Text>
 
         <View style={styles.verseCard}>
-          <Text style={styles.arabic}>{step.arabe}</Text>
+          <ArabicText style={styles.arabic}>{step.arabe}</ArabicText>
           {!!step.translitteration && <Text style={styles.translit}>{step.translitteration}</Text>}
           {!!step.traduction && <Text style={styles.traduction}>{step.traduction}</Text>}
         </View>
