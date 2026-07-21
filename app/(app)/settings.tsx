@@ -6,7 +6,7 @@ import Otter from '../../components/Otter';
 import Toggle from '../../components/Toggle';
 import { useUserStore } from '../../store/userStore';
 import { useTheme } from '../../utils/useTheme';
-import { logout, updateSettings, cancelSubscription, ApiError } from '../../lib/api';
+import { logout, updateSettings } from '../../lib/api';
 import { fetchNotificationPrefs, updateNotificationPrefs } from '../../lib/api/notifications';
 import { useT } from '../../lib/i18n';
 
@@ -82,7 +82,6 @@ export default function SettingsScreen() {
   const langue = LANGUES[language];
   const T = useTheme();
   const tr = useT();
-  const [cancelling, setCancelling] = useState(false);
 
   const confirmLogout = () => {
     Alert.alert(tr('settings.logout'), tr('settings.logoutConfirm'), [
@@ -93,32 +92,6 @@ export default function SettingsScreen() {
         onPress: async () => {
           await logout();
           router.replace('/(onboarding)/signup');
-        },
-      },
-    ]);
-  };
-
-  const confirmCancelSubscription = () => {
-    Alert.alert(tr('settings.cancelPremiumTitle'), tr('settings.cancelPremiumConfirm'), [
-      { text: tr('common.cancel'), style: 'cancel' },
-      {
-        text: tr('settings.cancelPremiumConfirmBtn'),
-        style: 'destructive',
-        onPress: async () => {
-          setCancelling(true);
-          try {
-            await cancelSubscription();
-          } catch (e) {
-            // Premium venant uniquement d'un plan familial : rien à annuler
-            // ici, il faut quitter le foyer (écran dédié) pour le perdre.
-            const familyOnly = e instanceof ApiError && e.code === 'NO_PERSONAL_SUBSCRIPTION';
-            Alert.alert(
-              tr('settings.cancelPremiumErrorTitle'),
-              familyOnly ? tr('settings.cancelPremiumFamilyOnly') : tr('settings.cancelPremiumError'),
-            );
-          } finally {
-            setCancelling(false);
-          }
         },
       },
     ]);
@@ -217,17 +190,6 @@ export default function SettingsScreen() {
           </View>
           <Feather name="chevron-right" size={22} color="#fff" />
         </Pressable>
-        {isPremium && (
-          <Pressable
-            style={[styles.cancelPremiumRow, cancelling && styles.rowDisabled]}
-            onPress={confirmCancelSubscription}
-            disabled={cancelling}
-          >
-            <Text style={styles.cancelPremiumText}>
-              {cancelling ? tr('settings.cancelPremiumInProgress') : tr('settings.cancelPremiumBtn')}
-            </Text>
-          </Pressable>
-        )}
 
         {/* CONFIDENTIALITÉ */}
         <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionPrivacy')}</Text>
@@ -353,7 +315,4 @@ const styles = StyleSheet.create({
   },
   premiumTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#fff' },
   premiumSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
-  cancelPremiumRow: { alignItems: 'center', paddingVertical: 14 },
-  rowDisabled: { opacity: 0.5 },
-  cancelPremiumText: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#E03434' },
 });
