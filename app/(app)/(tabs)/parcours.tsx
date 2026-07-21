@@ -12,7 +12,7 @@ import DeviceStatusBar from '../../../components/StatusBar';
 import { MosqueIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
 import { useTheme } from '../../../utils/useTheme';
-import type { ThemeColors } from '../../../constants/colors';
+import { Colors, type ThemeColors } from '../../../constants/colors';
 import {
   type ParcoursNode,
   type ParcoursSection,
@@ -233,9 +233,13 @@ function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?
 // ─── Panorama de La Mecque en arrière-plan ────────────────────────────────────
 // memo : ~250 éléments SVG — on ne le re-rend JAMAIS tant que la taille/le
 // thème ne changent pas (sinon chaque setState de l'écran redessine tout).
-const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowColor, opacity }: { width: number; height: number; color: string; shadowColor: string; opacity: number }) {
+const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowColor, opacity, lit }: { width: number; height: number; color: string; shadowColor: string; opacity: number; lit?: boolean }) {
   const c = color;       // couleur des traits
   const op = opacity;    // opacité globale
+  // Premium : la lune et les étoiles du ciel s'allument (couleur dorée, plus
+  // opaques) — le reste du panorama (sol, minarets, tour) ne change pas.
+  const cel = lit ? Colors.gold : c;
+  const bo = (base: number) => (lit ? Math.min(1, base + 0.25) : base);
 
   // viewBox 400×700 — on étire sur toute la surface
   return (
@@ -252,105 +256,105 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
 
       {/* ── GROSSE LUNE — haut droite ── */}
       {/* halo diffus */}
-      <Circle cx={340} cy={90} r={58} fill={c} opacity={0.10} />
-      <Circle cx={340} cy={90} r={50} fill={c} opacity={0.15} />
+      <Circle cx={340} cy={90} r={58} fill={cel} opacity={bo(0.10)} />
+      <Circle cx={340} cy={90} r={50} fill={cel} opacity={bo(0.15)} />
       {/* disque principal */}
-      <Circle cx={340} cy={90} r={44} fill={c} opacity={0.72} />
+      <Circle cx={340} cy={90} r={44} fill={cel} opacity={bo(0.72)} />
       {/* ombre (cratère lunaire simulé — disque décalé pour effet croissant partiel) */}
-      <Circle cx={354} cy={82} r={38} fill={shadowColor} opacity={0.85} />
+      <Circle cx={354} cy={82} r={38} fill={shadowColor} opacity={bo(0.85)} />
       {/* cratères légers */}
-      <Circle cx={318} cy={70}  r={5}   fill={c} opacity={0.25} />
-      <Circle cx={326} cy={100} r={3.5} fill={c} opacity={0.20} />
-      <Circle cx={308} cy={88}  r={4}   fill={c} opacity={0.22} />
-      <Circle cx={322} cy={58}  r={2.5} fill={c} opacity={0.18} />
+      <Circle cx={318} cy={70}  r={5}   fill={cel} opacity={bo(0.25)} />
+      <Circle cx={326} cy={100} r={3.5} fill={cel} opacity={bo(0.20)} />
+      <Circle cx={308} cy={88}  r={4}   fill={cel} opacity={bo(0.22)} />
+      <Circle cx={322} cy={58}  r={2.5} fill={cel} opacity={bo(0.18)} />
 
       {/* ── Croissants (14 total) ── */}
-      <Path d="M42 48  A28 28 0 1 0 42 104  A20 20 0 1 1 42 48  Z" fill={c} opacity={0.92} />
-      <Path d="M148 32 A16 16 0 1 0 148 64  A11 11 0 1 1 148 32 Z" fill={c} opacity={0.82} />
-      <Path d="M310 28 A22 22 0 1 0 310 72  A15 15 0 1 1 310 28 Z" fill={c} opacity={0.88} />
-      <Path d="M368 90 A14 14 0 1 0 368 118 A10 10 0 1 1 368 90 Z" fill={c} opacity={0.78} />
-      <Path d="M210 10 A18 18 0 1 0 210 46  A12 12 0 1 1 210 10 Z" fill={c} opacity={0.80} />
-      <Path d="M264 55 A12 12 0 1 0 264 79  A8  8  0 1 1 264 55 Z" fill={c} opacity={0.75} />
-      <Path d="M18  130 A10 10 0 1 0 18  150 A7  7  0 1 1 18  130 Z" fill={c} opacity={0.72} />
-      <Path d="M356 140 A13 13 0 1 0 356 166 A9  9  0 1 1 356 140 Z" fill={c} opacity={0.74} />
+      <Path d="M42 48  A28 28 0 1 0 42 104  A20 20 0 1 1 42 48  Z" fill={cel} opacity={bo(0.92)} />
+      <Path d="M148 32 A16 16 0 1 0 148 64  A11 11 0 1 1 148 32 Z" fill={cel} opacity={bo(0.82)} />
+      <Path d="M310 28 A22 22 0 1 0 310 72  A15 15 0 1 1 310 28 Z" fill={cel} opacity={bo(0.88)} />
+      <Path d="M368 90 A14 14 0 1 0 368 118 A10 10 0 1 1 368 90 Z" fill={cel} opacity={bo(0.78)} />
+      <Path d="M210 10 A18 18 0 1 0 210 46  A12 12 0 1 1 210 10 Z" fill={cel} opacity={bo(0.80)} />
+      <Path d="M264 55 A12 12 0 1 0 264 79  A8  8  0 1 1 264 55 Z" fill={cel} opacity={bo(0.75)} />
+      <Path d="M18  130 A10 10 0 1 0 18  150 A7  7  0 1 1 18  130 Z" fill={cel} opacity={bo(0.72)} />
+      <Path d="M356 140 A13 13 0 1 0 356 166 A9  9  0 1 1 356 140 Z" fill={cel} opacity={bo(0.74)} />
       {/* nouveaux croissants */}
-      <Path d="M88  160 A11 11 0 1 0 88  182 A7.5 7.5 0 1 1 88  160 Z" fill={c} opacity={0.70} />
-      <Path d="M320 160 A10 10 0 1 0 320 180 A7  7  0 1 1 320 160 Z" fill={c} opacity={0.68} />
-      <Path d="M6   30  A9  9  0 1 0 6   48  A6  6  0 1 1 6   30  Z" fill={c} opacity={0.70} />
-      <Path d="M390 170 A9  9  0 1 0 390 188 A6  6  0 1 1 390 170 Z" fill={c} opacity={0.65} />
-      <Path d="M176 175 A10 10 0 1 0 176 195 A7  7  0 1 1 176 175 Z" fill={c} opacity={0.65} />
-      <Path d="M240 195 A8  8  0 1 0 240 211 A5.5 5.5 0 1 1 240 195 Z" fill={c} opacity={0.60} />
+      <Path d="M88  160 A11 11 0 1 0 88  182 A7.5 7.5 0 1 1 88  160 Z" fill={cel} opacity={bo(0.70)} />
+      <Path d="M320 160 A10 10 0 1 0 320 180 A7  7  0 1 1 320 160 Z" fill={cel} opacity={bo(0.68)} />
+      <Path d="M6   30  A9  9  0 1 0 6   48  A6  6  0 1 1 6   30  Z" fill={cel} opacity={bo(0.70)} />
+      <Path d="M390 170 A9  9  0 1 0 390 188 A6  6  0 1 1 390 170 Z" fill={cel} opacity={bo(0.65)} />
+      <Path d="M176 175 A10 10 0 1 0 176 195 A7  7  0 1 1 176 175 Z" fill={cel} opacity={bo(0.65)} />
+      <Path d="M240 195 A8  8  0 1 0 240 211 A5.5 5.5 0 1 1 240 195 Z" fill={cel} opacity={bo(0.60)} />
 
       {/* ── Étoiles à 5 branches (20 total) ── */}
-      <Path d="M78  52  L80 46  L82 52  L88 52  L83 56  L85 62  L80 58  L75 62  L77 56  L72 52  Z" fill={c} opacity={0.90} />
-      <Path d="M94  78  L95.5 73 L97 78  L102 78 L98 81  L99.5 86 L95.5 83 L91.5 86 L93 81  L89 78  Z" fill={c} opacity={0.78} />
-      <Path d="M184 52  L186 47 L188 52 L193 52 L189 55 L190.5 60 L186 57 L181.5 60 L183 55 L179 52 Z" fill={c} opacity={0.76} />
-      <Path d="M128 72  L129.5 67 L131 72 L136 72 L132 75 L133.5 80 L129.5 77 L125.5 80 L127 75 L123 72 Z" fill={c} opacity={0.72} />
-      <Path d="M342 34  L344 28 L346 34 L352 34 L347 38 L349 44 L344 40 L339 44 L341 38 L336 34 Z" fill={c} opacity={0.82} />
-      <Path d="M356 68  L357.5 63 L359 68 L364 68 L360 71 L361.5 76 L357.5 73 L353.5 76 L355 71 L351 68 Z" fill={c} opacity={0.72} />
-      <Path d="M196 14  L197.5 9  L199 14 L204 14 L200 17 L201.5 22 L197.5 19 L193.5 22 L195 17 L191 14 Z" fill={c} opacity={0.72} />
-      <Path d="M238 30  L239.5 25 L241 30 L246 30 L242 33 L243.5 38 L239.5 35 L235.5 38 L237 33 L233 30 Z" fill={c} opacity={0.68} />
-      <Path d="M382 58  L383.5 53 L385 58 L390 58 L386 61 L387.5 66 L383.5 63 L379.5 66 L381 61 L377 58 Z" fill={c} opacity={0.70} />
-      <Path d="M36  148 L37.5 143 L39 148 L44 148 L40 151 L41.5 156 L37.5 153 L33.5 156 L35 151 L31 148 Z" fill={c} opacity={0.68} />
-      <Path d="M166 110 L167.5 105 L169 110 L174 110 L170 113 L171.5 118 L167.5 115 L163.5 118 L165 113 L161 110 Z" fill={c} opacity={0.65} />
-      <Path d="M290 95  L291.5 90 L293 95 L298 95 L294 98 L295.5 103 L291.5 100 L287.5 103 L289 98 L285 95 Z" fill={c} opacity={0.65} />
+      <Path d="M78  52  L80 46  L82 52  L88 52  L83 56  L85 62  L80 58  L75 62  L77 56  L72 52  Z" fill={cel} opacity={bo(0.90)} />
+      <Path d="M94  78  L95.5 73 L97 78  L102 78 L98 81  L99.5 86 L95.5 83 L91.5 86 L93 81  L89 78  Z" fill={cel} opacity={bo(0.78)} />
+      <Path d="M184 52  L186 47 L188 52 L193 52 L189 55 L190.5 60 L186 57 L181.5 60 L183 55 L179 52 Z" fill={cel} opacity={bo(0.76)} />
+      <Path d="M128 72  L129.5 67 L131 72 L136 72 L132 75 L133.5 80 L129.5 77 L125.5 80 L127 75 L123 72 Z" fill={cel} opacity={bo(0.72)} />
+      <Path d="M342 34  L344 28 L346 34 L352 34 L347 38 L349 44 L344 40 L339 44 L341 38 L336 34 Z" fill={cel} opacity={bo(0.82)} />
+      <Path d="M356 68  L357.5 63 L359 68 L364 68 L360 71 L361.5 76 L357.5 73 L353.5 76 L355 71 L351 68 Z" fill={cel} opacity={bo(0.72)} />
+      <Path d="M196 14  L197.5 9  L199 14 L204 14 L200 17 L201.5 22 L197.5 19 L193.5 22 L195 17 L191 14 Z" fill={cel} opacity={bo(0.72)} />
+      <Path d="M238 30  L239.5 25 L241 30 L246 30 L242 33 L243.5 38 L239.5 35 L235.5 38 L237 33 L233 30 Z" fill={cel} opacity={bo(0.68)} />
+      <Path d="M382 58  L383.5 53 L385 58 L390 58 L386 61 L387.5 66 L383.5 63 L379.5 66 L381 61 L377 58 Z" fill={cel} opacity={bo(0.70)} />
+      <Path d="M36  148 L37.5 143 L39 148 L44 148 L40 151 L41.5 156 L37.5 153 L33.5 156 L35 151 L31 148 Z" fill={cel} opacity={bo(0.68)} />
+      <Path d="M166 110 L167.5 105 L169 110 L174 110 L170 113 L171.5 118 L167.5 115 L163.5 118 L165 113 L161 110 Z" fill={cel} opacity={bo(0.65)} />
+      <Path d="M290 95  L291.5 90 L293 95 L298 95 L294 98 L295.5 103 L291.5 100 L287.5 103 L289 98 L285 95 Z" fill={cel} opacity={bo(0.65)} />
       {/* nouvelles étoiles */}
-      <Path d="M50  170 L51.5 165 L53 170 L58 170 L54 173 L55.5 178 L51.5 175 L47.5 178 L49 173 L45 170 Z" fill={c} opacity={0.65} />
-      <Path d="M330 180 L331.5 175 L333 180 L338 180 L334 183 L335.5 188 L331.5 185 L327.5 188 L329 183 L325 180 Z" fill={c} opacity={0.62} />
-      <Path d="M112 190 L113.5 185 L115 190 L120 190 L116 193 L117.5 198 L113.5 195 L109.5 198 L111 193 L107 190 Z" fill={c} opacity={0.60} />
-      <Path d="M270 165 L271.5 160 L273 165 L278 165 L274 168 L275.5 173 L271.5 170 L267.5 173 L269 168 L265 165 Z" fill={c} opacity={0.62} />
-      <Path d="M14  60  L15.5 55  L17 60  L22 60  L18 63  L19.5 68  L15.5 65  L11.5 68  L13 63  L9  60  Z" fill={c} opacity={0.68} />
-      <Path d="M394 50  L395.5 45 L397 50 L400 50 L397 53 L398.5 58 L395.5 55 L392 58 L393.5 53 L390 50 Z" fill={c} opacity={0.65} />
-      <Path d="M154 140 L155.5 135 L157 140 L162 140 L158 143 L159.5 148 L155.5 145 L151.5 148 L153 143 L149 140 Z" fill={c} opacity={0.60} />
-      <Path d="M246 130 L247.5 125 L249 130 L254 130 L250 133 L251.5 138 L247.5 135 L243.5 138 L245 133 L241 130 Z" fill={c} opacity={0.62} />
+      <Path d="M50  170 L51.5 165 L53 170 L58 170 L54 173 L55.5 178 L51.5 175 L47.5 178 L49 173 L45 170 Z" fill={cel} opacity={bo(0.65)} />
+      <Path d="M330 180 L331.5 175 L333 180 L338 180 L334 183 L335.5 188 L331.5 185 L327.5 188 L329 183 L325 180 Z" fill={cel} opacity={bo(0.62)} />
+      <Path d="M112 190 L113.5 185 L115 190 L120 190 L116 193 L117.5 198 L113.5 195 L109.5 198 L111 193 L107 190 Z" fill={cel} opacity={bo(0.60)} />
+      <Path d="M270 165 L271.5 160 L273 165 L278 165 L274 168 L275.5 173 L271.5 170 L267.5 173 L269 168 L265 165 Z" fill={cel} opacity={bo(0.62)} />
+      <Path d="M14  60  L15.5 55  L17 60  L22 60  L18 63  L19.5 68  L15.5 65  L11.5 68  L13 63  L9  60  Z" fill={cel} opacity={bo(0.68)} />
+      <Path d="M394 50  L395.5 45 L397 50 L400 50 L397 53 L398.5 58 L395.5 55 L392 58 L393.5 53 L390 50 Z" fill={cel} opacity={bo(0.65)} />
+      <Path d="M154 140 L155.5 135 L157 140 L162 140 L158 143 L159.5 148 L155.5 145 L151.5 148 L153 143 L149 140 Z" fill={cel} opacity={bo(0.60)} />
+      <Path d="M246 130 L247.5 125 L249 130 L254 130 L250 133 L251.5 138 L247.5 135 L243.5 138 L245 133 L241 130 Z" fill={cel} opacity={bo(0.62)} />
 
       {/* ── Points lumineux (45 total) ── */}
-      <Circle cx={65}  cy={38}  r={2.8} fill={c} opacity={0.82} />
-      <Circle cx={100} cy={44}  r={2.2} fill={c} opacity={0.75} />
-      <Circle cx={112} cy={62}  r={1.8} fill={c} opacity={0.70} />
-      <Circle cx={54}  cy={122} r={2.0} fill={c} opacity={0.70} />
-      <Circle cx={174} cy={38}  r={2.4} fill={c} opacity={0.78} />
-      <Circle cx={168} cy={26}  r={1.8} fill={c} opacity={0.72} />
-      <Circle cx={300} cy={22}  r={2.6} fill={c} opacity={0.78} />
-      <Circle cx={330} cy={16}  r={2.0} fill={c} opacity={0.72} />
-      <Circle cx={360} cy={52}  r={2.2} fill={c} opacity={0.70} />
-      <Circle cx={372} cy={30}  r={1.8} fill={c} opacity={0.68} />
-      <Circle cx={390} cy={96}  r={1.9} fill={c} opacity={0.68} />
-      <Circle cx={385} cy={82}  r={2.4} fill={c} opacity={0.72} />
-      <Circle cx={218} cy={20}  r={2.2} fill={c} opacity={0.70} />
-      <Circle cx={240} cy={50}  r={1.8} fill={c} opacity={0.65} />
-      <Circle cx={164} cy={68}  r={1.9} fill={c} opacity={0.65} />
-      <Circle cx={130} cy={100} r={1.7} fill={c} opacity={0.62} />
-      <Circle cx={262} cy={88}  r={2.0} fill={c} opacity={0.65} />
-      <Circle cx={288} cy={110} r={1.6} fill={c} opacity={0.60} />
-      <Circle cx={8}   cy={80}  r={1.8} fill={c} opacity={0.65} />
-      <Circle cx={28}  cy={52}  r={1.5} fill={c} opacity={0.60} />
-      <Circle cx={140} cy={14}  r={2.4} fill={c} opacity={0.70} />
-      <Circle cx={188} cy={76}  r={1.7} fill={c} opacity={0.62} />
-      <Circle cx={222} cy={95}  r={1.9} fill={c} opacity={0.62} />
-      <Circle cx={250} cy={130} r={1.6} fill={c} opacity={0.58} />
-      <Circle cx={314} cy={95}  r={2.1} fill={c} opacity={0.65} />
-      <Circle cx={340} cy={120} r={1.7} fill={c} opacity={0.60} />
-      <Circle cx={395} cy={130} r={1.8} fill={c} opacity={0.60} />
-      <Circle cx={74}  cy={160} r={1.6} fill={c} opacity={0.58} />
-      <Circle cx={110} cy={140} r={1.9} fill={c} opacity={0.60} />
-      <Circle cx={200} cy={160} r={1.7} fill={c} opacity={0.58} />
+      <Circle cx={65}  cy={38}  r={2.8} fill={cel} opacity={bo(0.82)} />
+      <Circle cx={100} cy={44}  r={2.2} fill={cel} opacity={bo(0.75)} />
+      <Circle cx={112} cy={62}  r={1.8} fill={cel} opacity={bo(0.70)} />
+      <Circle cx={54}  cy={122} r={2.0} fill={cel} opacity={bo(0.70)} />
+      <Circle cx={174} cy={38}  r={2.4} fill={cel} opacity={bo(0.78)} />
+      <Circle cx={168} cy={26}  r={1.8} fill={cel} opacity={bo(0.72)} />
+      <Circle cx={300} cy={22}  r={2.6} fill={cel} opacity={bo(0.78)} />
+      <Circle cx={330} cy={16}  r={2.0} fill={cel} opacity={bo(0.72)} />
+      <Circle cx={360} cy={52}  r={2.2} fill={cel} opacity={bo(0.70)} />
+      <Circle cx={372} cy={30}  r={1.8} fill={cel} opacity={bo(0.68)} />
+      <Circle cx={390} cy={96}  r={1.9} fill={cel} opacity={bo(0.68)} />
+      <Circle cx={385} cy={82}  r={2.4} fill={cel} opacity={bo(0.72)} />
+      <Circle cx={218} cy={20}  r={2.2} fill={cel} opacity={bo(0.70)} />
+      <Circle cx={240} cy={50}  r={1.8} fill={cel} opacity={bo(0.65)} />
+      <Circle cx={164} cy={68}  r={1.9} fill={cel} opacity={bo(0.65)} />
+      <Circle cx={130} cy={100} r={1.7} fill={cel} opacity={bo(0.62)} />
+      <Circle cx={262} cy={88}  r={2.0} fill={cel} opacity={bo(0.65)} />
+      <Circle cx={288} cy={110} r={1.6} fill={cel} opacity={bo(0.60)} />
+      <Circle cx={8}   cy={80}  r={1.8} fill={cel} opacity={bo(0.65)} />
+      <Circle cx={28}  cy={52}  r={1.5} fill={cel} opacity={bo(0.60)} />
+      <Circle cx={140} cy={14}  r={2.4} fill={cel} opacity={bo(0.70)} />
+      <Circle cx={188} cy={76}  r={1.7} fill={cel} opacity={bo(0.62)} />
+      <Circle cx={222} cy={95}  r={1.9} fill={cel} opacity={bo(0.62)} />
+      <Circle cx={250} cy={130} r={1.6} fill={cel} opacity={bo(0.58)} />
+      <Circle cx={314} cy={95}  r={2.1} fill={cel} opacity={bo(0.65)} />
+      <Circle cx={340} cy={120} r={1.7} fill={cel} opacity={bo(0.60)} />
+      <Circle cx={395} cy={130} r={1.8} fill={cel} opacity={bo(0.60)} />
+      <Circle cx={74}  cy={160} r={1.6} fill={cel} opacity={bo(0.58)} />
+      <Circle cx={110} cy={140} r={1.9} fill={cel} opacity={bo(0.60)} />
+      <Circle cx={200} cy={160} r={1.7} fill={cel} opacity={bo(0.58)} />
       {/* supplémentaires */}
-      <Circle cx={22}  cy={100} r={1.5} fill={c} opacity={0.58} />
-      <Circle cx={46}  cy={200} r={1.4} fill={c} opacity={0.55} />
-      <Circle cx={80}  cy={200} r={1.6} fill={c} opacity={0.55} />
-      <Circle cx={142} cy={170} r={1.5} fill={c} opacity={0.55} />
-      <Circle cx={178} cy={215} r={1.4} fill={c} opacity={0.52} />
-      <Circle cx={220} cy={180} r={1.7} fill={c} opacity={0.58} />
-      <Circle cx={258} cy={205} r={1.3} fill={c} opacity={0.52} />
-      <Circle cx={296} cy={175} r={1.6} fill={c} opacity={0.56} />
-      <Circle cx={348} cy={200} r={1.5} fill={c} opacity={0.54} />
-      <Circle cx={378} cy={155} r={1.8} fill={c} opacity={0.58} />
-      <Circle cx={120} cy={24}  r={1.6} fill={c} opacity={0.65} />
-      <Circle cx={56}  cy={8}   r={2.0} fill={c} opacity={0.68} />
-      <Circle cx={270} cy={12}  r={1.8} fill={c} opacity={0.65} />
-      <Circle cx={350} cy={8}   r={1.5} fill={c} opacity={0.62} />
-      <Circle cx={398} cy={20}  r={1.4} fill={c} opacity={0.60} />
+      <Circle cx={22}  cy={100} r={1.5} fill={cel} opacity={bo(0.58)} />
+      <Circle cx={46}  cy={200} r={1.4} fill={cel} opacity={bo(0.55)} />
+      <Circle cx={80}  cy={200} r={1.6} fill={cel} opacity={bo(0.55)} />
+      <Circle cx={142} cy={170} r={1.5} fill={cel} opacity={bo(0.55)} />
+      <Circle cx={178} cy={215} r={1.4} fill={cel} opacity={bo(0.52)} />
+      <Circle cx={220} cy={180} r={1.7} fill={cel} opacity={bo(0.58)} />
+      <Circle cx={258} cy={205} r={1.3} fill={cel} opacity={bo(0.52)} />
+      <Circle cx={296} cy={175} r={1.6} fill={cel} opacity={bo(0.56)} />
+      <Circle cx={348} cy={200} r={1.5} fill={cel} opacity={bo(0.54)} />
+      <Circle cx={378} cy={155} r={1.8} fill={cel} opacity={bo(0.58)} />
+      <Circle cx={120} cy={24}  r={1.6} fill={cel} opacity={bo(0.65)} />
+      <Circle cx={56}  cy={8}   r={2.0} fill={cel} opacity={bo(0.68)} />
+      <Circle cx={270} cy={12}  r={1.8} fill={cel} opacity={bo(0.65)} />
+      <Circle cx={350} cy={8}   r={1.5} fill={cel} opacity={bo(0.62)} />
+      <Circle cx={398} cy={20}  r={1.4} fill={cel} opacity={bo(0.60)} />
 
       {/* ══ SOL ══ */}
       <Rect x={0} y={640} width={400} height={60} fill={c} />
@@ -780,6 +784,7 @@ export default function ParcoursScreen() {
         color={T.skyline}
         shadowColor={T.skylineShadow}
         opacity={T.isDark ? 0.3 : 0.22}
+        lit={isPremium}
       />
       <View style={[styles.statusWrap, { backgroundColor: T.cardBg }]}>
         <DeviceStatusBar />
