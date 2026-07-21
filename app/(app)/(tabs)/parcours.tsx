@@ -2,8 +2,8 @@ import { View, Text, Pressable, StyleSheet, useWindowDimensions, Alert, Activity
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
-  FadeInDown,
+  useSharedValue, useAnimatedStyle, useAnimatedProps, withRepeat, withSequence, withTiming,
+  withDelay, Easing, FadeInDown,
 } from 'react-native-reanimated';
 import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -230,12 +230,39 @@ function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?
   );
 }
 
-// Teintes d'étoiles réalistes SANS JAUNE (blanc, blanc glacé, bleu pâle,
-// lavande) — cyclées sur les croissants/étoiles/points du ciel en premium
-// plutôt qu'une seule couleur plate, pour un ciel qui varie comme un vrai.
-const STAR_COLORS = ['#FFFFFF', '#EAF6FF', '#D6ECFF', '#F5F0FF', '#BFE3FF'];
+// Teintes d'étoiles dorées éclatantes — cyclées sur les croissants/étoiles/
+// points du ciel en premium plutôt qu'une seule couleur plate.
+const STAR_COLORS = ['#FFD700', '#FFC700', '#FFE066', '#FFB800', '#FFDF7A'];
 // Halo/cratères de la lune (le disque principal utilise un dégradé, cf. defs "moonGlow").
 const MOON_GLOW = '#FFE9B0';
+
+const AnimatedG = Animated.createAnimatedComponent(G);
+
+/**
+ * Fait s'éteindre puis se rallumer doucement un élément du ciel (courbe
+ * sinusoïdale lente, jamais un clignotement brusque) — chaque étoile a son
+ * propre délai/durée pour que le ciel scintille de façon désynchronisée,
+ * pas comme un seul bloc qui pulse. Hors premium, reste fixe (opacité 1,
+ * aucune animation lancée) pour ne rien changer au rendu d'origine.
+ */
+function Twinkle({ lit, delay, duration, floor = 0.15, transform, children }: {
+  lit: boolean; delay: number; duration: number; floor?: number;
+  transform?: string; children: React.ReactNode;
+}) {
+  const v = useSharedValue(1);
+  useEffect(() => {
+    if (!lit) { v.value = 1; return; }
+    v.value = withDelay(delay, withRepeat(
+      withSequence(
+        withTiming(floor, { duration, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1, true,
+    ));
+  }, [lit, delay, duration, floor]);
+  const animatedProps = useAnimatedProps(() => ({ opacity: v.value }));
+  return <AnimatedG transform={transform} animatedProps={animatedProps}>{children}</AnimatedG>;
+}
 
 // ─── Panorama de La Mecque en arrière-plan ────────────────────────────────────
 // memo : ~250 éléments SVG — on ne le re-rend JAMAIS tant que la taille/le
@@ -293,23 +320,23 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
         </RadialGradient>
         <RadialGradient id="starGrad0" cx="38%" cy="32%" r="70%">
           <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
-          <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#FFD700" stopOpacity={1} />
         </RadialGradient>
         <RadialGradient id="starGrad1" cx="38%" cy="32%" r="70%">
           <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
-          <Stop offset="100%" stopColor="#EAF6FF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#FFC700" stopOpacity={1} />
         </RadialGradient>
         <RadialGradient id="starGrad2" cx="38%" cy="32%" r="70%">
           <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
-          <Stop offset="100%" stopColor="#D6ECFF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#FFE066" stopOpacity={1} />
         </RadialGradient>
         <RadialGradient id="starGrad3" cx="38%" cy="32%" r="70%">
           <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
-          <Stop offset="100%" stopColor="#F5F0FF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#FFB800" stopOpacity={1} />
         </RadialGradient>
         <RadialGradient id="starGrad4" cx="38%" cy="32%" r="70%">
           <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
-          <Stop offset="100%" stopColor="#BFE3FF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#FFDF7A" stopOpacity={1} />
         </RadialGradient>
       </Defs>
       {/* ══ CIEL — croissants lunaires et étoiles ══ */}
@@ -337,157 +364,393 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
       )}
 
       {/* ── Croissants (14 total) ── */}
-      <Path d="M42 48  A28 28 0 1 0 42 104  A20 20 0 1 1 42 48  Z" fill={starCel()} opacity={bo(0.92)}  transform="translate(168.1,103.9)" />
-      <Path d="M148 32 A16 16 0 1 0 148 64  A11 11 0 1 1 148 32 Z" fill={starCel()} opacity={bo(0.82)}  transform="translate(-84.0,-18.9)" />
-      <Path d="M310 28 A22 22 0 1 0 310 72  A15 15 0 1 1 310 28 Z" fill={starCel()} opacity={bo(0.88)}  transform="translate(-283.9,12.0)" />
-      <Path d="M368 90 A14 14 0 1 0 368 118 A10 10 0 1 1 368 90 Z" fill={starCel()} opacity={bo(0.78)}  transform="translate(-311.7,74.1)" />
-      <Path d="M210 10 A18 18 0 1 0 210 46  A12 12 0 1 1 210 10 Z" fill={starCel()} opacity={bo(0.80)}  transform="translate(9.3,217.0)" />
-      <Path d="M264 55 A12 12 0 1 0 264 79  A8  8  0 1 1 264 55 Z" fill={starCel()} opacity={bo(0.75)}  transform="translate(-186.9,155.6)" />
-      <Path d="M18  130 A10 10 0 1 0 18  150 A7  7  0 1 1 18  130 Z" fill={starCel()} opacity={bo(0.72)}  transform="translate(369.0,87.8)" />
-      <Path d="M356 140 A13 13 0 1 0 356 166 A9  9  0 1 1 356 140 Z" fill={starCel()} opacity={bo(0.74)}  transform="translate(-247.0,-49.6)" />
+      <Twinkle lit={!!lit} delay={0} duration={1900} floor={0.12} transform="translate(168.1,103.9)">
+
+        <Path d="M42 48  A28 28 0 1 0 42 104  A20 20 0 1 1 42 48  Z" fill={starCel()} opacity={bo(0.92)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={191} duration={2037} floor={0.12} transform="translate(-84.0,-18.9)">
+
+        <Path d="M148 32 A16 16 0 1 0 148 64  A11 11 0 1 1 148 32 Z" fill={starCel()} opacity={bo(0.82)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={382} duration={2174} floor={0.12} transform="translate(-283.9,12.0)">
+
+        <Path d="M310 28 A22 22 0 1 0 310 72  A15 15 0 1 1 310 28 Z" fill={starCel()} opacity={bo(0.88)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={573} duration={2311} floor={0.12} transform="translate(-311.7,74.1)">
+
+        <Path d="M368 90 A14 14 0 1 0 368 118 A10 10 0 1 1 368 90 Z" fill={starCel()} opacity={bo(0.78)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={764} duration={2448} floor={0.12} transform="translate(9.3,217.0)">
+
+        <Path d="M210 10 A18 18 0 1 0 210 46  A12 12 0 1 1 210 10 Z" fill={starCel()} opacity={bo(0.80)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={955} duration={2585} floor={0.12} transform="translate(-186.9,155.6)">
+
+        <Path d="M264 55 A12 12 0 1 0 264 79  A8  8  0 1 1 264 55 Z" fill={starCel()} opacity={bo(0.75)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1146} duration={2722} floor={0.12} transform="translate(369.0,87.8)">
+
+        <Path d="M18  130 A10 10 0 1 0 18  150 A7  7  0 1 1 18  130 Z" fill={starCel()} opacity={bo(0.72)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1337} duration={2859} floor={0.12} transform="translate(-247.0,-49.6)">
+
+        <Path d="M356 140 A13 13 0 1 0 356 166 A9  9  0 1 1 356 140 Z" fill={starCel()} opacity={bo(0.74)} />
+
+      </Twinkle>
       {/* nouveaux croissants */}
-      <Path d="M88  160 A11 11 0 1 0 88  182 A7.5 7.5 0 1 1 88  160 Z" fill={starCel()} opacity={bo(0.70)}  transform="translate(44.0,-16.1)" />
-      <Path d="M320 160 A10 10 0 1 0 320 180 A7  7  0 1 1 320 160 Z" fill={starCel()} opacity={bo(0.68)}  transform="translate(-58.6,-9.7)" />
-      <Path d="M6   30  A9  9  0 1 0 6   48  A6  6  0 1 1 6   30  Z" fill={starCel()} opacity={bo(0.70)}  transform="translate(134.2,193.6)" />
-      <Path d="M390 170 A9  9  0 1 0 390 188 A6  6  0 1 1 390 170 Z" fill={starCel()} opacity={bo(0.65)}  transform="translate(-168.3,-0.6)" />
-      <Path d="M176 175 A10 10 0 1 0 176 195 A7  7  0 1 1 176 175 Z" fill={starCel()} opacity={bo(0.65)}  transform="translate(96.7,43.1)" />
-      <Path d="M240 195 A8  8  0 1 0 240 211 A5.5 5.5 0 1 1 240 195 Z" fill={starCel()} opacity={bo(0.60)}  transform="translate(-56.4,-42.9)" />
+      <Twinkle lit={!!lit} delay={1528} duration={2996} floor={0.12} transform="translate(44.0,-16.1)">
+
+        <Path d="M88  160 A11 11 0 1 0 88  182 A7.5 7.5 0 1 1 88  160 Z" fill={starCel()} opacity={bo(0.70)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={119} duration={3133} floor={0.12} transform="translate(-58.6,-9.7)">
+
+        <Path d="M320 160 A10 10 0 1 0 320 180 A7  7  0 1 1 320 160 Z" fill={starCel()} opacity={bo(0.68)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={310} duration={1970} floor={0.12} transform="translate(134.2,193.6)">
+
+        <Path d="M6   30  A9  9  0 1 0 6   48  A6  6  0 1 1 6   30  Z" fill={starCel()} opacity={bo(0.70)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={501} duration={2107} floor={0.12} transform="translate(-168.3,-0.6)">
+
+        <Path d="M390 170 A9  9  0 1 0 390 188 A6  6  0 1 1 390 170 Z" fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={692} duration={2244} floor={0.12} transform="translate(96.7,43.1)">
+
+        <Path d="M176 175 A10 10 0 1 0 176 195 A7  7  0 1 1 176 175 Z" fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={883} duration={2381} floor={0.12} transform="translate(-56.4,-42.9)">
+
+        <Path d="M240 195 A8  8  0 1 0 240 211 A5.5 5.5 0 1 1 240 195 Z" fill={starCel()} opacity={bo(0.60)} />
+
+      </Twinkle>
 
       {/* ── Étoiles à 5 branches (20 total) ── */}
-      <G transform="translate(116.0,10.8)">
+      <Twinkle lit={!!lit} delay={0} duration={2000} floor={0.15} transform="translate(116.0,10.8)">
         <Circle cx={80.0} cy={54.0} r={19.2} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M78  52  L80 46  L82 52  L88 52  L83 56  L85 62  L80 58  L75 62  L77 56  L72 52  Z" fill={starGradFill()} opacity={bo(0.90)} />
         {lit && <Path d="M80.0,49.6 Q81.232,52.768 84.4,54.0 Q81.232,55.232 80.0,58.4 Q78.768,55.232 75.6,54.0 Q78.768,52.768 80.0,49.6 Z" fill="#FFFFFF" opacity={0.9} />}
-      </G>
-      <G transform="translate(155.8,-67.5)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={223} duration={2151} floor={0.15} transform="translate(155.8,-67.5)">
         <Circle cx={95.5} cy={79.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M94  78  L95.5 73 L97 78  L102 78 L98 81  L99.5 86 L95.5 83 L91.5 86 L93 81  L89 78  Z" fill={starGradFill()} opacity={bo(0.78)} />
-      </G>
-      <G transform="translate(75.9,149.1)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={446} duration={2302} floor={0.15} transform="translate(75.9,149.1)">
         <Circle cx={186.0} cy={53.5} r={16.8} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M184 52  L186 47 L188 52 L193 52 L189 55 L190.5 60 L186 57 L181.5 60 L183 55 L179 52 Z" fill={starGradFill()} opacity={bo(0.76)} />
-      </G>
-      <G transform="translate(19.3,99.3)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={669} duration={2453} floor={0.15} transform="translate(19.3,99.3)">
         <Circle cx={129.5} cy={73.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M128 72  L129.5 67 L131 72 L136 72 L132 75 L133.5 80 L129.5 77 L125.5 80 L127 75 L123 72 Z" fill={starGradFill()} opacity={bo(0.72)} />
-      </G>
-      <G transform="translate(-53.3,160.8)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={892} duration={2604} floor={0.15} transform="translate(-53.3,160.8)">
         <Circle cx={344.0} cy={36.0} r={19.2} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M342 34  L344 28 L346 34 L352 34 L347 38 L349 44 L344 40 L339 44 L341 38 L336 34 Z" fill={starGradFill()} opacity={bo(0.82)} />
         {lit && <Path d="M344.0,31.6 Q345.232,34.768 348.4,36.0 Q345.232,37.232 344.0,40.4 Q342.768,37.232 339.6,36.0 Q342.768,34.768 344.0,31.6 Z" fill="#FFFFFF" opacity={0.9} />}
-      </G>
-      <G transform="translate(-131.9,126.6)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1115} duration={2755} floor={0.15} transform="translate(-131.9,126.6)">
         <Circle cx={357.5} cy={69.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M356 68  L357.5 63 L359 68 L364 68 L360 71 L361.5 76 L357.5 73 L353.5 76 L355 71 L351 68 Z" fill={starGradFill()} opacity={bo(0.72)} />
-      </G>
-      <G transform="translate(-186.1,201.9)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1338} duration={2906} floor={0.15} transform="translate(-186.1,201.9)">
         <Circle cx={197.5} cy={15.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M196 14  L197.5 9  L199 14 L204 14 L200 17 L201.5 22 L197.5 19 L193.5 22 L195 17 L191 14 Z" fill={starGradFill()} opacity={bo(0.72)} />
-      </G>
-      <G transform="translate(-162.6,70.9)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1561} duration={3057} floor={0.15} transform="translate(-162.6,70.9)">
         <Circle cx={239.5} cy={31.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M238 30  L239.5 25 L241 30 L246 30 L242 33 L243.5 38 L239.5 35 L235.5 38 L237 33 L233 30 Z" fill={starGradFill()} opacity={bo(0.68)} />
-      </G>
-      <G transform="translate(-220.4,-9.6)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={84} duration={2008} floor={0.15} transform="translate(-220.4,-9.6)">
         <Circle cx={383.5} cy={59.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M382 58  L383.5 53 L385 58 L390 58 L386 61 L387.5 66 L383.5 63 L379.5 66 L381 61 L377 58 Z" fill={starGradFill()} opacity={bo(0.70)} />
         {lit && <Path d="M383.5,55.9 Q384.508,58.492 387.1,59.5 Q384.508,60.508 383.5,63.1 Q382.492,60.508 379.9,59.5 Q382.492,58.492 383.5,55.9 Z" fill="#FFFFFF" opacity={0.9} />}
-      </G>
-      <G transform="translate(93.1,29.3)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={307} duration={2159} floor={0.15} transform="translate(93.1,29.3)">
         <Circle cx={37.5} cy={149.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M36  148 L37.5 143 L39 148 L44 148 L40 151 L41.5 156 L37.5 153 L33.5 156 L35 151 L31 148 Z" fill={starGradFill()} opacity={bo(0.68)} />
-      </G>
-      <G transform="translate(-121.5,-68.3)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={530} duration={2310} floor={0.15} transform="translate(-121.5,-68.3)">
         <Circle cx={167.5} cy={111.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M166 110 L167.5 105 L169 110 L174 110 L170 113 L171.5 118 L167.5 115 L163.5 118 L165 113 L161 110 Z" fill={starGradFill()} opacity={bo(0.65)} />
-      </G>
-      <G transform="translate(-83.4,-22.6)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={753} duration={2461} floor={0.15} transform="translate(-83.4,-22.6)">
         <Circle cx={291.5} cy={96.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M290 95  L291.5 90 L293 95 L298 95 L294 98 L295.5 103 L291.5 100 L287.5 103 L289 98 L285 95 Z" fill={starGradFill()} opacity={bo(0.65)} />
-      </G>
+      </Twinkle>
       {/* nouvelles étoiles */}
-      <G transform="translate(173.8,-135.2)">
+      <Twinkle lit={!!lit} delay={976} duration={2612} floor={0.15} transform="translate(173.8,-135.2)">
         <Circle cx={51.5} cy={171.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M50  170 L51.5 165 L53 170 L58 170 L54 173 L55.5 178 L51.5 175 L47.5 178 L49 173 L45 170 Z" fill={starGradFill()} opacity={bo(0.65)} />
         {lit && <Path d="M51.5,167.9 Q52.508,170.492 55.1,171.5 Q52.508,172.508 51.5,175.1 Q50.492,172.508 47.9,171.5 Q50.492,170.492 51.5,167.9 Z" fill="#FFFFFF" opacity={0.9} />}
-      </G>
-      <G transform="translate(49.1,-137.0)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1199} duration={2763} floor={0.15} transform="translate(49.1,-137.0)">
         <Circle cx={331.5} cy={181.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M330 180 L331.5 175 L333 180 L338 180 L334 183 L335.5 188 L331.5 185 L327.5 188 L329 183 L325 180 Z" fill={starGradFill()} opacity={bo(0.62)} />
-      </G>
-      <G transform="translate(66.9,11.2)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1422} duration={2914} floor={0.15} transform="translate(66.9,11.2)">
         <Circle cx={113.5} cy={191.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M112 190 L113.5 185 L115 190 L120 190 L116 193 L117.5 198 L113.5 195 L109.5 198 L111 193 L107 190 Z" fill={starGradFill()} opacity={bo(0.60)} />
-      </G>
-      <G transform="translate(-249.6,-1.9)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1645} duration={3065} floor={0.15} transform="translate(-249.6,-1.9)">
         <Circle cx={271.5} cy={166.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M270 165 L271.5 160 L273 165 L278 165 L274 168 L275.5 173 L271.5 170 L267.5 173 L269 168 L265 165 Z" fill={starGradFill()} opacity={bo(0.62)} />
-      </G>
-      <G transform="translate(139.2,87.8)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={168} duration={2016} floor={0.15} transform="translate(139.2,87.8)">
         <Circle cx={15.5} cy={61.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M14  60  L15.5 55  L17 60  L22 60  L18 63  L19.5 68  L15.5 65  L11.5 68  L13 63  L9  60  Z" fill={starGradFill()} opacity={bo(0.68)} />
         {lit && <Path d="M15.5,57.9 Q16.508,60.492 19.1,61.5 Q16.508,62.508 15.5,65.1 Q14.491999999999999,62.508 11.9,61.5 Q14.491999999999999,60.492 15.5,57.9 Z" fill="#FFFFFF" opacity={0.9} />}
-      </G>
-      <G transform="translate(-184.1,64.4)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={391} duration={2167} floor={0.15} transform="translate(-184.1,64.4)">
         <Circle cx={395.0} cy={51.5} r={12.0} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M394 50  L395.5 45 L397 50 L400 50 L397 53 L398.5 58 L395.5 55 L392 58 L393.5 53 L390 50 Z" fill={starGradFill()} opacity={bo(0.65)} />
-      </G>
-      <G transform="translate(43.0,-19.1)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={614} duration={2318} floor={0.15} transform="translate(43.0,-19.1)">
         <Circle cx={155.5} cy={141.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M154 140 L155.5 135 L157 140 L162 140 L158 143 L159.5 148 L155.5 145 L151.5 148 L153 143 L149 140 Z" fill={starGradFill()} opacity={bo(0.60)} />
-      </G>
-      <G transform="translate(132.2,64.3)">
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={837} duration={2469} floor={0.15} transform="translate(132.2,64.3)">
         <Circle cx={247.5} cy={131.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
         <Path d="M246 130 L247.5 125 L249 130 L254 130 L250 133 L251.5 138 L247.5 135 L243.5 138 L245 133 L241 130 Z" fill={starGradFill()} opacity={bo(0.62)} />
-      </G>
+      </Twinkle>
 
       {/* ── Points lumineux (45 total) ── */}
-      <Circle cx={272.9}  cy={163.4}  r={2.8} fill={starCel()} opacity={bo(0.82)} />
-      <Circle cx={340.6} cy={188.6}  r={2.2} fill={starCel()} opacity={bo(0.75)} />
-      <Circle cx={141.7} cy={19.2}  r={1.8} fill={starCel()} opacity={bo(0.70)} />
-      <Circle cx={80.6}  cy={151.1} r={2.0} fill={starCel()} opacity={bo(0.70)} />
-      <Circle cx={161.1} cy={84.4}  r={2.4} fill={starCel()} opacity={bo(0.78)} />
-      <Circle cx={145.8} cy={121.3}  r={1.8} fill={starCel()} opacity={bo(0.72)} />
-      <Circle cx={80.2} cy={9.6}  r={2.6} fill={starCel()} opacity={bo(0.78)} />
-      <Circle cx={21.6} cy={148.8}  r={2.0} fill={starCel()} opacity={bo(0.72)} />
-      <Circle cx={94.8} cy={162.7}  r={2.2} fill={starCel()} opacity={bo(0.70)} />
-      <Circle cx={12.3} cy={192.7}  r={1.8} fill={starCel()} opacity={bo(0.68)} />
-      <Circle cx={117.9} cy={193.4}  r={1.9} fill={starCel()} opacity={bo(0.68)} />
-      <Circle cx={196.7} cy={34.3}  r={2.4} fill={starCel()} opacity={bo(0.72)} />
-      <Circle cx={19.8} cy={64.2}  r={2.2} fill={starCel()} opacity={bo(0.70)} />
-      <Circle cx={193.7} cy={163.8}  r={1.8} fill={starCel()} opacity={bo(0.65)} />
-      <Circle cx={47.1} cy={193.0}  r={1.9} fill={starCel()} opacity={bo(0.65)} />
-      <Circle cx={150.3} cy={63.1} r={1.7} fill={starCel()} opacity={bo(0.62)} />
-      <Circle cx={81.1} cy={126.1}  r={2.0} fill={starCel()} opacity={bo(0.65)} />
-      <Circle cx={186.0} cy={8.0} r={1.6} fill={starCel()} opacity={bo(0.60)} />
-      <Circle cx={67.1}   cy={99.1}  r={1.8} fill={starCel()} opacity={bo(0.65)} />
-      <Circle cx={196.3}  cy={100.9}  r={1.5} fill={starCel()} opacity={bo(0.60)} />
-      <Circle cx={323.4} cy={212.9}  r={2.4} fill={starCel()} opacity={bo(0.70)} />
-      <Circle cx={346.9} cy={213.8}  r={1.7} fill={starCel()} opacity={bo(0.62)} />
-      <Circle cx={279.8} cy={8.2}  r={1.9} fill={starCel()} opacity={bo(0.62)} />
-      <Circle cx={311.8} cy={203.3} r={1.6} fill={starCel()} opacity={bo(0.58)} />
-      <Circle cx={81.5} cy={47.5}  r={2.1} fill={starCel()} opacity={bo(0.65)} />
-      <Circle cx={163.5} cy={203.5} r={1.7} fill={starCel()} opacity={bo(0.60)} />
-      <Circle cx={78.7} cy={63.4} r={1.8} fill={starCel()} opacity={bo(0.60)} />
-      <Circle cx={33.8}  cy={18.2} r={1.6} fill={starCel()} opacity={bo(0.58)} />
-      <Circle cx={217.3} cy={99.5} r={1.9} fill={starCel()} opacity={bo(0.60)} />
-      <Circle cx={174.4} cy={213.3} r={1.7} fill={starCel()} opacity={bo(0.58)} />
+      <Twinkle lit={!!lit} delay={0} duration={1600} floor={0.1}>
+
+        <Circle cx={272.9} cy={163.4} r={2.8} fill={starCel()} opacity={bo(0.82)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={137} duration={1689} floor={0.1}>
+
+        <Circle cx={340.6} cy={188.6} r={2.2} fill={starCel()} opacity={bo(0.75)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={274} duration={1778} floor={0.1}>
+
+        <Circle cx={141.7} cy={19.2} r={1.8} fill={starCel()} opacity={bo(0.70)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={411} duration={1867} floor={0.1}>
+
+        <Circle cx={80.6} cy={151.1} r={2.0} fill={starCel()} opacity={bo(0.70)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={548} duration={1956} floor={0.1}>
+
+        <Circle cx={161.1} cy={84.4} r={2.4} fill={starCel()} opacity={bo(0.78)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={685} duration={2045} floor={0.1}>
+
+        <Circle cx={145.8} cy={121.3} r={1.8} fill={starCel()} opacity={bo(0.72)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={822} duration={2134} floor={0.1}>
+
+        <Circle cx={80.2} cy={9.6} r={2.6} fill={starCel()} opacity={bo(0.78)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={959} duration={2223} floor={0.1}>
+
+        <Circle cx={21.6} cy={148.8} r={2.0} fill={starCel()} opacity={bo(0.72)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1096} duration={2312} floor={0.1}>
+
+        <Circle cx={94.8} cy={162.7} r={2.2} fill={starCel()} opacity={bo(0.70)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1233} duration={2401} floor={0.1}>
+
+        <Circle cx={12.3} cy={192.7} r={1.8} fill={starCel()} opacity={bo(0.68)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1370} duration={2490} floor={0.1}>
+
+        <Circle cx={117.9} cy={193.4} r={1.9} fill={starCel()} opacity={bo(0.68)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1507} duration={2579} floor={0.1}>
+
+        <Circle cx={196.7} cy={34.3} r={2.4} fill={starCel()} opacity={bo(0.72)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1644} duration={2668} floor={0.1}>
+
+        <Circle cx={19.8} cy={64.2} r={2.2} fill={starCel()} opacity={bo(0.70)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1781} duration={2757} floor={0.1}>
+
+        <Circle cx={193.7} cy={163.8} r={1.8} fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={118} duration={2846} floor={0.1}>
+
+        <Circle cx={47.1} cy={193.0} r={1.9} fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={255} duration={2935} floor={0.1}>
+
+        <Circle cx={150.3} cy={63.1} r={1.7} fill={starCel()} opacity={bo(0.62)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={392} duration={1624} floor={0.1}>
+
+        <Circle cx={81.1} cy={126.1} r={2.0} fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={529} duration={1713} floor={0.1}>
+
+        <Circle cx={186.0} cy={8.0} r={1.6} fill={starCel()} opacity={bo(0.60)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={666} duration={1802} floor={0.1}>
+
+        <Circle cx={67.1} cy={99.1} r={1.8} fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={803} duration={1891} floor={0.1}>
+
+        <Circle cx={196.3} cy={100.9} r={1.5} fill={starCel()} opacity={bo(0.60)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={940} duration={1980} floor={0.1}>
+
+        <Circle cx={323.4} cy={212.9} r={2.4} fill={starCel()} opacity={bo(0.70)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1077} duration={2069} floor={0.1}>
+
+        <Circle cx={346.9} cy={213.8} r={1.7} fill={starCel()} opacity={bo(0.62)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1214} duration={2158} floor={0.1}>
+
+        <Circle cx={279.8} cy={8.2} r={1.9} fill={starCel()} opacity={bo(0.62)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1351} duration={2247} floor={0.1}>
+
+        <Circle cx={311.8} cy={203.3} r={1.6} fill={starCel()} opacity={bo(0.58)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1488} duration={2336} floor={0.1}>
+
+        <Circle cx={81.5} cy={47.5} r={2.1} fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1625} duration={2425} floor={0.1}>
+
+        <Circle cx={163.5} cy={203.5} r={1.7} fill={starCel()} opacity={bo(0.60)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1762} duration={2514} floor={0.1}>
+
+        <Circle cx={78.7} cy={63.4} r={1.8} fill={starCel()} opacity={bo(0.60)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={99} duration={2603} floor={0.1}>
+
+        <Circle cx={33.8} cy={18.2} r={1.6} fill={starCel()} opacity={bo(0.58)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={236} duration={2692} floor={0.1}>
+
+        <Circle cx={217.3} cy={99.5} r={1.9} fill={starCel()} opacity={bo(0.60)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={373} duration={2781} floor={0.1}>
+
+        <Circle cx={174.4} cy={213.3} r={1.7} fill={starCel()} opacity={bo(0.58)} />
+
+      </Twinkle>
       {/* supplémentaires */}
-      <Circle cx={80.7}  cy={186.7} r={1.5} fill={starCel()} opacity={bo(0.58)} />
-      <Circle cx={259.4}  cy={214.4} r={1.4} fill={starCel()} opacity={bo(0.55)} />
-      <Circle cx={349.6}  cy={19.0} r={1.6} fill={starCel()} opacity={bo(0.55)} />
-      <Circle cx={250.3} cy={50.4} r={1.5} fill={starCel()} opacity={bo(0.55)} />
-      <Circle cx={112.4} cy={71.5} r={1.4} fill={starCel()} opacity={bo(0.52)} />
-      <Circle cx={113.3} cy={14.7} r={1.7} fill={starCel()} opacity={bo(0.58)} />
-      <Circle cx={375.2} cy={173.5} r={1.3} fill={starCel()} opacity={bo(0.52)} />
-      <Circle cx={11.7} cy={117.2} r={1.6} fill={starCel()} opacity={bo(0.56)} />
-      <Circle cx={229.6} cy={26.2} r={1.5} fill={starCel()} opacity={bo(0.54)} />
-      <Circle cx={49.0} cy={75.7} r={1.8} fill={starCel()} opacity={bo(0.58)} />
-      <Circle cx={259.2} cy={176.0}  r={1.6} fill={starCel()} opacity={bo(0.65)} />
-      <Circle cx={376.5}  cy={10.1}   r={2.0} fill={starCel()} opacity={bo(0.68)} />
-      <Circle cx={57.5} cy={127.4}  r={1.8} fill={starCel()} opacity={bo(0.65)} />
-      <Circle cx={62.6} cy={215.5}   r={1.5} fill={starCel()} opacity={bo(0.62)} />
-      <Circle cx={123.8} cy={50.5}  r={1.4} fill={starCel()} opacity={bo(0.60)} />
+      <Twinkle lit={!!lit} delay={510} duration={2870} floor={0.1}>
+
+        <Circle cx={80.7} cy={186.7} r={1.5} fill={starCel()} opacity={bo(0.58)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={647} duration={2959} floor={0.1}>
+
+        <Circle cx={259.4} cy={214.4} r={1.4} fill={starCel()} opacity={bo(0.55)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={784} duration={1648} floor={0.1}>
+
+        <Circle cx={349.6} cy={19.0} r={1.6} fill={starCel()} opacity={bo(0.55)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={921} duration={1737} floor={0.1}>
+
+        <Circle cx={250.3} cy={50.4} r={1.5} fill={starCel()} opacity={bo(0.55)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1058} duration={1826} floor={0.1}>
+
+        <Circle cx={112.4} cy={71.5} r={1.4} fill={starCel()} opacity={bo(0.52)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1195} duration={1915} floor={0.1}>
+
+        <Circle cx={113.3} cy={14.7} r={1.7} fill={starCel()} opacity={bo(0.58)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1332} duration={2004} floor={0.1}>
+
+        <Circle cx={375.2} cy={173.5} r={1.3} fill={starCel()} opacity={bo(0.52)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1469} duration={2093} floor={0.1}>
+
+        <Circle cx={11.7} cy={117.2} r={1.6} fill={starCel()} opacity={bo(0.56)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1606} duration={2182} floor={0.1}>
+
+        <Circle cx={229.6} cy={26.2} r={1.5} fill={starCel()} opacity={bo(0.54)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={1743} duration={2271} floor={0.1}>
+
+        <Circle cx={49.0} cy={75.7} r={1.8} fill={starCel()} opacity={bo(0.58)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={80} duration={2360} floor={0.1}>
+
+        <Circle cx={259.2} cy={176.0} r={1.6} fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={217} duration={2449} floor={0.1}>
+
+        <Circle cx={376.5} cy={10.1} r={2.0} fill={starCel()} opacity={bo(0.68)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={354} duration={2538} floor={0.1}>
+
+        <Circle cx={57.5} cy={127.4} r={1.8} fill={starCel()} opacity={bo(0.65)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={491} duration={2627} floor={0.1}>
+
+        <Circle cx={62.6} cy={215.5} r={1.5} fill={starCel()} opacity={bo(0.62)} />
+
+      </Twinkle>
+      <Twinkle lit={!!lit} delay={628} duration={2716} floor={0.1}>
+
+        <Circle cx={123.8} cy={50.5} r={1.4} fill={starCel()} opacity={bo(0.60)} />
+
+      </Twinkle>
 
       </Svg>
       {/* Batiments : opacite fixe, jamais boostee par le premium. */}
