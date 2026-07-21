@@ -230,10 +230,10 @@ function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?
   );
 }
 
-// Teintes d'étoiles réalistes (blanc chaud, or, champagne, blanc bleuté,
-// ambre) — cyclées sur les croissants/étoiles/points du ciel en premium
+// Teintes d'étoiles réalistes SANS JAUNE (blanc, blanc glacé, bleu pâle,
+// lavande) — cyclées sur les croissants/étoiles/points du ciel en premium
 // plutôt qu'une seule couleur plate, pour un ciel qui varie comme un vrai.
-const STAR_COLORS = ['#FFF6E0', '#FFD97A', '#FFE9B0', '#CFE8FF', '#FFC857'];
+const STAR_COLORS = ['#FFFFFF', '#EAF6FF', '#D6ECFF', '#F5F0FF', '#BFE3FF'];
 // Halo/cratères de la lune (le disque principal utilise un dégradé, cf. defs "moonGlow").
 const MOON_GLOW = '#FFE9B0';
 
@@ -250,19 +250,27 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
   const moonDiscFill = lit ? 'url(#moonGlow)' : c;
   let starTint = 0;
   const starCel = () => (lit ? STAR_COLORS[starTint++ % STAR_COLORS.length] : c);
-  const bo = (base: number) => (lit ? Math.min(1, base + 0.25) : base);
+  const bo = (base: number) => (lit ? Math.min(1, base + 0.4) : base);
+  // Le ciel (lune+etoiles) est rendu dans un <Svg> SEPARE du reste du
+  // panorama pour pouvoir, en premium, monter son opacite tres au-dessus
+  // de celle (discrete) des batiments — sinon l'opacite globale du groupe
+  // parent plafonnerait tout le monde, batiments compris.
+  const skyOpacity = lit ? 0.95 : op;
 
   // viewBox 400×700 — on étire sur toute la surface
   return (
-    <Svg
-      width={width}
-      height={height}
-      viewBox="0 0 400 700"
-      preserveAspectRatio="xMidYMax meet"
-      style={StyleSheet.absoluteFillObject}
-      pointerEvents="none"
-      opacity={op}
-    >
+    <>
+      {/* Ciel : lune + etoiles. Svg SEPARE des batiments pour pouvoir monter
+          son opacite bien au-dessus de celle du panorama en premium. */}
+      <Svg
+        width={width}
+        height={height}
+        viewBox="0 0 400 700"
+        preserveAspectRatio="xMidYMax meet"
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+        opacity={skyOpacity}
+      >
       <Defs>
         <RadialGradient id="moonGlow" cx="38%" cy="35%" r="65%">
           <Stop offset="0%" stopColor="#FFFBEA" stopOpacity={1} />
@@ -374,6 +382,17 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
       <Circle cx={350} cy={8}   r={1.5} fill={starCel()} opacity={bo(0.62)} />
       <Circle cx={398} cy={20}  r={1.4} fill={starCel()} opacity={bo(0.60)} />
 
+      </Svg>
+      {/* Batiments : opacite fixe, jamais boostee par le premium. */}
+      <Svg
+        width={width}
+        height={height}
+        viewBox="0 0 400 700"
+        preserveAspectRatio="xMidYMax meet"
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+        opacity={op}
+      >
       {/* ══ SOL ══ */}
       <Rect x={0} y={640} width={400} height={60} fill={c} />
       {/* esplanade Mataaf */}
@@ -493,7 +512,8 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
       {/* immeubles hôtels droite */}
       <Rect x={326} y={500} width={30} height={140} fill={c} opacity={0.35} />
       <Rect x={300} y={520} width={22} height={120} fill={c} opacity={0.3} />
-    </Svg>
+      </Svg>
+    </>
   );
 });
 
