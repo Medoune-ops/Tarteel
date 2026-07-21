@@ -78,6 +78,7 @@ export default function SettingsScreen() {
   const email = useUserStore((s) => s.email);
   const theme = useUserStore((s) => s.theme);
   const setTheme = useUserStore((s) => s.setTheme);
+  const isPremium = useUserStore((s) => s.isPremium);
   const langue = LANGUES[language];
   const T = useTheme();
   const tr = useT();
@@ -177,11 +178,15 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionSubscription')}</Text>
         <Pressable style={styles.premiumCard} onPress={() => router.push('/(app)/subscription')}>
           <View style={styles.premiumIcon}>
-            <Feather name="star" size={24} color="#fff" />
+            <Feather name={isPremium ? 'check-circle' : 'star'} size={24} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.premiumTitle}>{tr('settings.premiumTitle')}</Text>
-            <Text style={styles.premiumSub}>{tr('settings.premiumSub')}</Text>
+            <Text style={styles.premiumTitle}>
+              {isPremium ? tr('settings.premiumActiveTitle') : tr('settings.premiumTitle')}
+            </Text>
+            <Text style={styles.premiumSub}>
+              {isPremium ? tr('settings.premiumActiveSub') : tr('settings.premiumSub')}
+            </Text>
           </View>
           <Feather name="chevron-right" size={22} color="#fff" />
         </Pressable>
