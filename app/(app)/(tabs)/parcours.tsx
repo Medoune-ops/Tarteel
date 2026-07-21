@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Rect, Path, Circle, Ellipse, Line, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Rect, Path, Circle, Ellipse, Line, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { MosqueIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
@@ -248,8 +248,14 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
   // renforcée — le reste du panorama (sol, minarets, tour) ne change pas.
   const moonCel = lit ? MOON_GLOW : c;
   const moonDiscFill = lit ? 'url(#moonGlow)' : c;
+  const moonHaloFill = lit ? 'url(#moonHalo)' : c;
   let starTint = 0;
   const starCel = () => (lit ? STAR_COLORS[starTint++ % STAR_COLORS.length] : c);
+  let starGradTint = 0;
+  // Étoiles à 5 branches : cœur blanc éclatant qui se teinte vers les bords
+  // (au lieu d'un simple aplat) + halo lumineux derrière, pour un vrai effet
+  // de brillance plutôt qu'une silhouette plate.
+  const starGradFill = () => (lit ? `url(#starGrad${starGradTint++ % 5})` : c);
   const bo = (base: number) => (lit ? Math.min(1, base + 0.4) : base);
   // Le ciel (lune+etoiles) est rendu dans un <Svg> SEPARE du reste du
   // panorama pour pouvoir, en premium, monter son opacite tres au-dessus
@@ -277,13 +283,41 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
           <Stop offset="55%" stopColor="#FFE9A8" stopOpacity={1} />
           <Stop offset="100%" stopColor="#FFC857" stopOpacity={1} />
         </RadialGradient>
+        <RadialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
+          <Stop offset="0%" stopColor="#FFF6D8" stopOpacity={0.9} />
+          <Stop offset="100%" stopColor="#FFF6D8" stopOpacity={0} />
+        </RadialGradient>
+        <RadialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.85} />
+          <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={0} />
+        </RadialGradient>
+        <RadialGradient id="starGrad0" cx="38%" cy="32%" r="70%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={1} />
+        </RadialGradient>
+        <RadialGradient id="starGrad1" cx="38%" cy="32%" r="70%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#EAF6FF" stopOpacity={1} />
+        </RadialGradient>
+        <RadialGradient id="starGrad2" cx="38%" cy="32%" r="70%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#D6ECFF" stopOpacity={1} />
+        </RadialGradient>
+        <RadialGradient id="starGrad3" cx="38%" cy="32%" r="70%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#F5F0FF" stopOpacity={1} />
+        </RadialGradient>
+        <RadialGradient id="starGrad4" cx="38%" cy="32%" r="70%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#BFE3FF" stopOpacity={1} />
+        </RadialGradient>
       </Defs>
       {/* ══ CIEL — croissants lunaires et étoiles ══ */}
 
       {/* ── GROSSE LUNE — haut droite ── */}
-      {/* halo diffus */}
-      <Circle cx={318} cy={96} r={64} fill={moonCel} opacity={bo(0.10)} />
-      <Circle cx={318} cy={96} r={55} fill={moonCel} opacity={bo(0.15)} />
+      {/* halo diffus — vrai dégradé lumineux plutôt qu'un aplat à faible opacité */}
+      <Circle cx={318} cy={96} r={78} fill={moonHaloFill} opacity={bo(0.55)} />
+      <Circle cx={318} cy={96} r={62} fill={moonHaloFill} opacity={bo(0.7)} />
       {/* disque principal */}
       <Circle cx={318} cy={96} r={50} fill={moonDiscFill} opacity={bo(0.72)} />
       {/* ombre (cratère lunaire simulé — disque décalé pour effet croissant partiel) */}
@@ -293,6 +327,14 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
       <Circle cx={308} cy={106} r={4} fill={moonCel} opacity={bo(0.20)} />
       <Circle cx={288} cy={94}  r={4.5}   fill={moonCel} opacity={bo(0.22)} />
       <Circle cx={302} cy={64}  r={3} fill={moonCel} opacity={bo(0.18)} />
+      {/* petit éclat scintillant à côté de la lune */}
+      {lit && (
+        <Path
+          d="M370,58 L372.4,64.6 L379,67 L372.4,69.4 L370,76 L367.6,69.4 L361,67 L367.6,64.6 Z"
+          fill="#FFFFFF"
+          opacity={0.85}
+        />
+      )}
 
       {/* ── Croissants (14 total) ── */}
       <Path d="M42 48  A28 28 0 1 0 42 104  A20 20 0 1 1 42 48  Z" fill={starCel()} opacity={bo(0.92)}  transform="translate(168.1,103.9)" />
@@ -312,27 +354,92 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
       <Path d="M240 195 A8  8  0 1 0 240 211 A5.5 5.5 0 1 1 240 195 Z" fill={starCel()} opacity={bo(0.60)}  transform="translate(-56.4,-42.9)" />
 
       {/* ── Étoiles à 5 branches (20 total) ── */}
-      <Path d="M78  52  L80 46  L82 52  L88 52  L83 56  L85 62  L80 58  L75 62  L77 56  L72 52  Z" fill={starCel()} opacity={bo(0.90)}  transform="translate(116.0,10.8)" />
-      <Path d="M94  78  L95.5 73 L97 78  L102 78 L98 81  L99.5 86 L95.5 83 L91.5 86 L93 81  L89 78  Z" fill={starCel()} opacity={bo(0.78)}  transform="translate(155.8,-67.5)" />
-      <Path d="M184 52  L186 47 L188 52 L193 52 L189 55 L190.5 60 L186 57 L181.5 60 L183 55 L179 52 Z" fill={starCel()} opacity={bo(0.76)}  transform="translate(75.9,149.1)" />
-      <Path d="M128 72  L129.5 67 L131 72 L136 72 L132 75 L133.5 80 L129.5 77 L125.5 80 L127 75 L123 72 Z" fill={starCel()} opacity={bo(0.72)}  transform="translate(19.3,99.3)" />
-      <Path d="M342 34  L344 28 L346 34 L352 34 L347 38 L349 44 L344 40 L339 44 L341 38 L336 34 Z" fill={starCel()} opacity={bo(0.82)}  transform="translate(-53.3,160.8)" />
-      <Path d="M356 68  L357.5 63 L359 68 L364 68 L360 71 L361.5 76 L357.5 73 L353.5 76 L355 71 L351 68 Z" fill={starCel()} opacity={bo(0.72)}  transform="translate(-131.9,126.6)" />
-      <Path d="M196 14  L197.5 9  L199 14 L204 14 L200 17 L201.5 22 L197.5 19 L193.5 22 L195 17 L191 14 Z" fill={starCel()} opacity={bo(0.72)}  transform="translate(-186.1,201.9)" />
-      <Path d="M238 30  L239.5 25 L241 30 L246 30 L242 33 L243.5 38 L239.5 35 L235.5 38 L237 33 L233 30 Z" fill={starCel()} opacity={bo(0.68)}  transform="translate(-162.6,70.9)" />
-      <Path d="M382 58  L383.5 53 L385 58 L390 58 L386 61 L387.5 66 L383.5 63 L379.5 66 L381 61 L377 58 Z" fill={starCel()} opacity={bo(0.70)}  transform="translate(-220.4,-9.6)" />
-      <Path d="M36  148 L37.5 143 L39 148 L44 148 L40 151 L41.5 156 L37.5 153 L33.5 156 L35 151 L31 148 Z" fill={starCel()} opacity={bo(0.68)}  transform="translate(93.1,29.3)" />
-      <Path d="M166 110 L167.5 105 L169 110 L174 110 L170 113 L171.5 118 L167.5 115 L163.5 118 L165 113 L161 110 Z" fill={starCel()} opacity={bo(0.65)}  transform="translate(-121.5,-68.3)" />
-      <Path d="M290 95  L291.5 90 L293 95 L298 95 L294 98 L295.5 103 L291.5 100 L287.5 103 L289 98 L285 95 Z" fill={starCel()} opacity={bo(0.65)}  transform="translate(-83.4,-22.6)" />
+      <G transform="translate(116.0,10.8)">
+        <Circle cx={80.0} cy={54.0} r={19.2} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M78  52  L80 46  L82 52  L88 52  L83 56  L85 62  L80 58  L75 62  L77 56  L72 52  Z" fill={starGradFill()} opacity={bo(0.90)} />
+        {lit && <Path d="M80.0,49.6 Q81.232,52.768 84.4,54.0 Q81.232,55.232 80.0,58.4 Q78.768,55.232 75.6,54.0 Q78.768,52.768 80.0,49.6 Z" fill="#FFFFFF" opacity={0.9} />}
+      </G>
+      <G transform="translate(155.8,-67.5)">
+        <Circle cx={95.5} cy={79.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M94  78  L95.5 73 L97 78  L102 78 L98 81  L99.5 86 L95.5 83 L91.5 86 L93 81  L89 78  Z" fill={starGradFill()} opacity={bo(0.78)} />
+      </G>
+      <G transform="translate(75.9,149.1)">
+        <Circle cx={186.0} cy={53.5} r={16.8} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M184 52  L186 47 L188 52 L193 52 L189 55 L190.5 60 L186 57 L181.5 60 L183 55 L179 52 Z" fill={starGradFill()} opacity={bo(0.76)} />
+      </G>
+      <G transform="translate(19.3,99.3)">
+        <Circle cx={129.5} cy={73.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M128 72  L129.5 67 L131 72 L136 72 L132 75 L133.5 80 L129.5 77 L125.5 80 L127 75 L123 72 Z" fill={starGradFill()} opacity={bo(0.72)} />
+      </G>
+      <G transform="translate(-53.3,160.8)">
+        <Circle cx={344.0} cy={36.0} r={19.2} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M342 34  L344 28 L346 34 L352 34 L347 38 L349 44 L344 40 L339 44 L341 38 L336 34 Z" fill={starGradFill()} opacity={bo(0.82)} />
+        {lit && <Path d="M344.0,31.6 Q345.232,34.768 348.4,36.0 Q345.232,37.232 344.0,40.4 Q342.768,37.232 339.6,36.0 Q342.768,34.768 344.0,31.6 Z" fill="#FFFFFF" opacity={0.9} />}
+      </G>
+      <G transform="translate(-131.9,126.6)">
+        <Circle cx={357.5} cy={69.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M356 68  L357.5 63 L359 68 L364 68 L360 71 L361.5 76 L357.5 73 L353.5 76 L355 71 L351 68 Z" fill={starGradFill()} opacity={bo(0.72)} />
+      </G>
+      <G transform="translate(-186.1,201.9)">
+        <Circle cx={197.5} cy={15.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M196 14  L197.5 9  L199 14 L204 14 L200 17 L201.5 22 L197.5 19 L193.5 22 L195 17 L191 14 Z" fill={starGradFill()} opacity={bo(0.72)} />
+      </G>
+      <G transform="translate(-162.6,70.9)">
+        <Circle cx={239.5} cy={31.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M238 30  L239.5 25 L241 30 L246 30 L242 33 L243.5 38 L239.5 35 L235.5 38 L237 33 L233 30 Z" fill={starGradFill()} opacity={bo(0.68)} />
+      </G>
+      <G transform="translate(-220.4,-9.6)">
+        <Circle cx={383.5} cy={59.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M382 58  L383.5 53 L385 58 L390 58 L386 61 L387.5 66 L383.5 63 L379.5 66 L381 61 L377 58 Z" fill={starGradFill()} opacity={bo(0.70)} />
+        {lit && <Path d="M383.5,55.9 Q384.508,58.492 387.1,59.5 Q384.508,60.508 383.5,63.1 Q382.492,60.508 379.9,59.5 Q382.492,58.492 383.5,55.9 Z" fill="#FFFFFF" opacity={0.9} />}
+      </G>
+      <G transform="translate(93.1,29.3)">
+        <Circle cx={37.5} cy={149.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M36  148 L37.5 143 L39 148 L44 148 L40 151 L41.5 156 L37.5 153 L33.5 156 L35 151 L31 148 Z" fill={starGradFill()} opacity={bo(0.68)} />
+      </G>
+      <G transform="translate(-121.5,-68.3)">
+        <Circle cx={167.5} cy={111.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M166 110 L167.5 105 L169 110 L174 110 L170 113 L171.5 118 L167.5 115 L163.5 118 L165 113 L161 110 Z" fill={starGradFill()} opacity={bo(0.65)} />
+      </G>
+      <G transform="translate(-83.4,-22.6)">
+        <Circle cx={291.5} cy={96.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M290 95  L291.5 90 L293 95 L298 95 L294 98 L295.5 103 L291.5 100 L287.5 103 L289 98 L285 95 Z" fill={starGradFill()} opacity={bo(0.65)} />
+      </G>
       {/* nouvelles étoiles */}
-      <Path d="M50  170 L51.5 165 L53 170 L58 170 L54 173 L55.5 178 L51.5 175 L47.5 178 L49 173 L45 170 Z" fill={starCel()} opacity={bo(0.65)}  transform="translate(173.8,-135.2)" />
-      <Path d="M330 180 L331.5 175 L333 180 L338 180 L334 183 L335.5 188 L331.5 185 L327.5 188 L329 183 L325 180 Z" fill={starCel()} opacity={bo(0.62)}  transform="translate(49.1,-137.0)" />
-      <Path d="M112 190 L113.5 185 L115 190 L120 190 L116 193 L117.5 198 L113.5 195 L109.5 198 L111 193 L107 190 Z" fill={starCel()} opacity={bo(0.60)}  transform="translate(66.9,11.2)" />
-      <Path d="M270 165 L271.5 160 L273 165 L278 165 L274 168 L275.5 173 L271.5 170 L267.5 173 L269 168 L265 165 Z" fill={starCel()} opacity={bo(0.62)}  transform="translate(-249.6,-1.9)" />
-      <Path d="M14  60  L15.5 55  L17 60  L22 60  L18 63  L19.5 68  L15.5 65  L11.5 68  L13 63  L9  60  Z" fill={starCel()} opacity={bo(0.68)}  transform="translate(139.2,87.8)" />
-      <Path d="M394 50  L395.5 45 L397 50 L400 50 L397 53 L398.5 58 L395.5 55 L392 58 L393.5 53 L390 50 Z" fill={starCel()} opacity={bo(0.65)}  transform="translate(-184.1,64.4)" />
-      <Path d="M154 140 L155.5 135 L157 140 L162 140 L158 143 L159.5 148 L155.5 145 L151.5 148 L153 143 L149 140 Z" fill={starCel()} opacity={bo(0.60)}  transform="translate(43.0,-19.1)" />
-      <Path d="M246 130 L247.5 125 L249 130 L254 130 L250 133 L251.5 138 L247.5 135 L243.5 138 L245 133 L241 130 Z" fill={starCel()} opacity={bo(0.62)}  transform="translate(132.2,64.3)" />
+      <G transform="translate(173.8,-135.2)">
+        <Circle cx={51.5} cy={171.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M50  170 L51.5 165 L53 170 L58 170 L54 173 L55.5 178 L51.5 175 L47.5 178 L49 173 L45 170 Z" fill={starGradFill()} opacity={bo(0.65)} />
+        {lit && <Path d="M51.5,167.9 Q52.508,170.492 55.1,171.5 Q52.508,172.508 51.5,175.1 Q50.492,172.508 47.9,171.5 Q50.492,170.492 51.5,167.9 Z" fill="#FFFFFF" opacity={0.9} />}
+      </G>
+      <G transform="translate(49.1,-137.0)">
+        <Circle cx={331.5} cy={181.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M330 180 L331.5 175 L333 180 L338 180 L334 183 L335.5 188 L331.5 185 L327.5 188 L329 183 L325 180 Z" fill={starGradFill()} opacity={bo(0.62)} />
+      </G>
+      <G transform="translate(66.9,11.2)">
+        <Circle cx={113.5} cy={191.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M112 190 L113.5 185 L115 190 L120 190 L116 193 L117.5 198 L113.5 195 L109.5 198 L111 193 L107 190 Z" fill={starGradFill()} opacity={bo(0.60)} />
+      </G>
+      <G transform="translate(-249.6,-1.9)">
+        <Circle cx={271.5} cy={166.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M270 165 L271.5 160 L273 165 L278 165 L274 168 L275.5 173 L271.5 170 L267.5 173 L269 168 L265 165 Z" fill={starGradFill()} opacity={bo(0.62)} />
+      </G>
+      <G transform="translate(139.2,87.8)">
+        <Circle cx={15.5} cy={61.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M14  60  L15.5 55  L17 60  L22 60  L18 63  L19.5 68  L15.5 65  L11.5 68  L13 63  L9  60  Z" fill={starGradFill()} opacity={bo(0.68)} />
+        {lit && <Path d="M15.5,57.9 Q16.508,60.492 19.1,61.5 Q16.508,62.508 15.5,65.1 Q14.491999999999999,62.508 11.9,61.5 Q14.491999999999999,60.492 15.5,57.9 Z" fill="#FFFFFF" opacity={0.9} />}
+      </G>
+      <G transform="translate(-184.1,64.4)">
+        <Circle cx={395.0} cy={51.5} r={12.0} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M394 50  L395.5 45 L397 50 L400 50 L397 53 L398.5 58 L395.5 55 L392 58 L393.5 53 L390 50 Z" fill={starGradFill()} opacity={bo(0.65)} />
+      </G>
+      <G transform="translate(43.0,-19.1)">
+        <Circle cx={155.5} cy={141.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M154 140 L155.5 135 L157 140 L162 140 L158 143 L159.5 148 L155.5 145 L151.5 148 L153 143 L149 140 Z" fill={starGradFill()} opacity={bo(0.60)} />
+      </G>
+      <G transform="translate(132.2,64.3)">
+        <Circle cx={247.5} cy={131.5} r={15.6} fill="url(#starGlow)" opacity={lit ? 0.8 : 0} />
+        <Path d="M246 130 L247.5 125 L249 130 L254 130 L250 133 L251.5 138 L247.5 135 L243.5 138 L245 133 L241 130 Z" fill={starGradFill()} opacity={bo(0.62)} />
+      </G>
 
       {/* ── Points lumineux (45 total) ── */}
       <Circle cx={272.9}  cy={163.4}  r={2.8} fill={starCel()} opacity={bo(0.82)} />
