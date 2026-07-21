@@ -15,7 +15,7 @@ export { fetchMyLeague, joinLeague, getOrJoinLeague } from './leagues';
 export type { LeagueView, LeagueMember } from './leagues';
 export { fetchPodiums, claimPodium } from './rewards';
 export { fetchGems, refillHeartsWithGems, reviewRegainHeart, buyStreakFreeze, buyDoubleXp, buyGemPack } from './gems';
-export { subscribePremium, repairStreak, buyHearts } from './billing';
+export { subscribePremium, cancelSubscription, repairStreak, buyHearts } from './billing';
 export type { PremiumPlan, SubscribeResult } from './billing';
 export { fetchReferral, redeemReferral } from './referral';
 export type { ReferralInfo } from './referral';
