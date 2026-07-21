@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import LessonHeader from '../../../components/LessonHeader';
+import ArabicText from '../../../components/ArabicText';
 import { playSound } from '../../../constants/sounds';
 import { useT } from '../../../lib/i18n';
 
@@ -31,10 +32,10 @@ export default function ArrangeScreen() {
 
         {/* Zone réponse RTL */}
         <View style={styles.answerZone}>
-          <Text style={styles.fixedWord}>بِسْمِ</Text>
+          <ArabicText style={styles.fixedWord}>بِسْمِ</ArabicText>
           {placed.map((id) => {
             const w = WORDS.find((x) => x.id === id)!;
-            return <Text key={id} style={styles.placedWord}>{w.text}</Text>;
+            return <ArabicText key={id} style={styles.placedWord}>{w.text}</ArabicText>;
           })}
           {Array.from({ length: emptySlots }).map((_, i) => (
             <View key={i} style={styles.slot} />
@@ -49,7 +50,7 @@ export default function ArrangeScreen() {
               style={[styles.wordTile, { backgroundColor: w.bg, borderColor: w.ring }]}
               onPress={() => { playSound('progress'); setPlaced((p) => [...p, w.id]); }}
             >
-              <Text style={styles.wordText}>{w.text}</Text>
+              <ArabicText style={styles.wordText}>{w.text}</ArabicText>
             </Pressable>
           ))}
         </View>

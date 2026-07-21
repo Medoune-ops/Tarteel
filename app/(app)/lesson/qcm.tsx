@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
+import ArabicText from '../../../components/ArabicText';
 import { correctFeedback, wrongFeedback } from '../../../constants/sounds';
 import { useT } from '../../../lib/i18n';
 
@@ -35,7 +36,7 @@ export default function QcmScreen() {
 
         {/* Mot arabe */}
         <View style={styles.wordCard}>
-          <Text style={styles.arabic}>الرَّحِيمِ</Text>
+          <ArabicText style={styles.arabic}>الرَّحِيمِ</ArabicText>
           <Text style={styles.translit}>Ar-Raheem</Text>
         </View>
 

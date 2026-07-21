@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import LessonHeader from '../../../components/LessonHeader';
+import ArabicText from '../../../components/ArabicText';
 import { correctFeedback, wrongFeedback } from '../../../constants/sounds';
 import { useT } from '../../../lib/i18n';
 
@@ -72,7 +73,7 @@ export default function MatchScreen() {
                     isSel && styles.selected,
                   ]}
                 >
-                  <Text style={styles.arabic}>{w.text}</Text>
+                  <ArabicText style={styles.arabic}>{w.text}</ArabicText>
                   {isMatched && <Feather name="check" size={18} color="#34C724" />}
                 </Pressable>
               );

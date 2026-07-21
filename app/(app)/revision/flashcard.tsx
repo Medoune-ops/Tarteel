@@ -1,4 +1,5 @@
 import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import ArabicText from '../../../components/ArabicText';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { reviewRegainHeart } from '../../../lib/api/gems';
 import {
@@ -640,9 +641,9 @@ export default function FlashcardScreen() {
                   <Feather name="help-circle" size={13} color="#F0820C" />
                   <Text style={styles.aideBadgeText}>{tr('flashcard.helpBadge')}</Text>
                 </View>
-                <Text style={styles.aideArabe}>
-                  {etapeCourante?.type === 'assemble' ? etapeCourante.texte : etapeCourante?.verset.texteArabe}
-                </Text>
+                <ArabicText style={styles.aideArabe}>
+                  {etapeCourante?.type === 'assemble' ? etapeCourante.texte : (etapeCourante?.verset.texteArabe ?? '')}
+                </ArabicText>
                 {etapeCourante?.type === 'verset' && !!etapeCourante.verset.translitteration && (
                   <Text style={styles.aideTranslit}>{etapeCourante.verset.translitteration.texte}</Text>
                 )}
@@ -692,9 +693,9 @@ export default function FlashcardScreen() {
           <View style={styles.cardWrap}>
             <Animated.View key={`cloze-${etapeCourante.verset.id}`} entering={FadeIn.duration(300)} style={styles.clozeCard}>
               <Text style={styles.clozeHint}>{tr('flashcard.clozeHint')}</Text>
-              <Text style={styles.clozeArabe}>
+              <ArabicText style={styles.clozeArabe}>
                 {clozeText(etapeCourante.verset.texteArabe, clozeRatio(etapeCourante.indexInSeg, segVersets.length))}
-              </Text>
+              </ArabicText>
               <Wave />
             </Animated.View>
           </View>

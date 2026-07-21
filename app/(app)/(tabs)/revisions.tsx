@@ -7,9 +7,12 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
 import {
-  fetchRevisions, fetchSourates, fetchLettreRevisions,
-  type SourateRevisionView, type SourateListItem, type LettreRevisionView,
+  fetchRevisions, fetchSourates, fetchLettreRevisions, fetchSections, fetchGuidedRevision,
+  type SourateRevisionView, type SourateListItem, type LettreRevisionView, type GuidedRevisionView,
 } from '../../../lib/api';
+import { swrFetch } from '../../../lib/api/swr';
+import { useUserStore } from '../../../store/userStore';
+import type { ParcoursSection } from '../../../constants/parcours';
 import { useT, t } from '../../../lib/i18n';
 
 // Couleurs par état SRS (maitrise/revoir/difficile) — même palette que le mock d'origine.
@@ -21,6 +24,8 @@ const ETAT_COLORS: Record<SourateRevisionView['etat'], { couleur: string; couleu
 // Sourate trouvée par la recherche mais pas encore apprise : neutre, pas de SRS.
 const NON_APPRISE_COLOR = { couleur: '#8A8F99', couleurDark: '#6B7078', bg: '#EDEEF1' };
 
+type Onglet = 'guidee' | 'libre';
+
 /** "Aujourd'hui" / "Dans N jours" à partir d'une date ISO (ou null = jamais révisé → due maintenant). */
 function formatProchaineRevision(iso: string | null): string {
   if (!iso) return t('revisions.dueToday');
@@ -28,6 +33,24 @@ function formatProchaineRevision(iso: string | null): string {
   if (days <= 0) return t('revisions.dueToday');
   if (days === 1) return t('revisions.dueInOneDay');
   return t('revisions.dueInDays', { n: days });
+}
+
+/**
+ * Détermine la sourate "en cours d'apprentissage" à partir du parcours : dans
+ * la section active, le nœud actif (state === 'active') correspond, dans
+ * l'ordre, à `section.sourates[index]` — une section hizb a exactement un
+ * nœud par sourate. La section Alphabet n'a pas de sourates (nodes purement
+ * alphabet/harakat) : si c'est elle qui est active, aucune sourate n'est
+ * encore en cours de chaînage.
+ */
+function findSourateEnCours(sections: ParcoursSection[]): number | null {
+  for (const section of sections) {
+    const activeIndex = section.nodes.findIndex((n) => n.state === 'active');
+    if (activeIndex === -1) continue;
+    const sourate = section.sourates[activeIndex];
+    return sourate ? sourate.numero : null;
+  }
+  return null;
 }
 
 /** Fusion sourate (toujours présente) + état SRS (seulement si apprise). */
@@ -75,10 +98,212 @@ function EtatBadge({ etat }: { etat: string | null }) {
   );
 }
 
+/** Sélecteur d'onglets — Guidée mise en avant (plus grande, colorée) vs Libre. */
+function TabSwitcher({ onglet, onChange }: { onglet: Onglet; onChange: (o: Onglet) => void }) {
+  const tr = useT();
+  return (
+    <View style={styles.tabRow}>
+      <Pressable
+        style={[styles.tabBtn, styles.tabBtnGuidee, onglet === 'guidee' && styles.tabBtnGuideeActive]}
+        onPress={() => onChange('guidee')}
+      >
+        <Feather name="zap" size={18} color={onglet === 'guidee' ? '#fff' : '#6B4DFF'} />
+        <Text style={[styles.tabBtnGuideeText, onglet !== 'guidee' && { color: '#6B4DFF' }]}>
+          {tr('revisions.tabGuidee')}
+        </Text>
+      </Pressable>
+      <Pressable
+        style={[styles.tabBtn, styles.tabBtnLibre, onglet === 'libre' && styles.tabBtnLibreActive]}
+        onPress={() => onChange('libre')}
+      >
+        <Feather name="list" size={16} color={onglet === 'libre' ? '#1B2333' : '#8A8F99'} />
+        <Text style={[styles.tabBtnLibreText, onglet === 'libre' && { color: '#1B2333' }]}>
+          {tr('revisions.tabLibre')}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/** Aperçu du pas courant de la révision guidée, dans la carte mise en avant. */
+function GuidedPreview({ guided }: { guided: GuidedRevisionView }) {
+  const tr = useT();
+  if (guided.terminee || !guided.step) {
+    return (
+      <View style={styles.guidedStepRow}>
+        <Text style={styles.guidedStepEmoji}>🏆</Text>
+        <Text style={styles.guidedStepText}>{tr('revisions.guidedDone', { nom: guided.nom })}</Text>
+      </View>
+    );
+  }
+  const { nouveauxVersets } = guided.step;
+  return (
+    <View style={styles.guidedStepRow}>
+      <Feather name="mic" size={18} color="#fff" />
+      <Text style={styles.guidedStepText}>
+        {tr('revisions.guidedStepPreview', { debut: nouveauxVersets.debut, fin: nouveauxVersets.fin })}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Onglet "Révision guidée" — chaînage progressif sur la sourate en cours
+ * d'apprentissage, PLUS les leçons alphabet/harakat dues (SRS `LettreRevision`
+ * existant, sans chaînage : l'alphabet/harakat n'est pas concerné par le
+ * chaînage verset par verset, seulement mis en avant ici au même titre que
+ * la sourate en cours).
+ */
+function OngletGuidee({
+  T, tr, lettres,
+}: {
+  T: ReturnType<typeof useTheme>; tr: ReturnType<typeof useT>; lettres: LettreRevisionView[];
+}) {
+  const router = useRouter();
+  const [numero, setNumero] = useState<number | null | undefined>(undefined); // undefined = pas encore su
+  const [guided, setGuided] = useState<GuidedRevisionView | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoadError(false);
+    try {
+      const lang = useUserStore.getState().language;
+      const sections = await swrFetch(`sections:${lang}`, () => fetchSections(lang));
+      const current = findSourateEnCours(sections);
+      setNumero(current);
+      if (current != null) {
+        setGuided(await fetchGuidedRevision(current));
+      }
+    } catch {
+      setLoadError(true);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loadError) {
+    return (
+      <View style={styles.guidedErrorBox}>
+        <Feather name="wifi-off" size={28} color="#9AA0AA" />
+        <Text style={styles.emptySub}>{tr('revisions.loadError')}</Text>
+        <Pressable style={styles.retryBtn} onPress={load}>
+          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (numero === undefined) {
+    return (
+      <View style={styles.guidedErrorBox}>
+        <ActivityIndicator size="large" color="#6B4DFF" />
+      </View>
+    );
+  }
+
+  // Lettres/harakat DUES (échéance passée) — pas de chaînage ici, juste le
+  // SRS LettreRevision existant mis en avant au même titre que la sourate.
+  const lettresDues = lettres.filter(
+    (l) => !l.prochaineRevision || new Date(l.prochaineRevision).getTime() <= Date.now(),
+  );
+
+  const lettresSection = lettresDues.length > 0 && (
+    <View style={{ gap: 10, marginTop: 18 }}>
+      <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('revisions.alphabetTitle')}</Text>
+      {lettresDues.map((l) => {
+        const c = ETAT_COLORS[l.etat];
+        return (
+          <Pressable
+            key={l.lessonId}
+            style={[styles.card, { backgroundColor: T.cardBg }]}
+            onPress={() => router.push({
+              pathname: '/(app)/revision/lettre',
+              params: { lessonId: l.lessonId, titre: l.titre },
+            })}
+          >
+            <View style={[styles.numBox, { backgroundColor: c.bg, borderColor: c.couleur }]}>
+              <Feather name="type" size={20} color={c.couleur} />
+            </View>
+            <View style={styles.cardBody}>
+              <View style={styles.cardTop}>
+                <Text style={[styles.cardNom, { color: T.text }]} numberOfLines={1}>{l.titre}</Text>
+              </View>
+              <View style={styles.cardMeta}>
+                <EtatBadge etat={l.etat} />
+                <Text style={styles.cardRevision}>
+                  <Feather name="clock" size={11} color="#8A8F99" /> {formatProchaineRevision(l.prochaineRevision)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.cardRight}>
+              <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+                <ScoreRing score={l.score} color={c.couleur} trackColor={T.isDark ? '#2E2D3F' : '#E6E8ED'} />
+                <Text style={[styles.scoreText, { color: c.couleur }]}>{l.score}%</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color="#C9CDD4" style={{ marginTop: 4 }} />
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  // Aucune sourate en cours de chaînage (ex: encore dans l'alphabet) — les
+  // lettres/harakat dues restent affichées si elles existent.
+  if (numero == null || !guided) {
+    return (
+      <View>
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>📚</Text>
+          <Text style={[styles.emptyTitle, { color: T.text }]}>{tr('revisions.guidedNoneTitle')}</Text>
+          <Text style={styles.emptySub}>{tr('revisions.guidedNoneSub')}</Text>
+        </View>
+        {lettresSection}
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      <Pressable
+        style={styles.guidedCard}
+        onPress={() => router.push({ pathname: '/(app)/revision/guided', params: { numero: guided.numero } })}
+      >
+        <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.guidedGrad}>
+          <View style={styles.guidedHeaderRow}>
+            <View style={styles.guidedBadgePill}>
+              <Feather name="link" size={12} color="#fff" />
+              <Text style={styles.guidedBadgePillText}>{tr('revisions.guidedBadge')}</Text>
+            </View>
+          </View>
+          <Text style={styles.guidedNom}>{guided.nom} · {guided.nomArabe}</Text>
+          <Text style={styles.guidedProgress}>
+            {tr('guided.progress', { done: guided.lessonsConsolidees, total: guided.lessonsTotal })}
+          </Text>
+          <View style={styles.guidedProgWrap}>
+            <View style={[styles.guidedProgBar, {
+              width: `${guided.lessonsTotal > 0 ? Math.round((guided.lessonsConsolidees / guided.lessonsTotal) * 100) : 0}%`,
+            }]} />
+          </View>
+          <GuidedPreview guided={guided} />
+          <View style={styles.guidedCta}>
+            <Text style={styles.guidedCtaText}>
+              {guided.terminee ? tr('revisions.guidedRestart') : tr('revisions.start')}
+            </Text>
+            <Feather name="arrow-right" size={16} color="#6B4DFF" />
+          </View>
+        </LinearGradient>
+      </Pressable>
+      {lettresSection}
+    </View>
+  );
+}
+
 export default function RevisionsScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const [onglet, setOnglet] = useState<Onglet>('guidee');
   const [query, setQuery] = useState('');
   const [toutes, setToutes] = useState<SourateListItem[] | null>(null);
   const [revisions, setRevisions] = useState<SourateRevisionView[] | null>(null);
@@ -201,167 +426,175 @@ export default function RevisionsScreen() {
 
         <View style={styles.body}>
 
-          {/* Barre de recherche */}
-          <View style={[styles.searchBar, { backgroundColor: T.cardBg }]}>
-            <Feather name="search" size={18} color="#A0A5AE" />
-            <TextInput
-              style={[styles.searchInput, { color: T.text }]}
-              placeholder={tr('revisions.searchPlaceholder')}
-              placeholderTextColor="#A0A5AE"
-              value={query}
-              onChangeText={setQuery}
-              returnKeyType="search"
-            />
-            {enRecherche && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                <Feather name="x-circle" size={18} color="#C9CDD4" />
-              </Pressable>
-            )}
-          </View>
+          <TabSwitcher onglet={onglet} onChange={setOnglet} />
 
-          {/* Urgentes aujourd'hui */}
-          {!enRecherche && urgentes.length > 0 && (
+          {onglet === 'guidee' ? (
+            <OngletGuidee T={T} tr={tr} lettres={lettres} />
+          ) : (
             <>
-              <View style={styles.sectionRow}>
-                <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('revisions.todayTitle')}</Text>
-                <View style={styles.urgentPill}>
-                  <Text style={styles.urgentPillText}>
-                    {tr(urgentes.length > 1 ? 'revisions.todayPillMany' : 'revisions.todayPillOne', { n: urgentes.length })}
-                  </Text>
-                </View>
+              {/* Barre de recherche */}
+              <View style={[styles.searchBar, { backgroundColor: T.cardBg }]}>
+                <Feather name="search" size={18} color="#A0A5AE" />
+                <TextInput
+                  style={[styles.searchInput, { color: T.text }]}
+                  placeholder={tr('revisions.searchPlaceholder')}
+                  placeholderTextColor="#A0A5AE"
+                  value={query}
+                  onChangeText={setQuery}
+                  returnKeyType="search"
+                />
+                {enRecherche && (
+                  <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                    <Feather name="x-circle" size={18} color="#C9CDD4" />
+                  </Pressable>
+                )}
               </View>
-              <View style={[styles.urgentBanner, { backgroundColor: T.cardBg }]}>
-                <Text style={styles.urgentIcon}>🔔</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.urgentBannerTitle, { color: T.text }]}>{tr('revisions.todayBannerTitle')}</Text>
-                  <Text style={styles.urgentBannerSub}>
-                    {tr('revisions.todayBannerSub', { noms: urgentes.map(s => s.nom).join(' · ') })}
-                  </Text>
+
+              {/* Urgentes aujourd'hui */}
+              {!enRecherche && urgentes.length > 0 && (
+                <>
+                  <View style={styles.sectionRow}>
+                    <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('revisions.todayTitle')}</Text>
+                    <View style={styles.urgentPill}>
+                      <Text style={styles.urgentPillText}>
+                        {tr(urgentes.length > 1 ? 'revisions.todayPillMany' : 'revisions.todayPillOne', { n: urgentes.length })}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.urgentBanner, { backgroundColor: T.cardBg }]}>
+                    <Text style={styles.urgentIcon}>🔔</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.urgentBannerTitle, { color: T.text }]}>{tr('revisions.todayBannerTitle')}</Text>
+                      <Text style={styles.urgentBannerSub}>
+                        {tr('revisions.todayBannerSub', { noms: urgentes.map(s => s.nom).join(' · ') })}
+                      </Text>
+                    </View>
+                    <Pressable
+                      style={styles.urgentBtn}
+                      onPress={() => router.push({
+                        pathname: '/(app)/revision/flashcard',
+                        params: { numero: urgentes[0].numero, apprise: '1' },
+                      })}
+                    >
+                      <Text style={styles.urgentBtnText}>{tr('revisions.start')}</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+
+              {/* Alphabet & Harakat */}
+              {!enRecherche && (
+                <>
+                  <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('revisions.alphabetTitle')}</Text>
+                  {lettres.length === 0 && (
+                    <Text style={[styles.emptySub, { textAlign: 'left', paddingHorizontal: 2, marginBottom: 16 }]}>
+                      {tr('revisions.alphabetEmpty')}
+                    </Text>
+                  )}
+                  {lettres.map((l) => {
+                    const c = ETAT_COLORS[l.etat];
+                    return (
+                      <Pressable
+                        key={l.lessonId}
+                        style={[styles.card, { backgroundColor: T.cardBg }]}
+                        onPress={() => router.push({
+                          pathname: '/(app)/revision/lettre',
+                          params: { lessonId: l.lessonId, titre: l.titre },
+                        })}
+                      >
+                        <View style={[styles.numBox, { backgroundColor: c.bg, borderColor: c.couleur }]}>
+                          <Feather name="type" size={20} color={c.couleur} />
+                        </View>
+                        <View style={styles.cardBody}>
+                          <View style={styles.cardTop}>
+                            <Text style={[styles.cardNom, { color: T.text }]} numberOfLines={1}>{l.titre}</Text>
+                          </View>
+                          <View style={styles.cardMeta}>
+                            <EtatBadge etat={l.etat} />
+                            <Text style={styles.cardRevision}>
+                              <Feather name="clock" size={11} color="#8A8F99" /> {formatProchaineRevision(l.prochaineRevision)}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.cardRight}>
+                          <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+                            <ScoreRing score={l.score} color={c.couleur} trackColor={T.isDark ? '#2E2D3F' : '#E6E8ED'} />
+                            <Text style={[styles.scoreText, { color: c.couleur }]}>{l.score}%</Text>
+                          </View>
+                          <Feather name="chevron-right" size={18} color="#C9CDD4" style={{ marginTop: 4 }} />
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Liste toutes sourates */}
+              <Text style={[styles.sectionTitle, { color: T.text }]}>
+                {enRecherche ? tr('revisions.searchResults', { n: resultats.length }) : tr('revisions.mySourates')}
+              </Text>
+
+              {resultats.length === 0 ? (
+                <View style={styles.empty}>
+                  <Text style={styles.emptyEmoji}>🔍</Text>
+                  <Text style={[styles.emptyTitle, { color: T.text }]}>{tr('revisions.noneFound')}</Text>
+                  <Text style={styles.emptySub}>{tr('revisions.tryAnother')}</Text>
                 </View>
+              ) : resultats.map((s) => {
+                const c = s.revision ? ETAT_COLORS[s.revision.etat] : NON_APPRISE_COLOR;
+                return (
                 <Pressable
-                  style={styles.urgentBtn}
+                  key={s.numero}
+                  style={[styles.card, { backgroundColor: T.cardBg }, !s.apprise && styles.cardNonApprise]}
                   onPress={() => router.push({
                     pathname: '/(app)/revision/flashcard',
-                    params: { numero: urgentes[0].numero, apprise: '1' },
+                    params: { numero: s.numero, apprise: s.apprise ? '1' : '0' },
                   })}
                 >
-                  <Text style={styles.urgentBtnText}>{tr('revisions.start')}</Text>
-                </Pressable>
-              </View>
-            </>
-          )}
+                  {/* Numéro */}
+                  <View style={[styles.numBox, { backgroundColor: c.bg, borderColor: c.couleur }]}>
+                    <Text style={[styles.numText, { color: c.couleur }]}>{s.numero}</Text>
+                  </View>
 
-          {/* Alphabet & Harakat */}
-          {!enRecherche && (
-            <>
-              <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('revisions.alphabetTitle')}</Text>
-              {lettres.length === 0 && (
-                <Text style={[styles.emptySub, { textAlign: 'left', paddingHorizontal: 2, marginBottom: 16 }]}>
-                  {tr('revisions.alphabetEmpty')}
-                </Text>
-              )}
-              {lettres.map((l) => {
-                const c = ETAT_COLORS[l.etat];
-                return (
-                  <Pressable
-                    key={l.lessonId}
-                    style={[styles.card, { backgroundColor: T.cardBg }]}
-                    onPress={() => router.push({
-                      pathname: '/(app)/revision/lettre',
-                      params: { lessonId: l.lessonId, titre: l.titre },
-                    })}
-                  >
-                    <View style={[styles.numBox, { backgroundColor: c.bg, borderColor: c.couleur }]}>
-                      <Feather name="type" size={20} color={c.couleur} />
+                  {/* Infos */}
+                  <View style={styles.cardBody}>
+                    <View style={styles.cardTop}>
+                      <Text style={[styles.cardNom, { color: T.text }]} numberOfLines={1}>{s.nom}</Text>
+                      <Text style={styles.cardArabe}>{s.nomArabe}</Text>
                     </View>
-                    <View style={styles.cardBody}>
-                      <View style={styles.cardTop}>
-                        <Text style={[styles.cardNom, { color: T.text }]} numberOfLines={1}>{l.titre}</Text>
-                      </View>
-                      <View style={styles.cardMeta}>
-                        <EtatBadge etat={l.etat} />
+                    <View style={styles.cardMeta}>
+                      <EtatBadge etat={s.revision?.etat ?? null} />
+                      {s.revision && (
                         <Text style={styles.cardRevision}>
-                          <Feather name="clock" size={11} color="#8A8F99" /> {formatProchaineRevision(l.prochaineRevision)}
+                          <Feather name="clock" size={11} color="#8A8F99" /> {formatProchaineRevision(s.revision.prochaineRevision)}
                         </Text>
-                      </View>
+                      )}
                     </View>
-                    <View style={styles.cardRight}>
+                    <Text style={styles.cardVersets}>
+                      {tr('revisions.versets', { n: s.nombreVersets })}
+                      {s.revision && s.revision.segmentsTotal > 1
+                        ? ` · ${tr('revisions.segmentsBadge', { due: s.revision.segmentsDue, total: s.revision.segmentsTotal })}`
+                        : ''}
+                    </Text>
+                  </View>
+
+                  {/* Score ring — seulement pour une sourate apprise (suivie en SRS) */}
+                  <View style={styles.cardRight}>
+                    {s.revision ? (
                       <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
-                        <ScoreRing score={l.score} color={c.couleur} trackColor={T.isDark ? '#2E2D3F' : '#E6E8ED'} />
-                        <Text style={[styles.scoreText, { color: c.couleur }]}>{l.score}%</Text>
+                        <ScoreRing score={s.revision.score} color={c.couleur} trackColor={T.isDark ? '#2E2D3F' : '#E6E8ED'} />
+                        <Text style={[styles.scoreText, { color: c.couleur }]}>{s.revision.score}%</Text>
                       </View>
-                      <Feather name="chevron-right" size={18} color="#C9CDD4" style={{ marginTop: 4 }} />
-                    </View>
-                  </Pressable>
+                    ) : (
+                      <Feather name="headphones" size={22} color="#C9CDD4" />
+                    )}
+                    <Feather name="chevron-right" size={18} color="#C9CDD4" style={{ marginTop: 4 }} />
+                  </View>
+                </Pressable>
                 );
               })}
             </>
           )}
-
-          {/* Liste toutes sourates */}
-          <Text style={[styles.sectionTitle, { color: T.text }]}>
-            {enRecherche ? tr('revisions.searchResults', { n: resultats.length }) : tr('revisions.mySourates')}
-          </Text>
-
-          {resultats.length === 0 ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🔍</Text>
-              <Text style={[styles.emptyTitle, { color: T.text }]}>{tr('revisions.noneFound')}</Text>
-              <Text style={styles.emptySub}>{tr('revisions.tryAnother')}</Text>
-            </View>
-          ) : resultats.map((s) => {
-            const c = s.revision ? ETAT_COLORS[s.revision.etat] : NON_APPRISE_COLOR;
-            return (
-            <Pressable
-              key={s.numero}
-              style={[styles.card, { backgroundColor: T.cardBg }, !s.apprise && styles.cardNonApprise]}
-              onPress={() => router.push({
-                pathname: '/(app)/revision/flashcard',
-                params: { numero: s.numero, apprise: s.apprise ? '1' : '0' },
-              })}
-            >
-              {/* Numéro */}
-              <View style={[styles.numBox, { backgroundColor: c.bg, borderColor: c.couleur }]}>
-                <Text style={[styles.numText, { color: c.couleur }]}>{s.numero}</Text>
-              </View>
-
-              {/* Infos */}
-              <View style={styles.cardBody}>
-                <View style={styles.cardTop}>
-                  <Text style={[styles.cardNom, { color: T.text }]} numberOfLines={1}>{s.nom}</Text>
-                  <Text style={styles.cardArabe}>{s.nomArabe}</Text>
-                </View>
-                <View style={styles.cardMeta}>
-                  <EtatBadge etat={s.revision?.etat ?? null} />
-                  {s.revision && (
-                    <Text style={styles.cardRevision}>
-                      <Feather name="clock" size={11} color="#8A8F99" /> {formatProchaineRevision(s.revision.prochaineRevision)}
-                    </Text>
-                  )}
-                </View>
-                <Text style={styles.cardVersets}>
-                  {tr('revisions.versets', { n: s.nombreVersets })}
-                  {s.revision && s.revision.segmentsTotal > 1
-                    ? ` · ${tr('revisions.segmentsBadge', { due: s.revision.segmentsDue, total: s.revision.segmentsTotal })}`
-                    : ''}
-                </Text>
-              </View>
-
-              {/* Score ring — seulement pour une sourate apprise (suivie en SRS) */}
-              <View style={styles.cardRight}>
-                {s.revision ? (
-                  <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
-                    <ScoreRing score={s.revision.score} color={c.couleur} trackColor={T.isDark ? '#2E2D3F' : '#E6E8ED'} />
-                    <Text style={[styles.scoreText, { color: c.couleur }]}>{s.revision.score}%</Text>
-                  </View>
-                ) : (
-                  <Feather name="headphones" size={22} color="#C9CDD4" />
-                )}
-                <Feather name="chevron-right" size={18} color="#C9CDD4" style={{ marginTop: 4 }} />
-              </View>
-            </Pressable>
-            );
-          })}
 
           <View style={{ height: 20 }} />
         </View>
@@ -387,6 +620,51 @@ const styles = StyleSheet.create({
   statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff' },
   statLbl: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.8)' },
   body: { padding: 18 },
+
+  // Sélecteur d'onglets — Guidée mise en avant (plus grande, colorée pleine).
+  tabRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
+  tabBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderRadius: 16, paddingVertical: 14,
+  },
+  tabBtnGuidee: {
+    flex: 1.3, backgroundColor: '#EDE8FF', borderWidth: 2, borderColor: '#6B4DFF',
+  },
+  tabBtnGuideeActive: {
+    backgroundColor: '#6B4DFF',
+    shadowColor: '#6B4DFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 4,
+  },
+  tabBtnGuideeText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#fff' },
+  tabBtnLibre: { flex: 1, backgroundColor: '#EDEEF1' },
+  tabBtnLibreActive: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#E2E4EA' },
+  tabBtnLibreText: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#8A8F99' },
+
+  // Onglet guidée — carte mise en avant.
+  guidedCard: { borderRadius: 22, overflow: 'hidden', marginBottom: 8 },
+  guidedGrad: { padding: 20 },
+  guidedHeaderRow: { flexDirection: 'row', marginBottom: 10 },
+  guidedBadgePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  guidedBadgePillText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: '#fff' },
+  guidedNom: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff', marginBottom: 4 },
+  guidedProgress: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 10 },
+  guidedProgWrap: { height: 8, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 4, overflow: 'hidden', marginBottom: 14 },
+  guidedProgBar: { height: 8, backgroundColor: '#fff', borderRadius: 4 },
+  guidedStepRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: 12, marginBottom: 14,
+  },
+  guidedStepEmoji: { fontSize: 18 },
+  guidedStepText: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#fff', flex: 1 },
+  guidedCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 13,
+  },
+  guidedCtaText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#6B4DFF' },
+  guidedErrorBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 10 },
+
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     borderRadius: 16, paddingHorizontal: 14, height: 50,
@@ -400,7 +678,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 50, gap: 8 },
   emptyEmoji: { fontSize: 44 },
   emptyTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17 },
-  emptySub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99' },
+  emptySub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99', textAlign: 'center' },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 6, marginBottom: 10 },
   urgentPill: { backgroundColor: '#FF4B4B', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
