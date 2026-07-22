@@ -23,7 +23,7 @@ export type { GemsStatus, GemLedgerEntry, GemPackId } from './gems';
 export type { PodiumEntry, LigueTier } from './rewards';
 export {
   reciteVerset, reciteVersetRange, reciteLessonStep, fetchRevisions, fetchSourateSegments,
-  reviewSegment, reviewSourate, fetchGuidedRevision, advanceGuidedRevision,
+  reviewSegment, fetchGuidedRevision, advanceGuidedRevision,
   fetchLettreRevisions, reviewLettre, reciteLettreStep,
 } from './revision';
 export type {
