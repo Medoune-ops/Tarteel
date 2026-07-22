@@ -8,6 +8,7 @@ import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
 import { refillHeartsWithGems, buyStreakFreeze, buyDoubleXp, buyGemPack, type GemPackId } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import DexPayCheckout from '../../components/DexPayCheckout';
 import { useT } from '../../lib/i18n';
 
 // Coûts en gemmes (source de vérité : backend ; repris ici pour l'affichage).
@@ -68,6 +69,8 @@ export default function GemsScreen() {
   // Action en cours (clé unique) → désactive et montre le spinner sur la bonne carte.
   const [busy, setBusy] = useState<string | null>(null);
   const doubleXpActive = doubleXpUntil != null && doubleXpUntil > Date.now();
+  const [session, setSession] = useState<{ reference: string; paymentUrl: string } | null>(null);
+  const [pendingPackMsg, setPendingPackMsg] = useState<{ title: string; msg: string } | null>(null);
 
   // Enveloppe commune : lance l'action serveur, alerte succès/échec, jamais bloquant.
   const run = async (key: string, fn: () => Promise<unknown>, okTitle: string, okMsg: string) => {
@@ -83,6 +86,29 @@ export default function GemsScreen() {
           : e instanceof ApiError && e.status !== 0
             ? e.message
             : tr('gems.errorGeneric');
+      Alert.alert(tr('gems.errorTitle'), msg);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Achat d'un pack de gemmes avec de l'argent — ouvre le checkout DexPay
+  // (carte). Contrairement aux autres actions (payées en gemmes), celle-ci
+  // ne crédite rien immédiatement : il faut confirmer via le paiement carte
+  // puis attendre le webhook (voir components/DexPayCheckout.tsx).
+  const onBuyPack = async (p: (typeof PACKS)[number]) => {
+    const key = `pack-${p.id}`;
+    if (busy) return;
+    setBusy(key);
+    try {
+      const s = await buyGemPack(p.id);
+      setPendingPackMsg({
+        title: tr('gems.packOkTitle'),
+        msg: tr('gems.packOkMsg', { count: p.gems.toLocaleString('fr-FR') }),
+      });
+      setSession(s);
+    } catch (e) {
+      const msg = e instanceof ApiError && e.status !== 0 ? e.message : tr('gems.errorGeneric');
       Alert.alert(tr('gems.errorTitle'), msg);
     } finally {
       setBusy(null);
@@ -146,13 +172,28 @@ export default function GemsScreen() {
             title={tr('gems.packTitle', { count: p.gems.toLocaleString('fr-FR') })}
             hint={tr('gems.packHint')}
             cta={tr('gems.packCta')}
-            onPress={() => run(`pack-${p.id}`, () => buyGemPack(p.id), tr('gems.packOkTitle'), tr('gems.packOkMsg', { count: p.gems.toLocaleString('fr-FR') }))}
+            onPress={() => onBuyPack(p)}
             loading={busy === `pack-${p.id}`}
           />
         ))}
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {session && (
+        <DexPayCheckout
+          visible
+          paymentUrl={session.paymentUrl}
+          reference={session.reference}
+          onDone={(outcome) => {
+            setSession(null);
+            if (outcome === 'success' && pendingPackMsg) {
+              Alert.alert(pendingPackMsg.title, pendingPackMsg.msg);
+            }
+            setPendingPackMsg(null);
+          }}
+        />
+      )}
     </View>
   );
 }

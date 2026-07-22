@@ -7,12 +7,15 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Alert } from 'react-native';
-import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
-import { getPaymentProvider } from '../../lib/payments';
+import { subscribePremium, type PremiumPlan, type CheckoutSession } from '../../lib/api/billing';
+import { ApiError } from '../../lib/api/client';
+import DexPayCheckout from '../../components/DexPayCheckout';
 import { buildPlans } from './subscription';
 import { useT } from '../../lib/i18n';
 
-// ─── Helpers de formatage ────────────────────────────────────────────────────
+// ─── Helpers de formatage (aperçu carte purement visuel — DexPay collecte la
+// vraie carte dans son iframe, ces champs ne sont jamais envoyés à notre
+// serveur ni au SDK) ─────────────────────────────────────────────────────────
 const formatCardNumber = (v: string) =>
   v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
 
@@ -40,6 +43,7 @@ export default function PaymentCardScreen() {
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
   const [paying, setPaying] = useState(false);
+  const [session, setSession] = useState<CheckoutSession | null>(null);
 
   const valid =
     number.replace(/\s/g, '').length === 16 &&
@@ -47,24 +51,19 @@ export default function PaymentCardScreen() {
     expiry.length === 5 &&
     cvv.length >= 3;
 
+  // Les champs ci-dessus ne sont qu'un aperçu visuel : la vraie saisie carte a
+  // lieu DANS l'iframe DexPay (checkout ouvert juste après), jamais ici — le
+  // numéro de carte ne doit jamais transiter par notre code.
   const handlePay = async () => {
     if (!valid || paying) return;
     setPaying(true);
-    // Les champs carte sont décoratifs tant que le PaymentProvider est mock :
-    // au branchement de notre API de paiement (lib/payments.ts), c'est elle
-    // qui collectera la carte (PaymentSheet) et fournira le paymentToken.
-    // L'entitlement, lui, est TOUJOURS activé côté serveur (jamais en local).
     try {
-      const payment = await getPaymentProvider().payPremium(plan.id as PremiumPlan, 'card');
-      if (!payment.ok) {
-        Alert.alert(tr('paymentCard.errorTitle'), payment.error ?? tr('paymentCard.errorMessage'));
-        setPaying(false);
-        return;
-      }
-      await subscribePremium(plan.id as PremiumPlan, payment.paymentToken);
-      router.replace('/(app)/(tabs)/parcours');
-    } catch {
-      Alert.alert(tr('paymentCard.errorTitle'), tr('paymentCard.errorMessage'));
+      const s = await subscribePremium(plan.id as PremiumPlan);
+      setSession(s);
+    } catch (e) {
+      const msg = e instanceof ApiError && e.status !== 0 ? e.message : tr('paymentCard.errorMessage');
+      Alert.alert(tr('paymentCard.errorTitle'), msg);
+    } finally {
       setPaying(false);
     }
   };
@@ -184,6 +183,18 @@ export default function PaymentCardScreen() {
           <View style={{ height: 24 }} />
         </ScrollView>
       </View>
+
+      {session && (
+        <DexPayCheckout
+          visible
+          paymentUrl={session.paymentUrl}
+          reference={session.reference}
+          onDone={(outcome) => {
+            setSession(null);
+            if (outcome === 'success') router.replace('/(app)/(tabs)/parcours');
+          }}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }

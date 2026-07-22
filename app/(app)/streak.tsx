@@ -6,8 +6,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
-import { fetchGems, fetchMe, repairStreak, type GemLedgerEntry } from '../../lib/api';
+import { fetchGems, fetchMe, repairStreak, type GemLedgerEntry, type CheckoutSession } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import DexPayCheckout from '../../components/DexPayCheckout';
 import { useT } from '../../lib/i18n';
 
 // Évènements du ledger de gemmes liés à la SÉRIE (flammes). On ne garde que
@@ -46,6 +47,7 @@ export default function StreakScreen() {
   const [repairing, setRepairing] = useState(false);
   // Jours de série récupérés en payant la restauration (= lastStreakValue).
   const [recoverable, setRecoverable] = useState(0);
+  const [session, setSession] = useState<CheckoutSession | null>(null);
 
   const load = useCallback(async () => {
     setError(false);
@@ -60,15 +62,13 @@ export default function StreakScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  // Restaure la série cassée en payant (paiement mock côté backend). Le store
-  // est rehydraté par repairStreak() ; on recharge aussi l'historique.
+  // Restaure la série cassée en payant — ouvre le checkout DexPay (carte).
   const onRepair = useCallback(async () => {
     if (repairing) return;
     setRepairing(true);
     try {
-      await repairStreak();
-      await load();
-      Alert.alert(tr('streak.repairOkTitle'), tr('streak.repairOkMsg'));
+      const s = await repairStreak();
+      setSession(s);
     } catch (e) {
       const msg =
         e instanceof ApiError && e.status !== 0
@@ -78,7 +78,7 @@ export default function StreakScreen() {
     } finally {
       setRepairing(false);
     }
-  }, [repairing, load, tr]);
+  }, [repairing, tr]);
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
@@ -195,6 +195,21 @@ export default function StreakScreen() {
         )}
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {session && (
+        <DexPayCheckout
+          visible
+          paymentUrl={session.paymentUrl}
+          reference={session.reference}
+          onDone={(outcome) => {
+            setSession(null);
+            if (outcome === 'success') {
+              load();
+              Alert.alert(tr('streak.repairOkTitle'), tr('streak.repairOkMsg'));
+            }
+          }}
+        />
+      )}
     </View>
   );
 }

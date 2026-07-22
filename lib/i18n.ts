@@ -1030,6 +1030,19 @@ const fr = {
   'household.actionError': 'Action impossible. Réessaie.',
   'household.subscriptionLinkTitle': 'Plan familial',
   'household.subscriptionLinkHint': "Partage le premium avec jusqu'à 5 comptes",
+
+  // ─── Checkout DexPay (paiement carte) ─────────────────────────────────────
+  'dexpay.headerTitle': 'Paiement sécurisé',
+  'dexpay.verifying': 'Vérification du paiement…',
+  'dexpay.verifyingHint': "Un instant, on confirme ton paiement auprès de la banque.",
+  'dexpay.successTitle': 'Paiement réussi',
+  'dexpay.successHint': 'Ton compte a été mis à jour.',
+  'dexpay.failedTitle': 'Paiement échoué',
+  'dexpay.failedHint': "Le paiement n'a pas pu être confirmé. Réessaie dans un instant.",
+  'dexpay.cancelledTitle': 'Paiement annulé',
+  'dexpay.continue': 'Continuer',
+  'dexpay.close': 'Fermer',
+  'dexpay.startError': 'Impossible de démarrer le paiement. Réessaie.',
 };
 
 type Dict = typeof fr;
@@ -2042,6 +2055,19 @@ const en: Dict = {
   'household.actionError': 'Action failed. Try again.',
   'household.subscriptionLinkTitle': 'Family plan',
   'household.subscriptionLinkHint': 'Share premium with up to 5 accounts',
+
+  // ─── DexPay checkout (card payment) ────────────────────────────────────────
+  'dexpay.headerTitle': 'Secure payment',
+  'dexpay.verifying': 'Verifying payment…',
+  'dexpay.verifyingHint': "One moment, we're confirming your payment with the bank.",
+  'dexpay.successTitle': 'Payment successful',
+  'dexpay.successHint': 'Your account has been updated.',
+  'dexpay.failedTitle': 'Payment failed',
+  'dexpay.failedHint': "The payment couldn't be confirmed. Please try again in a moment.",
+  'dexpay.cancelledTitle': 'Payment cancelled',
+  'dexpay.continue': 'Continue',
+  'dexpay.close': 'Close',
+  'dexpay.startError': 'Could not start the payment. Try again.',
 };
 
 // L'interface arabe n'est pas encore traduite → anglais en attendant.
