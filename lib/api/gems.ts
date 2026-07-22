@@ -86,12 +86,15 @@ export async function buyDoubleXp() {
 
 export type GemPackId = 'p500' | 'p3000' | 'p7000';
 
-/** POST /billing/gems — achète un pack de gemmes (paiement mock côté backend). */
-export async function buyGemPack(pack: GemPackId) {
-  const res = await apiFetch<{ gems: number; gemsAdded: number; pack: GemPackId }>(
-    '/billing/gems',
-    { method: 'POST', json: { pack } },
-  );
-  await fetchMe();
-  return res;
+/**
+ * POST /billing/gems — crée une session de paiement DexPay pour un pack de
+ * gemmes. Ne crédite RIEN immédiatement : il faut ouvrir `paymentUrl` dans le
+ * checkout DexPay (voir components/DexPayCheckout.tsx) puis poller
+ * `getTransaction(reference)` (lib/api/billing.ts) jusqu'à confirmation.
+ */
+export async function buyGemPack(pack: GemPackId): Promise<{ reference: string; paymentUrl: string }> {
+  return apiFetch<{ reference: string; paymentUrl: string }>('/billing/gems', {
+    method: 'POST',
+    json: { pack },
+  });
 }

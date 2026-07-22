@@ -7,8 +7,9 @@ import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore, MAX_HEARTS } from '../../store/userStore';
 import { refillHeartsWithGems } from '../../lib/api/gems';
-import { buyHearts } from '../../lib/api';
+import { buyHearts, type CheckoutSession } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import DexPayCheckout from '../../components/DexPayCheckout';
 import { useT, t } from '../../lib/i18n';
 
 /** Coût serveur d'un refill complet en gemmes (source de vérité : backend). */
@@ -69,6 +70,7 @@ export default function HeartsScreen() {
   const [remaining, setRemaining] = useState(msUntilNextHeart());
   const [refilling, setRefilling] = useState(false);
   const [buying, setBuying] = useState(false);
+  const [session, setSession] = useState<CheckoutSession | null>(null);
 
   const full = hearts >= MAX_HEARTS;
 
@@ -98,13 +100,13 @@ export default function HeartsScreen() {
     }
   };
 
-  /** Acheter un refill complet avec de l'argent (paiement mock). */
+  /** Acheter un refill complet avec de l'argent — ouvre le checkout DexPay (carte). */
   const onBuyMoney = async () => {
     if (buying || full) return;
     setBuying(true);
     try {
-      await buyHearts();
-      Alert.alert(tr('heartsPage.buyOkTitle'), tr('heartsPage.buyOkMsg'));
+      const s = await buyHearts();
+      setSession(s);
     } catch (e) {
       const msg =
         e instanceof ApiError && e.status !== 0
@@ -195,6 +197,18 @@ export default function HeartsScreen() {
         )}
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {session && (
+        <DexPayCheckout
+          visible
+          paymentUrl={session.paymentUrl}
+          reference={session.reference}
+          onDone={(outcome) => {
+            setSession(null);
+            if (outcome === 'success') Alert.alert(tr('heartsPage.buyOkTitle'), tr('heartsPage.buyOkMsg'));
+          }}
+        />
+      )}
     </View>
   );
 }

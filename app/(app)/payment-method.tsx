@@ -3,8 +3,9 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { subscribePremium, type PremiumPlan } from '../../lib/api/billing';
-import { getPaymentProvider } from '../../lib/payments';
+import { subscribePremium, type PremiumPlan, type CheckoutSession } from '../../lib/api/billing';
+import { ApiError } from '../../lib/api/client';
+import DexPayCheckout from '../../components/DexPayCheckout';
 import { buildPlans } from './subscription';
 import { useT } from '../../lib/i18n';
 
@@ -25,30 +26,20 @@ export default function PaymentMethodScreen() {
 
   const [method, setMethod] = useState<MethodId>('apple');
   const [paying, setPaying] = useState(false);
+  const [session, setSession] = useState<CheckoutSession | null>(null);
 
+  // DexPay ne gère QUE la carte (choix produit acté) — quelle que soit la
+  // méthode affichée ici, le paiement réel passe par le checkout DexPay carte.
   const handleContinue = async () => {
     if (paying) return;
-    if (method === 'card') {
-      router.push({ pathname: '/(app)/payment-card', params: { plan: plan.id } });
-      return;
-    }
-    // 1) Le PaymentProvider collecte le paiement (mock en dev — c'est LUI
-    //    qu'on remplacera par notre API de paiement, voir lib/payments.ts).
-    // 2) Le paymentToken obtenu est envoyé au serveur, qui vérifie puis
-    //    active l'entitlement (jamais de Premium local : il serait écrasé
-    //    au prochain GET /me).
     setPaying(true);
     try {
-      const payment = await getPaymentProvider().payPremium(plan.id as PremiumPlan, method);
-      if (!payment.ok) {
-        Alert.alert(tr('paymentMethod.errorTitle'), payment.error ?? tr('paymentMethod.errorMessage'));
-        setPaying(false);
-        return;
-      }
-      await subscribePremium(plan.id as PremiumPlan, payment.paymentToken);
-      router.replace('/(app)/(tabs)/parcours');
-    } catch {
-      Alert.alert(tr('paymentMethod.errorTitle'), tr('paymentMethod.errorMessage'));
+      const s = await subscribePremium(plan.id as PremiumPlan);
+      setSession(s);
+    } catch (e) {
+      const msg = e instanceof ApiError && e.status !== 0 ? e.message : tr('paymentMethod.errorMessage');
+      Alert.alert(tr('paymentMethod.errorTitle'), msg);
+    } finally {
       setPaying(false);
     }
   };
@@ -146,6 +137,18 @@ export default function PaymentMethodScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {session && (
+        <DexPayCheckout
+          visible
+          paymentUrl={session.paymentUrl}
+          reference={session.reference}
+          onDone={(outcome) => {
+            setSession(null);
+            if (outcome === 'success') router.replace('/(app)/(tabs)/parcours');
+          }}
+        />
+      )}
     </View>
   );
 }
