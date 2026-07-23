@@ -19,6 +19,8 @@ export { subscribePremium, repairStreak, buyHearts, getTransaction, refreshAfter
 export type { PremiumPlan, CheckoutSession, Transaction, TransactionStatut } from './billing';
 export { fetchReferral, redeemReferral } from './referral';
 export type { ReferralInfo } from './referral';
+export { sendSupportMessage } from './support';
+export type { SupportMessageResult } from './support';
 export type { GemsStatus, GemLedgerEntry, GemPackId } from './gems';
 export type { PodiumEntry, LigueTier } from './rewards';
 export {
