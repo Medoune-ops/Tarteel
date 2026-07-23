@@ -150,7 +150,7 @@ export default function ProfilScreen() {
 
         <View style={styles.body}>
           {/* Stats bar */}
-          <View style={[styles.statsCard, { backgroundColor: T.cardBg }]}>
+          <View style={[styles.statsCard, { backgroundColor: T.isDark ? 'rgba(28,27,40,0.55)' : 'rgba(255,255,255,0.55)' }]}>
             {[
               { value: xp.toLocaleString(localeTag), label: tr('profil.xpTotal') },
               { value: String(streak), label: tr('profil.streakDays') },
