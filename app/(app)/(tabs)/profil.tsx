@@ -169,7 +169,7 @@ export default function ProfilScreen() {
                     <Text style={[styles.statVal, { color: T.text }]}>{s.value}</Text>
                     <Text style={[styles.statLabel, { color: T.textSecondary }]} numberOfLines={1}>{s.label}</Text>
                   </View>
-                  {i < 3 && <View style={[styles.statDivider, { backgroundColor: T.divider }]} />}
+                  {i < 3 && <View style={[styles.statDivider, { backgroundColor: T.divider, opacity: T.isDark ? 0.6 : 0.8 }]} />}
                 </View>
               );
             })}
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   statIconEmoji: { fontSize: 15 },
   statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20 },
   statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 11.5 },
-  statDivider: { width: 1, height: 40, alignSelf: 'center' },
+  statDivider: { width: 1, height: 28, alignSelf: 'center' },
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 24, marginBottom: 10 },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   levelText: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
