@@ -16,7 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
+import { useAudioRecorder, RecordingPresets } from 'expo-audio';
 import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../../../lib/audio/recorder';
 import { playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
 
@@ -36,16 +36,7 @@ type Etape =
   | { type: 'verset'; verset: ApiVerset; indexInSeg: number }
   | { type: 'assemble'; debut: number; fin: number; texte: string };
 
-/** Options d'enregistrement avec le metering (niveau audio) activé pour la VAD. */
-const RECORDING_OPTIONS = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
-
-// ── Détection d'activité vocale (VAD) par silence, basée sur le metering ────
-/** En dessous de ce niveau (dB), on considère que l'utilisateur s'est tu. */
-const SILENCE_DB = -35;
-/** Silence court = fin naturelle d'un verset → on l'envoie au serveur. */
-const SEGMENT_SILENCE_MS = 1400;
-/** Silence long = l'utilisateur bloque → on affiche l'aide automatiquement. */
-const BLOCK_SILENCE_MS = 3000;
+const RECORDING_OPTIONS = RecordingPresets.HIGH_QUALITY;
 
 function scoreMeta(rep: Reponse): { label: string; emoji: string; bg: string; pts: number } {
   if (rep === 'facile') return { label: t('flashcard.facile'), emoji: '😊', bg: '#34C724', pts: 10 };
@@ -270,14 +261,23 @@ export default function FlashcardScreen() {
     return versets.filter((v) => v.numero >= segment.debut && v.numero <= segment.fin);
   }, [versets, apprise, segment]);
 
-  // ── Enregistrement micro (expo-audio) — écoute continue avec détection de silence (VAD) ──
+  // ── Enregistrement micro (expo-audio) — l'utilisateur démarre/arrête
+  // manuellement (comme le moteur de leçon, cf. app/(app)/lesson/play.tsx) :
+  // la détection automatique de silence (VAD) basée sur le niveau audio
+  // (`metering`) s'est révélée peu fiable sur certains appareils/versions
+  // (valeur jamais renseignée ou incohérente), ce qui empêchait l'enchaînement
+  // automatique d'un verset au suivant.
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
-  const recorderState = useAudioRecorderState(recorder, 200);
 
   const [phase, setPhase]       = useState<Phase>('pret');
   const [subPhase, setSubPhase] = useState<SubPhase>('recording');
   const [mode, setMode]         = useState<ExerciceMode | null>(null);
   const [etapeIndex, setEtapeIndex] = useState(0);
+  // Nombre d'étapes ayant réellement reçu un verdict serveur (Whisper) dans
+  // CETTE session — distinct de `etapes.length` (le total théorique) : si
+  // l'utilisateur quitte via « Terminer » avant la fin, seules les étapes
+  // déjà jugées comptent dans le score, pas celles jamais tentées.
+  const [etapesTraitees, setEtapesTraitees] = useState(0);
   const [nbAides, setNbAides]   = useState(0);
   const [choisi, setChoisi]     = useState<Reponse | null>(null);
   const [micDenied, setMicDenied] = useState(false);
@@ -291,28 +291,16 @@ export default function FlashcardScreen() {
   // session (double POST .../segments/:i/review).
   const quittingRef = useRef(false);
 
-  // Refs pour la machine à états du silence — évite les closures obsolètes
-  // dans les timers, et permet de les annuler dès que le son reprend.
-  const segmentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const blockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const etapeIndexRef = useRef(0);
-  const subPhaseRef = useRef<SubPhase>('recording');
   const etapesRef = useRef<Etape[] | null>(null);
   useEffect(() => { etapeIndexRef.current = etapeIndex; }, [etapeIndex]);
-  useEffect(() => { subPhaseRef.current = subPhase; }, [subPhase]);
   useEffect(() => { etapesRef.current = etapes; }, [etapes]);
-
-  const clearSilenceTimers = () => {
-    if (segmentTimer.current) { clearTimeout(segmentTimer.current); segmentTimer.current = null; }
-    if (blockTimer.current) { clearTimeout(blockTimer.current); blockTimer.current = null; }
-  };
 
   // Sécurité : couper l'enregistrement + mode lecture (micro ET audio distant)
   // en quittant l'écran. L'objet natif du recorder peut déjà être détruit au
   // démontage (expo-audio) : toute lecture de ses propriétés doit donc être
   // protégée par un try/catch.
   useEffect(() => () => {
-    clearSilenceTimers();
     try {
       if (recorder.isRecording) recorder.stop().catch(() => {});
     } catch {}
@@ -335,6 +323,7 @@ export default function FlashcardScreen() {
     setMode(chosenMode);
     setNbAides(0);
     setEtapeIndex(0);
+    setEtapesTraitees(0);
     setPhase('recitation');
     if (chosenMode === 'ecoute') {
       setSubPhase('listening');
@@ -346,6 +335,9 @@ export default function FlashcardScreen() {
 
   /** Passe à l'étape suivante (ou termine). */
   const avancer = useCallback(async (i: number) => {
+    // L'étape `i` vient de recevoir un verdict (serveur ou best-effort hors
+    // ligne) — elle compte comme traitée dans le score final.
+    setEtapesTraitees(i + 1);
     if (!etapesRef.current || i + 1 >= etapesRef.current.length) {
       await exitRecordingMode();
       setPhase('fini');
@@ -413,79 +405,36 @@ export default function FlashcardScreen() {
     }
   }, [recorder, avancer, numero]);
 
-  /** Silence long : l'utilisateur bloque → on déclenche l'aide. */
-  const declencherAide = useCallback(() => {
-    if (subPhaseRef.current !== 'recording') return;
-    setNbAides((n) => n + 1);
-    setSubPhase('aide');
-  }, []);
-
-  // VAD : surveille le niveau audio (metering, en dB) pour détecter le silence.
-  // Un silence COURT coupe et envoie l'étape au serveur ; un silence LONG
-  // (l'utilisateur ne reprend pas) déclenche l'aide automatiquement.
-  useEffect(() => {
-    if (phase !== 'recitation' || subPhase !== 'recording' || !recorderState.isRecording) {
-      clearSilenceTimers();
-      return;
-    }
-    const silencieux = (recorderState.metering ?? 0) < SILENCE_DB;
-    if (silencieux) {
-      if (!segmentTimer.current) {
-        segmentTimer.current = setTimeout(() => { analyserEtape(); }, SEGMENT_SILENCE_MS);
-      }
-      if (!blockTimer.current) {
-        blockTimer.current = setTimeout(() => { declencherAide(); }, BLOCK_SILENCE_MS);
-      }
-    } else {
-      clearSilenceTimers();
-    }
-  }, [recorderState.metering, recorderState.isRecording, phase, subPhase, analyserEtape, declencherAide]);
-
   /**
-   * Après l'aide (silence long ou verdict serveur négatif) : l'utilisateur a
-   * relu/réentendu l'étape. On réécoute la MÊME étape (pas la suivante).
+   * Après l'aide (verdict serveur négatif) : l'utilisateur relit/réentend
+   * l'étape, puis appuie sur « Réessayer » pour relancer l'enregistrement de
+   * la MÊME étape (pas la suivante). En mode « écoute », on rejoue d'abord
+   * l'audio du verset avant de réenregistrer.
    */
-  const reprendEnCours = useRef(false);
-  const reprendreEcoute = useCallback(async () => {
-    if (reprendEnCours.current) return;
-    reprendEnCours.current = true;
-    try {
-      setSubPhase('recording');
-      await startRecording();
-    } finally {
-      reprendEnCours.current = false;
-    }
-  }, [startRecording]);
-
-  // Dès que l'aide est affichée, on relance l'écoute : en mode « écoute »,
-  // jamais de texte — on rejoue l'audio du verset avant de réécouter ; sinon,
-  // dès que l'utilisateur recommence à parler, la VAD ci-dessus détectera la
-  // fin de son silence et l'enverra au serveur normalement.
-  useEffect(() => {
-    if (phase !== 'recitation' || subPhase !== 'aide' || recorderState.isRecording) return;
+  const reessayer = useCallback(async () => {
     if (mode === 'ecoute') {
-      (async () => {
-        const etape = etapesRef.current?.[etapeIndexRef.current];
-        if (etape?.type === 'verset') await playRemoteAudioAsync(etape.verset.audioUrl);
-        await reprendreEcoute();
-      })();
-    } else {
-      reprendreEcoute();
+      const etape = etapesRef.current?.[etapeIndexRef.current];
+      if (etape?.type === 'verset') await playRemoteAudioAsync(etape.verset.audioUrl);
     }
-  }, [phase, subPhase, recorderState.isRecording, reprendreEcoute, mode]);
+    setSubPhase('recording');
+    await startRecording();
+  }, [mode, startRecording]);
 
   const terminerTot = async () => {
-    clearSilenceTimers();
     if (recorder.isRecording) await recorder.stop().catch(() => {});
     await exitRecordingMode();
     stopRemoteAudio();
+    // L'étape en cours (etapeIndex) n'a jamais reçu de verdict serveur (on
+    // vient de couper l'enregistrement sans l'analyser) — elle ne compte pas
+    // comme réussie dans le score final, seules les étapes déjà validées le
+    // sont (voir calcul de `total` dans l'écran résultat, phase === 'fini').
+    setEtapesTraitees(etapeIndex);
     setPhase('fini');
   };
 
   const reset = () => {
-    clearSilenceTimers();
     stopRemoteAudio();
-    setPhase('pret'); setMode(null); setEtapeIndex(0); setNbAides(0); setChoisi(null); setSubPhase('recording');
+    setPhase('pret'); setMode(null); setEtapeIndex(0); setEtapesTraitees(0); setNbAides(0); setChoisi(null); setSubPhase('recording');
   };
 
   // ── États de chargement / erreur ──
@@ -514,7 +463,11 @@ export default function FlashcardScreen() {
 
   // ── Écran résultat ──
   if (phase === 'fini') {
-    const total = etapes?.length ?? 0;
+    // `etapesTraitees` = étapes ayant réellement reçu un verdict (serveur
+    // Whisper ou best-effort hors-ligne) — PAS `etapes.length` (le total
+    // théorique de la session). Sans ça, quitter via « Terminer » avant la
+    // fin comptait à tort toutes les étapes jamais tentées comme fluides.
+    const total = etapesTraitees;
     const ratio = total > 0 ? (total - nbAides) / total : 0;
     const suggestion: Reponse = ratio >= 0.8 ? 'facile' : ratio >= 0.5 ? 'difficile' : 'oublie';
     return (
@@ -732,7 +685,27 @@ export default function FlashcardScreen() {
               <Text style={styles.micBtnText}>{tr('flashcard.startRecitation')}</Text>
             </Pressable>
           )
-        ) : (
+        ) : subPhase === 'recording' ? (
+          <>
+            <Pressable style={styles.micBtn} onPress={analyserEtape}>
+              <Feather name="check-circle" size={22} color="#fff" />
+              <Text style={styles.micBtnText}>{tr('flashcard.doneReciting')}</Text>
+            </Pressable>
+            <Pressable style={styles.finBtn} onPress={terminerTot}>
+              <Text style={styles.finBtnText}>{tr('flashcard.finished')}</Text>
+            </Pressable>
+          </>
+        ) : subPhase === 'aide' ? (
+          <>
+            <Pressable style={styles.micBtn} onPress={reessayer}>
+              <Feather name="mic" size={22} color="#fff" />
+              <Text style={styles.micBtnText}>{tr('flashcard.retry')}</Text>
+            </Pressable>
+            <Pressable style={styles.finBtn} onPress={terminerTot}>
+              <Text style={styles.finBtnText}>{tr('flashcard.finished')}</Text>
+            </Pressable>
+          </>
+        ) : subPhase === 'listening' ? null : (
           <Pressable style={styles.finBtn} onPress={terminerTot}>
             <Feather name="check-circle" size={20} color="#6B4DFF" />
             <Text style={styles.finBtnText}>{tr('flashcard.finished')}</Text>
