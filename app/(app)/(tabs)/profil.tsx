@@ -150,7 +150,14 @@ export default function ProfilScreen() {
 
         <View style={styles.body}>
           {/* Stats bar */}
-          <View style={[styles.statsCard, { backgroundColor: T.isDark ? 'rgba(28,27,40,0.55)' : 'rgba(255,255,255,0.55)' }]}>
+          <LinearGradient
+            colors={T.isDark
+              ? ['rgba(36,31,61,0.6)', 'rgba(51,42,20,0.6)']
+              : ['rgba(237,232,255,0.7)', 'rgba(255,243,205,0.7)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statsCard}
+          >
             {[
               { value: xp.toLocaleString(localeTag), label: tr('profil.xpTotal') },
               { value: String(streak), label: tr('profil.streakDays') },
@@ -173,7 +180,7 @@ export default function ProfilScreen() {
                 </View>
               );
             })}
-          </View>
+          </LinearGradient>
 
           {/* Niveau — 2000 XP par niveau */}
           {(() => {
