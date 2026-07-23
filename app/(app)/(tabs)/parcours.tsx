@@ -236,6 +236,35 @@ const STAR_COLORS = ['#FFD700', '#FFC700', '#FFE066', '#FFB800', '#FFDF7A'];
 // Halo/cratères de la lune (le disque principal utilise un dégradé, cf. defs "moonGlow").
 const MOON_GLOW = '#FFE9B0';
 
+// Mode clair : rayons du soleil (8, autour du même centre que la lune en mode
+// sombre — calculés une fois au chargement du module, pas à chaque rendu).
+const SUN_CENTER = { x: 318, y: 96 };
+const SUN_RAYS = Array.from({ length: 8 }, (_, i) => {
+  const angle = (i * 45 * Math.PI) / 180;
+  return {
+    x1: Math.round((SUN_CENTER.x + Math.cos(angle) * 56) * 10) / 10,
+    y1: Math.round((SUN_CENTER.y + Math.sin(angle) * 56) * 10) / 10,
+    x2: Math.round((SUN_CENTER.x + Math.cos(angle) * 70) * 10) / 10,
+    y2: Math.round((SUN_CENTER.y + Math.sin(angle) * 70) * 10) / 10,
+  };
+});
+
+// Oiseaux au loin (silhouette en "M", deux courbes) — position + échelle.
+const BIRD_POSITIONS: Array<[number, number, number]> = [
+  [64, 150, 1],
+  [128, 100, 0.8],
+  [206, 176, 1.1],
+  [268, 66, 0.75],
+  [344, 210, 0.9],
+  [40, 230, 0.7],
+  [292, 140, 0.85],
+];
+function birdPath(cx: number, cy: number, s: number): string {
+  const w = 9 * s;
+  const h = 6 * s;
+  return `M${cx - w} ${cy} Q${cx - w / 2} ${cy - h} ${cx} ${cy} Q${cx + w / 2} ${cy - h} ${cx + w} ${cy}`;
+}
+
 const AnimatedG = Animated.createAnimatedComponent(G);
 
 /**
@@ -267,15 +296,21 @@ function Twinkle({ lit, delay, duration, floor = 0.15, transform, children }: {
 // ─── Panorama de La Mecque en arrière-plan ────────────────────────────────────
 // memo : ~250 éléments SVG — on ne le re-rend JAMAIS tant que la taille/le
 // thème ne changent pas (sinon chaque setState de l'écran redessine tout).
-const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowColor, opacity, lit }: { width: number; height: number; color: string; shadowColor: string; opacity: number; lit?: boolean }) {
+const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowColor, opacity, lit, isDark }: { width: number; height: number; color: string; shadowColor: string; opacity: number; lit?: boolean; isDark?: boolean }) {
   const c = color;       // couleur des traits
   const op = opacity;    // opacité globale
-  // Premium : la lune et les étoiles du ciel s'allument avec de vraies
-  // teintes d'étoiles (blanc chaud, or, blanc bleuté…) et une opacité
-  // renforcée — le reste du panorama (sol, minarets, tour) ne change pas.
+  // Premium : la lune/le soleil et les étoiles du ciel s'allument avec de
+  // vraies teintes (blanc chaud, or, blanc bleuté…) et une opacité renforcée
+  // — le reste du panorama (sol, minarets, tour) ne change pas.
   const moonCel = lit ? MOON_GLOW : c;
   const moonDiscFill = lit ? 'url(#moonGlow)' : c;
   const moonHaloFill = lit ? 'url(#moonHalo)' : c;
+  // Mode clair : soleil (même position que la lune) + oiseaux au loin, à la
+  // place du ciel étoilé — le soleil s'illumine en premium, les oiseaux
+  // restent de simples silhouettes (rien à « allumer » sur un oiseau).
+  const sunCel = lit ? '#FFA500' : c;
+  const sunDiscFill = lit ? 'url(#sunGlow)' : c;
+  const sunHaloFill = lit ? 'url(#sunHalo)' : c;
   let starTint = 0;
   const starCel = () => (lit ? STAR_COLORS[starTint++ % STAR_COLORS.length] : c);
   let starGradTint = 0;
@@ -314,6 +349,15 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
           <Stop offset="0%" stopColor="#FFF6D8" stopOpacity={0.9} />
           <Stop offset="100%" stopColor="#FFF6D8" stopOpacity={0} />
         </RadialGradient>
+        <RadialGradient id="sunGlow" cx="42%" cy="38%" r="65%">
+          <Stop offset="0%" stopColor="#FFFDE7" stopOpacity={1} />
+          <Stop offset="55%" stopColor="#FFD54F" stopOpacity={1} />
+          <Stop offset="100%" stopColor="#FF8F3C" stopOpacity={1} />
+        </RadialGradient>
+        <RadialGradient id="sunHalo" cx="50%" cy="50%" r="50%">
+          <Stop offset="0%" stopColor="#FFE29A" stopOpacity={0.9} />
+          <Stop offset="100%" stopColor="#FFE29A" stopOpacity={0} />
+        </RadialGradient>
         <RadialGradient id="starGlow" cx="50%" cy="50%" r="50%">
           <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.85} />
           <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={0} />
@@ -339,6 +383,8 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
           <Stop offset="100%" stopColor="#FFDF7A" stopOpacity={1} />
         </RadialGradient>
       </Defs>
+      {isDark ? (
+        <>
       {/* ══ CIEL — croissants lunaires et étoiles ══ */}
 
       {/* ── GROSSE LUNE — haut droite ── */}
@@ -752,6 +798,26 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
 
       </Twinkle>
 
+        </>
+      ) : (
+        <>
+      {/* ══ JOUR — soleil et oiseaux au loin (mode clair) ══ */}
+
+      {/* ── SOLEIL — même position que la lune en mode sombre ── */}
+      <Circle cx={318} cy={96} r={78} fill={sunHaloFill} opacity={bo(0.5)} />
+      <Circle cx={318} cy={96} r={60} fill={sunHaloFill} opacity={bo(0.65)} />
+      <Circle cx={318} cy={96} r={44} fill={sunDiscFill} opacity={bo(0.9)} />
+      {/* rayons */}
+      {SUN_RAYS.map((r, i) => (
+        <Line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} stroke={sunCel} strokeWidth={3} strokeLinecap="round" opacity={bo(0.6)} />
+      ))}
+
+      {/* ── OISEAUX au loin (silhouettes en "M") ── */}
+      {BIRD_POSITIONS.map(([bx, by, s], i) => (
+        <Path key={i} d={birdPath(bx, by, s)} stroke={c} strokeWidth={1.6 * s} fill="none" strokeLinecap="round" opacity={0.55} />
+      ))}
+        </>
+      )}
       </Svg>
       {/* Batiments : opacite fixe, jamais boostee par le premium. */}
       <Svg
@@ -1193,6 +1259,7 @@ export default function ParcoursScreen() {
         shadowColor={T.skylineShadow}
         opacity={T.isDark ? 0.3 : 0.22}
         lit={isPremium}
+        isDark={T.isDark}
       />
       <View style={[styles.statusWrap, { backgroundColor: T.cardBg }]}>
         <DeviceStatusBar />
