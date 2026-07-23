@@ -3,7 +3,12 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useUserStore } from '../../store/userStore';
 import { useT } from '../../lib/i18n';
+
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
 /** Fonctions (pas des constantes figées) : réévaluées à chaque rendu pour
  *  rester réactives à un changement de langue en cours de session. */
@@ -26,6 +31,9 @@ export function buildPlans(tr: ReturnType<typeof useT>) {
 export default function SubscriptionScreen() {
   const router = useRouter();
   const tr = useT();
+  const isPremium = useUserStore((s) => s.isPremium);
+  const premiumUntil = useUserStore((s) => s.premiumUntil);
+  const language = useUserStore((s) => s.language);
   const AVANTAGES = buildAvantages(tr);
   const PLANS = buildPlans(tr);
   const [plan, setPlan] = useState('annuel');
@@ -51,6 +59,23 @@ export default function SubscriptionScreen() {
         </LinearGradient>
 
         <View style={styles.body}>
+          {isPremium && (
+            <View style={styles.activeCard}>
+              <View style={styles.activeIcon}>
+                <Feather name="check-circle" size={22} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.activeTitle}>{tr('subscription.activeTitle')}</Text>
+                <Text style={styles.activeSub}>
+                  {premiumUntil
+                    ? tr('subscription.activeUntil', { date: formatDate(premiumUntil, language) })
+                    : tr('subscription.activeNoDate')}
+                </Text>
+                <Text style={styles.activeNote}>{tr('subscription.activeNoAutoRenew')}</Text>
+              </View>
+            </View>
+          )}
+
           {/* Avantages */}
           {AVANTAGES.map((a, i) => (
             <View key={i} style={styles.avantage}>
@@ -65,40 +90,48 @@ export default function SubscriptionScreen() {
             </View>
           ))}
 
-          {/* Plans */}
-          <Text style={styles.plansTitle}>{tr('subscription.plansTitle')}</Text>
-          {PLANS.map((p) => {
-            const actif = plan === p.id;
-            return (
-              <Pressable
-                key={p.id}
-                style={[styles.plan, actif && styles.planActif]}
-                onPress={() => setPlan(p.id)}
-              >
-                {p.badge && (
-                  <View style={styles.planBadge}>
-                    <Text style={styles.planBadgeText}>{p.badge}</Text>
-                  </View>
-                )}
-                <View style={[styles.radio, actif && styles.radioActif]}>
-                  {actif && <View style={styles.radioDot} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.planTitre}>{p.titre}</Text>
-                  <Text style={styles.planDetail}>{p.detail}</Text>
-                </View>
-                <Text style={styles.planPrix}>{p.prix}</Text>
-              </Pressable>
-            );
-          })}
+          {/* Plans — masqués si déjà premium, rien à choisir avant expiration. */}
+          {!isPremium && (
+            <>
+              <Text style={styles.plansTitle}>{tr('subscription.plansTitle')}</Text>
+              {PLANS.map((p) => {
+                const actif = plan === p.id;
+                return (
+                  <Pressable
+                    key={p.id}
+                    style={[styles.plan, actif && styles.planActif]}
+                    onPress={() => setPlan(p.id)}
+                  >
+                    {p.badge && (
+                      <View style={styles.planBadge}>
+                        <Text style={styles.planBadgeText}>{p.badge}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.radio, actif && styles.radioActif]}>
+                      {actif && <View style={styles.radioDot} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.planTitre}>{p.titre}</Text>
+                      <Text style={styles.planDetail}>{p.detail}</Text>
+                    </View>
+                    <Text style={styles.planPrix}>{p.prix}</Text>
+                  </Pressable>
+                );
+              })}
+            </>
+          )}
 
-          {/* CTA */}
-          <Pressable style={styles.cta} onPress={goToPayment}>
-            <Text style={styles.ctaText}>{tr('subscription.ctaStartTrial')}</Text>
-          </Pressable>
-          <Text style={styles.ctaNote}>
-            {tr('subscription.ctaNote', { price: PLANS.find((p) => p.id === plan)?.prix ?? '' })}
-          </Text>
+          {/* CTA — inutile si déjà premium (pas de reconduction à prolonger avant expiration). */}
+          {!isPremium && (
+            <>
+              <Pressable style={styles.cta} onPress={goToPayment}>
+                <Text style={styles.ctaText}>{tr('subscription.ctaStartTrial')}</Text>
+              </Pressable>
+              <Text style={styles.ctaNote}>
+                {tr('subscription.ctaNote', { price: PLANS.find((p) => p.id === plan)?.prix ?? '' })}
+              </Text>
+            </>
+          )}
 
           {/* Plan familial : partage le premium avec jusqu'à 5 comptes. */}
           <Pressable style={styles.familyLink} onPress={() => router.push('/(app)/household' as never)}>
@@ -128,6 +161,18 @@ const styles = StyleSheet.create({
   heroTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#fff' },
   heroSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.9)', textAlign: 'center', marginTop: 6 },
   body: { padding: 22 },
+  activeCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    backgroundColor: '#E8F9E6', borderRadius: 16, padding: 16, marginBottom: 18,
+    borderWidth: 1, borderColor: '#B7EAB0',
+  },
+  activeIcon: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: '#34C724',
+    alignItems: 'center', justifyContent: 'center', marginTop: 2,
+  },
+  activeTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#1B2333' },
+  activeSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#2A9E1C', marginTop: 2 },
+  activeNote: { fontFamily: 'Nunito_600SemiBold', fontSize: 11.5, color: '#5A6270', marginTop: 6 },
   avantage: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 10,

@@ -10,6 +10,7 @@ import Otter from '../../../components/Otter';
 import ProgressBar from '../../../components/ProgressBar';
 import { useUserStore } from '../../../store/userStore';
 import { useTheme } from '../../../utils/useTheme';
+import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
 import { fetchActivity } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { useT, t, type I18nKey } from '../../../lib/i18n';
@@ -47,6 +48,7 @@ export default function ProfilScreen() {
   const precision = useUserStore((s) => s.precision);
 
   const badges = buildBadges(streak, streakGoal, sourates);
+  const scrollRef = useScrollToTopOnTabPress();
 
   // ── Rotation continue de l'engrenage des paramètres ──
   const gearSpin = useSharedValue(0);
@@ -119,7 +121,7 @@ export default function ProfilScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
         {/* Header gradient */}
         <LinearGradient colors={['#8467FF', '#6B4DFF']} style={styles.header}>
           <Pressable style={styles.settingsBtn} onPress={() => router.push('/(app)/settings')} hitSlop={10}>

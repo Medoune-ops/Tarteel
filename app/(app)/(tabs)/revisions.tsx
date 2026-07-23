@@ -6,6 +6,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
+import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
 import {
   fetchRevisions, fetchSourates, fetchLettreRevisions, fetchSections, fetchGuidedRevision,
   type SourateRevisionView, type SourateListItem, type LettreRevisionView, type GuidedRevisionView,
@@ -303,6 +304,7 @@ export default function RevisionsScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const scrollRef = useScrollToTopOnTabPress();
   const [onglet, setOnglet] = useState<Onglet>('guidee');
   const [query, setQuery] = useState('');
   const [toutes, setToutes] = useState<SourateListItem[] | null>(null);
@@ -407,7 +409,7 @@ export default function RevisionsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
 
         {/* Header */}
         <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.header}>
