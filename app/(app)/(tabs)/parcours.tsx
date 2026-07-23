@@ -236,16 +236,19 @@ const STAR_COLORS = ['#FFD700', '#FFC700', '#FFE066', '#FFB800', '#FFDF7A'];
 // Halo/cratères de la lune (le disque principal utilise un dégradé, cf. defs "moonGlow").
 const MOON_GLOW = '#FFE9B0';
 
-// Mode clair : rayons du soleil (8, autour du même centre que la lune en mode
-// sombre — calculés une fois au chargement du module, pas à chaque rendu).
+// Mode clair : rayons du soleil (12, longs/courts en alternance pour un
+// rendu plus classique — autour du même centre que la lune en mode sombre,
+// calculés une fois au chargement du module, pas à chaque rendu).
 const SUN_CENTER = { x: 318, y: 96 };
-const SUN_RAYS = Array.from({ length: 8 }, (_, i) => {
-  const angle = (i * 45 * Math.PI) / 180;
+const SUN_RAYS = Array.from({ length: 12 }, (_, i) => {
+  const angle = (i * 30 * Math.PI) / 180;
+  const inner = 54;
+  const outer = i % 2 === 0 ? 76 : 64; // alterne rayon long/court
   return {
-    x1: Math.round((SUN_CENTER.x + Math.cos(angle) * 56) * 10) / 10,
-    y1: Math.round((SUN_CENTER.y + Math.sin(angle) * 56) * 10) / 10,
-    x2: Math.round((SUN_CENTER.x + Math.cos(angle) * 70) * 10) / 10,
-    y2: Math.round((SUN_CENTER.y + Math.sin(angle) * 70) * 10) / 10,
+    x1: Math.round((SUN_CENTER.x + Math.cos(angle) * inner) * 10) / 10,
+    y1: Math.round((SUN_CENTER.y + Math.sin(angle) * inner) * 10) / 10,
+    x2: Math.round((SUN_CENTER.x + Math.cos(angle) * outer) * 10) / 10,
+    y2: Math.round((SUN_CENTER.y + Math.sin(angle) * outer) * 10) / 10,
   };
 });
 
@@ -264,6 +267,17 @@ function birdPath(cx: number, cy: number, s: number): string {
   const h = 6 * s;
   return `M${cx - w} ${cy} Q${cx - w / 2} ${cy - h} ${cx} ${cy} Q${cx + w / 2} ${cy - h} ${cx + w} ${cy}`;
 }
+
+// Nuages au loin (mode clair) — position + échelle + opacité propre (plus
+// proche/plus dense devant, plus loin/plus doux derrière).
+const CLOUD_POSITIONS: Array<[number, number, number, number]> = [
+  [86, 44, 1, 0.55],
+  [232, 26, 0.75, 0.45],
+  [372, 58, 0.9, 0.5],
+  [26, 196, 0.7, 0.4],
+  [150, 250, 0.85, 0.45],
+  [286, 220, 0.65, 0.4],
+];
 
 const AnimatedG = Animated.createAnimatedComponent(G);
 
@@ -293,6 +307,18 @@ function Twinkle({ lit, delay, duration, floor = 0.15, transform, children }: {
   return <AnimatedG transform={transform} animatedProps={animatedProps}>{children}</AnimatedG>;
 }
 
+/** Nuage moelleux (mode clair) : plusieurs ellipses qui se chevauchent. */
+function Cloud({ cx, cy, s, opacity, fill }: { cx: number; cy: number; s: number; opacity: number; fill: string }) {
+  return (
+    <G>
+      <Ellipse cx={cx - 15 * s} cy={cy + 5 * s} rx={14 * s} ry={9 * s} fill={fill} opacity={opacity} />
+      <Ellipse cx={cx + 15 * s} cy={cy + 5 * s} rx={16 * s} ry={10 * s} fill={fill} opacity={opacity} />
+      <Ellipse cx={cx} cy={cy - 6 * s} rx={18 * s} ry={13 * s} fill={fill} opacity={opacity} />
+      <Ellipse cx={cx} cy={cy + 7 * s} rx={27 * s} ry={9 * s} fill={fill} opacity={opacity} />
+    </G>
+  );
+}
+
 // ─── Panorama de La Mecque en arrière-plan ────────────────────────────────────
 // memo : ~250 éléments SVG — on ne le re-rend JAMAIS tant que la taille/le
 // thème ne changent pas (sinon chaque setState de l'écran redessine tout).
@@ -311,6 +337,7 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
   const sunCel = lit ? '#FFA500' : c;
   const sunDiscFill = lit ? 'url(#sunGlow)' : c;
   const sunHaloFill = lit ? 'url(#sunHalo)' : c;
+  const sunHighlight = lit ? '#FFFFFF' : c;
   let starTint = 0;
   const starCel = () => (lit ? STAR_COLORS[starTint++ % STAR_COLORS.length] : c);
   let starGradTint = 0;
@@ -801,15 +828,22 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
         </>
       ) : (
         <>
-      {/* ══ JOUR — soleil et oiseaux au loin (mode clair) ══ */}
+      {/* ══ JOUR — soleil, nuages et oiseaux au loin (mode clair) ══ */}
 
       {/* ── SOLEIL — même position que la lune en mode sombre ── */}
       <Circle cx={318} cy={96} r={78} fill={sunHaloFill} opacity={bo(0.5)} />
       <Circle cx={318} cy={96} r={60} fill={sunHaloFill} opacity={bo(0.65)} />
-      <Circle cx={318} cy={96} r={44} fill={sunDiscFill} opacity={bo(0.9)} />
-      {/* rayons */}
+      {/* rayons (sous le disque, pour que leur base soit masquée proprement) */}
       {SUN_RAYS.map((r, i) => (
         <Line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} stroke={sunCel} strokeWidth={3} strokeLinecap="round" opacity={bo(0.6)} />
+      ))}
+      <Circle cx={318} cy={96} r={44} fill={sunDiscFill} opacity={bo(0.9)} />
+      {/* éclat (reflet clair, décalé vers le haut-gauche du disque) */}
+      <Circle cx={306} cy={84} r={12} fill={sunHighlight} opacity={bo(0.35)} />
+
+      {/* ── NUAGES au loin ── */}
+      {CLOUD_POSITIONS.map(([cx, cy, s, op], i) => (
+        <Cloud key={i} cx={cx} cy={cy} s={s} opacity={op} fill={c} />
       ))}
 
       {/* ── OISEAUX au loin (silhouettes en "M") ── */}
@@ -976,15 +1010,20 @@ const SectionBlock = memo(function SectionBlock({
   index,
   onLessonPress,
   theme,
+  onActiveNodeLayout,
 }: {
   section: ParcoursSection;
   index: number;
   onLessonPress: (n: ParcoursNode) => void;
   theme: ThemeColors;
+  /** Position Y du nœud actif DANS cette section (pour scroller pile dessus). */
+  onActiveNodeLayout?: (yInSection: number) => void;
 }) {
   const done = section.nodes.filter((n) => n.state === 'completed').length;
   const total = section.nodes.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  // Offset vertical du bloc de nœuds sous la carte d'en-tête de section.
+  const pathYRef = useRef(0);
 
   return (
     <View style={styles.sectionWrap}>
@@ -1023,9 +1062,24 @@ const SectionBlock = memo(function SectionBlock({
         </LinearGradient>
       </Animated.View>
 
-      <View style={styles.path}>
+      <View
+        style={styles.path}
+        // Y du bloc de nœuds dans la section (sous la carte d'en-tête). Additionné
+        // à l'offset du nœud actif, ça donne sa position dans la section entière.
+        onLayout={(e) => { pathYRef.current = e.nativeEvent.layout.y; }}
+      >
         {section.nodes.map((node, i) => (
-          <View key={node.id} style={{ alignItems: 'center' }}>
+          <View
+            key={node.id}
+            style={{ alignItems: 'center' }}
+            // Le nœud actif remonte sa position Y (relative à la section) pour
+            // que le retap sur l'onglet scrolle exactement dessus.
+            onLayout={
+              node.state === 'active' && onActiveNodeLayout
+                ? (e) => onActiveNodeLayout(pathYRef.current + e.nativeEvent.layout.y)
+                : undefined
+            }
+          >
             <RenderNode node={node} onPress={() => onLessonPress(node)} theme={theme} />
             {i < section.nodes.length - 1 && <Dashed color={theme.dashedLine} />}
           </View>
@@ -1160,14 +1214,39 @@ export default function ParcoursScreen() {
     }, [syncHearts, loadSections]),
   );
 
-  /** Scrolle jusqu'à la section active (l'endroit où on en est dans le parcours). */
+  // Position Y du nœud actif à l'intérieur de sa section (remontée par
+  // SectionBlock via onLayout) — permet de viser la LEÇON à faire, pas juste
+  // le début de la section.
+  const activeNodeYRef = useRef<number | null>(null);
+  const handleActiveNodeLayout = useCallback((yInSection: number) => {
+    activeNodeYRef.current = yInSection;
+  }, []);
+
+  /**
+   * Scrolle jusqu'à la prochaine leçon à faire (le nœud actif). On vise la
+   * section active puis, une fois qu'elle est à l'écran, on affine avec
+   * l'offset exact du nœud pour le centrer.
+   */
   const scrollToActiveSection = useCallback(() => {
     if (activeSectionIndex == null) return;
     listRef.current?.scrollToIndex({
       index: activeSectionIndex,
       animated: true,
-      viewPosition: 0.2, // laisse voir un peu de la section précédente au-dessus
+      viewPosition: 0, // section calée en haut : base stable pour l'affinage
     });
+    // Affinage : recentrer sur le nœud actif lui-même une fois le 1er scroll fait.
+    const y = activeNodeYRef.current;
+    if (y == null) return;
+    setTimeout(() => {
+      listRef.current?.scrollToIndex({
+        index: activeSectionIndex,
+        animated: true,
+        viewPosition: 0,
+        // Décale du haut de la section jusqu'au nœud, en le remontant un peu
+        // au-dessus du centre pour qu'il soit bien visible.
+        viewOffset: -Math.max(0, y - 160),
+      });
+    }, 320);
   }, [activeSectionIndex]);
 
   // Premier chargement : on rejoint directement là où on en est, sans avoir
@@ -1219,9 +1298,10 @@ export default function ParcoursScreen() {
         index={index}
         onLessonPress={openLesson}
         theme={T}
+        onActiveNodeLayout={index === activeSectionIndex ? handleActiveNodeLayout : undefined}
       />
     ),
-    [openLesson, T],
+    [openLesson, T, activeSectionIndex, handleActiveNodeLayout],
   );
 
   const renderHeader = () => (

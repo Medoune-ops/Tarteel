@@ -36,6 +36,8 @@ interface UserState {
   /** Fin du boost double XP (timestamp ms), null si aucun boost actif. */
   doubleXpUntil: number | null;
   isPremium: boolean;
+  /** Date ISO de fin du Premium effectif (personnel ou familial) ; null si pas de Premium actif. */
+  premiumUntil: string | null;
   level: 'debutant' | 'alphabet' | 'lent' | 'fluent';
   objectif: 'lire' | 'hifz' | 'tafsir' | 'complet';
   /** Langue de l'interface (code ISO). */
@@ -117,6 +119,7 @@ interface UserState {
     xp: number;
     hearts: number;
     isPremium: boolean;
+    premiumUntil?: string | null;
     currentLesson: number;
     lastHeartLossAt: number | null;
     gems?: number;
@@ -167,6 +170,7 @@ const initialState = {
   streakFreezes: 0,
   doubleXpUntil: null as number | null,
   isPremium: false,
+  premiumUntil: null as string | null,
   level: 'debutant' as const,
   objectif: 'hifz' as const,
   language: systemLanguage() as 'fr' | 'en' | 'ar',
@@ -319,6 +323,7 @@ export const useUserStore = create<UserState>()(
           hearts: next.hearts,
           lastHeartLossAt: next.lastHeartLossAt,
           isPremium: data.isPremium,
+          premiumUntil: data.premiumUntil ?? null,
           currentLesson: data.currentLesson,
           ...(data.gems          != null && { gems:          data.gems }),
           ...(data.streakFreezes != null && { streakFreezes: data.streakFreezes }),

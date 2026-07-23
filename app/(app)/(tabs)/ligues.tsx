@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
+import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
 import { getOrJoinLeague, type LeagueView, type LeagueMember } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { useT, type I18nKey } from '../../../lib/i18n';
@@ -100,6 +101,7 @@ function Ring({ size, ratio, color }: { size: number; ratio: number; color: stri
 export default function LiguesScreen() {
   const T = useTheme();
   const tr = useT();
+  const scrollRef = useScrollToTopOnTabPress();
 
   // Vue de ligue chargée depuis le backend (GET /leagues/me, auto-join sinon).
   const [view, setView] = useState<LeagueView | null>(null);
@@ -172,7 +174,7 @@ export default function LiguesScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: T.text }]}>{tr('ligues.title')}</Text>
