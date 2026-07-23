@@ -169,7 +169,7 @@ export default function ProfilScreen() {
                     <Text style={[styles.statVal, { color: T.text }]}>{s.value}</Text>
                     <Text style={[styles.statLabel, { color: T.textSecondary }]} numberOfLines={1}>{s.label}</Text>
                   </View>
-                  {i < 3 && <View style={[styles.statDivider, { backgroundColor: T.divider, opacity: T.isDark ? 0.6 : 0.8 }]} />}
+                  {i < 3 && <View style={[styles.statDivider, { backgroundColor: T.divider, opacity: T.isDark ? 0.3 : 0.4 }]} />}
                 </View>
               );
             })}
