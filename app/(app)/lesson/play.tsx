@@ -858,8 +858,12 @@ function VoiceView({
   const answered = phase !== 'answering';
 
   // Sécurité : couper l'enregistrement et rétablir le mode lecture en sortie.
+  // L'objet natif du recorder peut déjà être détruit au démontage (expo-audio) :
+  // toute lecture de ses propriétés doit donc être protégée par un try/catch.
   useEffect(() => () => {
-    if (recorder.isRecording) recorder.stop().catch(() => {});
+    try {
+      if (recorder.isRecording) recorder.stop().catch(() => {});
+    } catch {}
     exitRecordingMode();
   }, []);
 
