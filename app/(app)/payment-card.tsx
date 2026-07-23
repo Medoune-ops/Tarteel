@@ -173,7 +173,7 @@ export default function PaymentCardScreen() {
           >
             <Feather name="lock" size={18} color="#fff" />
             <Text style={styles.ctaText}>
-              {paying ? tr('paymentCard.processing') : tr('paymentCard.ctaStartTrial', { price: plan.prix })}
+              {paying ? tr('paymentCard.processing') : tr('paymentCard.ctaPay', { price: plan.prix })}
             </Text>
           </Pressable>
           <Text style={styles.note}>
