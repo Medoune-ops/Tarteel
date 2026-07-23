@@ -43,6 +43,13 @@ function buildHtml(paymentUrl: string): string {
   // Le SDK DexPay attend d'être chargé dans une vraie page web ; on lui
   // injecte le paymentUrl reçu du backend et on relaie ses callbacks au RN
   // via `window.ReactNativeWebView.postMessage`.
+  //
+  // Le <script src="..."> est chargé de façon ASYNCHRONE : si on appelle
+  // DexPay.checkout() avant qu'il ait fini (ou s'il ne charge jamais — CDN
+  // injoignable depuis la WebView), on obtient un écran blanc silencieux au
+  // lieu d'une erreur visible. On attend explicitement `onload`/`onerror` du
+  // script, avec un timeout de secours, et on remonte tout au RN pour pouvoir
+  // diagnostiquer plutôt que de deviner.
   const safeUrl = JSON.stringify(paymentUrl);
   return `<!doctype html>
 <html>
@@ -51,26 +58,50 @@ function buildHtml(paymentUrl: string): string {
   <style>html,body{margin:0;padding:0;background:#fff;height:100%;}</style>
 </head>
 <body>
-<script src="https://checkout.dexpay.africa/dexpay.js"></script>
 <script>
   function post(msg) {
     if (window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify(msg));
     }
   }
-  try {
-    DexPay.checkout({
-      paymentUrl: ${safeUrl},
-      paymentMethod: 'card',
-      onReady: function () { post({ type: 'ready' }); },
-      onSuccess: function (data) { post({ type: 'success', data: data }); },
-      onCancel: function () { post({ type: 'cancel' }); },
-      onError: function (data) { post({ type: 'error', data: data }); },
-      onClose: function () { post({ type: 'close' }); },
-    });
-  } catch (e) {
-    post({ type: 'error', data: { message: String(e) } });
+  window.onerror = function (message, source, lineno, colno, error) {
+    post({ type: 'error', data: { message: 'window.onerror: ' + message } });
+  };
+
+  var started = false;
+  function startCheckout() {
+    if (started) return;
+    started = true;
+    try {
+      if (typeof DexPay === 'undefined') {
+        post({ type: 'error', data: { message: 'DexPay SDK not loaded (script failed or blocked)' } });
+        return;
+      }
+      DexPay.checkout({
+        paymentUrl: ${safeUrl},
+        paymentMethod: 'card',
+        onReady: function () { post({ type: 'ready' }); },
+        onSuccess: function (data) { post({ type: 'success', data: data }); },
+        onCancel: function () { post({ type: 'cancel' }); },
+        onError: function (data) { post({ type: 'error', data: data }); },
+        onClose: function () { post({ type: 'close' }); },
+      });
+    } catch (e) {
+      post({ type: 'error', data: { message: String(e && e.message ? e.message : e) } });
+    }
   }
+
+  var s = document.createElement('script');
+  s.src = 'https://checkout.dexpay.africa/dexpay.js';
+  s.onload = startCheckout;
+  s.onerror = function () {
+    post({ type: 'error', data: { message: 'Failed to load DexPay script (network/CDN unreachable)' } });
+  };
+  document.body.appendChild(s);
+  // Filet de sécurité : si ni onload ni onerror ne se déclenchent (certains
+  // WebView Android n'émettent pas toujours ces événements de façon fiable
+  // pour des scripts injectés dynamiquement), on tente quand même après 6s.
+  setTimeout(startCheckout, 6000);
 </script>
 </body>
 </html>`;
@@ -159,6 +190,10 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
           setPhase('cancelled');
           break;
         case 'error':
+          // Diagnostic : le message exact (script non chargé, JS cassé, etc.)
+          // — jamais montré à l'utilisateur, juste pour identifier la cause
+          // d'un écran blanc/paiement annulé silencieux.
+          if (__DEV__) console.warn('[DexPayCheckout] error from WebView:', msg.data);
           setPhase('failed');
           break;
         default:
@@ -239,10 +274,21 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
 
         {phase === 'checkout' ? (
           <WebView
-            source={{ html: buildHtml(paymentUrl) }}
+            source={{ html: buildHtml(paymentUrl), baseUrl: 'https://checkout.dexpay.africa' }}
             onMessage={handleMessage}
             style={styles.webview}
             startInLoadingState
+            javaScriptEnabled
+            domStorageEnabled
+            mixedContentMode="always"
+            originWhitelist={['*']}
+            onError={(e) => {
+              if (__DEV__) console.warn('[DexPayCheckout] WebView load error:', e.nativeEvent);
+              setPhase('failed');
+            }}
+            onHttpError={(e) => {
+              if (__DEV__) console.warn('[DexPayCheckout] WebView HTTP error:', e.nativeEvent);
+            }}
             renderLoading={() => (
               <View style={styles.loadingWrap}>
                 <ActivityIndicator size="large" color="#F0820C" />
