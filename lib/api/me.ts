@@ -15,6 +15,8 @@ export interface MeResponse {
   xp: number;
   hearts: number;
   isPremium: boolean;
+  /** Date ISO de fin du Premium effectif (personnel ou familial) ; null = pas de Premium actif. */
+  premiumUntil?: string | null;
   currentLesson: number;
   lastHeartLossAt: number | null;
   gems?: number;

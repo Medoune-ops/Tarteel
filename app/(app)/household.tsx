@@ -12,9 +12,10 @@ import {
   fetchHousehold, createHousehold, deleteHousehold, leaveHousehold, transferHousehold,
   inviteToHousehold, acceptHouseholdInvite, declineHouseholdInvite,
   cancelHouseholdInvite, removeHouseholdMember, subscribePremium,
-  type HouseholdView,
+  type HouseholdView, type CheckoutSession,
 } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import DexPayCheckout from '../../components/DexPayCheckout';
 import { useT } from '../../lib/i18n';
 
 function errMsg(e: unknown, fallback: string): string {
@@ -41,6 +42,7 @@ export default function HouseholdScreen() {
   const [notDeployed, setNotDeployed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [email, setEmail] = useState('');
+  const [session, setSession] = useState<CheckoutSession | null>(null);
 
   const load = useCallback(async () => {
     setError(false);
@@ -97,14 +99,30 @@ export default function HouseholdScreen() {
     ]);
   };
 
-  // Active le plan familial choisi (paiement) → tout le foyer devient premium.
+  // Active le plan familial choisi : crée la session de paiement DexPay puis
+  // ouvre le checkout carte — l'abonnement (et le premium de tout le foyer)
+  // n'est activé qu'à la confirmation du webhook, jamais avant (voir
+  // components/DexPayCheckout.tsx).
   const subscribeFamily = (planId: 'famille_mensuel' | 'famille_annuel', titre: string, prix: string) => {
     Alert.alert(
       tr('household.activateTitle'),
       tr('household.activateConfirmMsg', { plan: titre, price: prix }),
       [
         { text: tr('common.cancel'), style: 'cancel' },
-        { text: tr('household.activate'), onPress: () => run('sub', () => subscribePremium(planId), tr('household.activatedMsg')) },
+        {
+          text: tr('household.activate'),
+          onPress: async () => {
+            if (busy) return;
+            setBusy('sub');
+            try {
+              setSession(await subscribePremium(planId));
+            } catch (e) {
+              Alert.alert(tr('household.title'), errMsg(e, tr('household.actionError')));
+            } finally {
+              setBusy(null);
+            }
+          },
+        },
       ],
     );
   };
@@ -373,6 +391,21 @@ export default function HouseholdScreen() {
         </ScrollView>
       )}
       </KeyboardAvoidingView>
+
+      {session && (
+        <DexPayCheckout
+          visible
+          paymentUrl={session.paymentUrl}
+          reference={session.reference}
+          onDone={async (outcome) => {
+            setSession(null);
+            if (outcome === 'success') {
+              await load();
+              Alert.alert(tr('household.title'), tr('household.activatedMsg'));
+            }
+          }}
+        />
+      )}
     </View>
   );
 }
