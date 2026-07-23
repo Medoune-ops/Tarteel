@@ -1,67 +1,78 @@
 /**
- * Billing — activation de l'entitlement Premium côté SERVEUR.
+ * Billing — paiement carte via DexPay (DEXCHANGE PAY, https://dexpay.africa).
  *
- * Le paiement lui-même est collecté AVANT, par le `PaymentProvider`
- * (lib/payments.ts — point de branchement de notre future API de paiement) ;
- * on transmet ici le `paymentToken` obtenu, que le backend vérifiera auprès
- * du provider avant d'activer isPremium/premiumUntil. Tant que le provider
- * est mock des deux côtés, le jeton est factice et accepté (dev only).
+ * Flux ASYNCHRONE en 2 temps :
+ *  1. On demande au backend une "session de paiement" → il répond
+ *     `{ reference, paymentUrl }`. Ça n'active RIEN côté serveur.
+ *  2. Le front ouvre `paymentUrl` dans le SDK DexPay (WebView, voir
+ *     components/DexPayCheckout.tsx). L'utilisateur paie sa carte DANS le
+ *     popup DexPay — le numéro de carte ne transite jamais par notre code
+ *     (conformité PCI-DSS : on reste hors du scope carte).
+ *  3. Le paiement réel est confirmé par un WEBHOOK côté backend, qui fait
+ *     passer la Transaction de `pending` à `success`/`failed`. Le front doit
+ *     POLLER `getTransaction(reference)` jusqu'à voir ce changement — le
+ *     callback `onSuccess` du SDK n'est qu'un signal UI, jamais une preuve
+ *     de paiement.
  */
 import { apiFetch } from './client';
 import { fetchMe } from './me';
 
 export type PremiumPlan = 'mensuel' | 'annuel' | 'famille_mensuel' | 'famille_annuel';
 
-export interface SubscribeResult {
-  isPremium: boolean;
-  premiumUntil: string | null;
-  plan: PremiumPlan;
+/** Réponse commune à toutes les créations de session de paiement DexPay. */
+export interface CheckoutSession {
+  reference: string;
+  paymentUrl: string;
 }
 
-/** POST /billing/subscribe — active Premium côté serveur puis rehydrate. */
-export async function subscribePremium(
-  plan: PremiumPlan,
-  paymentToken?: string,
-): Promise<SubscribeResult> {
-  const res = await apiFetch<SubscribeResult>('/billing/subscribe', {
+export type TransactionStatut = 'pending' | 'success' | 'failed' | 'refunded';
+
+/** `Transaction` Prisma sérialisée — forme de GET /billing/transactions/:reference. */
+export interface Transaction {
+  id: string;
+  userId: string;
+  type: string;
+  montant: number;
+  devise: string;
+  statut: TransactionStatut;
+  providerRef: string | null;
+  reference: string;
+  payload: unknown;
+  createdAt: string;
+}
+
+/** POST /billing/subscribe — crée une session de paiement DexPay pour l'abonnement Premium. */
+export async function subscribePremium(plan: PremiumPlan): Promise<CheckoutSession> {
+  return apiFetch<CheckoutSession>('/billing/subscribe', {
     method: 'POST',
-    json: { plan, ...(paymentToken ? { paymentToken } : {}) },
+    json: { plan },
   });
-  await fetchMe(); // isPremium/hearts/xp désormais servis par le serveur
-  return res;
+}
+
+/** POST /billing/repair-streak — crée une session de paiement pour restaurer la série cassée. */
+export async function repairStreak(): Promise<CheckoutSession> {
+  return apiFetch<CheckoutSession>('/billing/repair-streak', { method: 'POST' });
+}
+
+/** POST /billing/hearts — crée une session de paiement pour un refill complet des cœurs. */
+export async function buyHearts(): Promise<CheckoutSession> {
+  return apiFetch<CheckoutSession>('/billing/hearts', { method: 'POST' });
 }
 
 /**
- * POST /billing/cancel — annule l'abonnement premium PERSONNEL (effet
- * immédiat). Si le premium de l'utilisateur vient uniquement d'un plan
- * familial, le serveur refuse (409) — il doit quitter le foyer à la place.
+ * GET /billing/transactions/:reference — à poller après la fermeture du popup
+ * DexPay, jusqu'à ce que `statut` passe de `pending` à `success`/`failed`
+ * (le webhook peut prendre quelques secondes).
  */
-export async function cancelSubscription(): Promise<{ isPremium: boolean; premiumUntil: string | null }> {
-  const res = await apiFetch<{ isPremium: boolean; premiumUntil: string | null }>('/billing/cancel', {
-    method: 'POST',
-  });
-  await fetchMe(); // isPremium désormais servi par le serveur
-  return res;
+export async function getTransaction(reference: string): Promise<Transaction> {
+  return apiFetch<Transaction>(`/billing/transactions/${reference}`);
 }
 
-/** POST /billing/repair-streak — restaure la série cassée (payant). */
-export async function repairStreak(): Promise<{ streak: number }> {
-  const res = await apiFetch<{ streak: number }>('/billing/repair-streak', {
-    method: 'POST',
-  });
+/**
+ * Rehydrate le store depuis le serveur — à appeler une fois qu'un paiement a
+ * été confirmé (`statut === 'success'`) pour refléter immédiatement le nouvel
+ * état (premium/gemmes/cœurs/streak).
+ */
+export async function refreshAfterPayment() {
   await fetchMe();
-  return res;
-}
-
-/**
- * POST /billing/hearts — achète un refill complet des cœurs avec de l'argent
- * (paiement mock), puis rehydrate le store depuis le serveur.
- */
-export async function buyHearts(paymentToken?: string): Promise<{ hearts: number }> {
-  const res = await apiFetch<{ hearts: number }>('/billing/hearts', {
-    method: 'POST',
-    json: paymentToken ? { paymentToken } : {},
-  });
-  await fetchMe(); // cœurs désormais servis par le serveur
-  return res;
 }

@@ -1,8 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useRouter, useFocusEffect, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
+} from 'react-native-reanimated';
 import Otter from '../../../components/Otter';
 import ProgressBar from '../../../components/ProgressBar';
 import { useUserStore } from '../../../store/userStore';
@@ -44,6 +47,19 @@ export default function ProfilScreen() {
   const precision = useUserStore((s) => s.precision);
 
   const badges = buildBadges(streak, streakGoal, sourates);
+
+  // ── Rotation continue de l'engrenage des paramètres ──
+  const gearSpin = useSharedValue(0);
+  useEffect(() => {
+    gearSpin.value = withRepeat(
+      withTiming(360, { duration: 4000, easing: Easing.linear }),
+      -1, // infini
+      false, // pas d'aller-retour : rotation dans un seul sens
+    );
+  }, []);
+  const gearStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${gearSpin.value}deg` }],
+  }));
 
   // ── Vrai calendrier du mois en cours ──
   const now = new Date();
@@ -106,8 +122,10 @@ export default function ProfilScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header gradient */}
         <LinearGradient colors={['#8467FF', '#6B4DFF']} style={styles.header}>
-          <Pressable style={styles.settingsBtn} onPress={() => router.push('/(app)/settings')}>
-            <Feather name="settings" size={24} color="#fff" />
+          <Pressable style={styles.settingsBtn} onPress={() => router.push('/(app)/settings')} hitSlop={10}>
+            <Animated.View style={gearStyle}>
+              <Feather name="settings" size={24} color="#fff" />
+            </Animated.View>
           </Pressable>
           <View style={styles.avatar}>
             <Otter size={84} />

@@ -202,6 +202,17 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* AIDE / SUPPORT */}
+        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionSupport')}</Text>
+        <View style={[styles.card, { backgroundColor: T.cardBg }]}>
+          <Row
+            iconBg="#F0820C" icon="help-circle"
+            title={tr('settings.support')} subtitle={tr('settings.supportSub')}
+            titleColor={T.text} subColor={T.textSecondary}
+            onPress={() => router.push('/(app)/support')}
+          />
+        </View>
+
         {/* LANGUE */}
         <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionLanguage')}</Text>
         <View style={[styles.card, { backgroundColor: T.cardBg }]}>
