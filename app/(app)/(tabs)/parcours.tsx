@@ -910,15 +910,20 @@ const SectionBlock = memo(function SectionBlock({
   index,
   onLessonPress,
   theme,
+  onActiveNodeLayout,
 }: {
   section: ParcoursSection;
   index: number;
   onLessonPress: (n: ParcoursNode) => void;
   theme: ThemeColors;
+  /** Position Y du nœud actif DANS cette section (pour scroller pile dessus). */
+  onActiveNodeLayout?: (yInSection: number) => void;
 }) {
   const done = section.nodes.filter((n) => n.state === 'completed').length;
   const total = section.nodes.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  // Offset vertical du bloc de nœuds sous la carte d'en-tête de section.
+  const pathYRef = useRef(0);
 
   return (
     <View style={styles.sectionWrap}>
@@ -957,9 +962,24 @@ const SectionBlock = memo(function SectionBlock({
         </LinearGradient>
       </Animated.View>
 
-      <View style={styles.path}>
+      <View
+        style={styles.path}
+        // Y du bloc de nœuds dans la section (sous la carte d'en-tête). Additionné
+        // à l'offset du nœud actif, ça donne sa position dans la section entière.
+        onLayout={(e) => { pathYRef.current = e.nativeEvent.layout.y; }}
+      >
         {section.nodes.map((node, i) => (
-          <View key={node.id} style={{ alignItems: 'center' }}>
+          <View
+            key={node.id}
+            style={{ alignItems: 'center' }}
+            // Le nœud actif remonte sa position Y (relative à la section) pour
+            // que le retap sur l'onglet scrolle exactement dessus.
+            onLayout={
+              node.state === 'active' && onActiveNodeLayout
+                ? (e) => onActiveNodeLayout(pathYRef.current + e.nativeEvent.layout.y)
+                : undefined
+            }
+          >
             <RenderNode node={node} onPress={() => onLessonPress(node)} theme={theme} />
             {i < section.nodes.length - 1 && <Dashed color={theme.dashedLine} />}
           </View>
@@ -1094,14 +1114,39 @@ export default function ParcoursScreen() {
     }, [syncHearts, loadSections]),
   );
 
-  /** Scrolle jusqu'à la section active (l'endroit où on en est dans le parcours). */
+  // Position Y du nœud actif à l'intérieur de sa section (remontée par
+  // SectionBlock via onLayout) — permet de viser la LEÇON à faire, pas juste
+  // le début de la section.
+  const activeNodeYRef = useRef<number | null>(null);
+  const handleActiveNodeLayout = useCallback((yInSection: number) => {
+    activeNodeYRef.current = yInSection;
+  }, []);
+
+  /**
+   * Scrolle jusqu'à la prochaine leçon à faire (le nœud actif). On vise la
+   * section active puis, une fois qu'elle est à l'écran, on affine avec
+   * l'offset exact du nœud pour le centrer.
+   */
   const scrollToActiveSection = useCallback(() => {
     if (activeSectionIndex == null) return;
     listRef.current?.scrollToIndex({
       index: activeSectionIndex,
       animated: true,
-      viewPosition: 0.2, // laisse voir un peu de la section précédente au-dessus
+      viewPosition: 0, // section calée en haut : base stable pour l'affinage
     });
+    // Affinage : recentrer sur le nœud actif lui-même une fois le 1er scroll fait.
+    const y = activeNodeYRef.current;
+    if (y == null) return;
+    setTimeout(() => {
+      listRef.current?.scrollToIndex({
+        index: activeSectionIndex,
+        animated: true,
+        viewPosition: 0,
+        // Décale du haut de la section jusqu'au nœud, en le remontant un peu
+        // au-dessus du centre pour qu'il soit bien visible.
+        viewOffset: -Math.max(0, y - 160),
+      });
+    }, 320);
   }, [activeSectionIndex]);
 
   // Premier chargement : on rejoint directement là où on en est, sans avoir
@@ -1153,9 +1198,10 @@ export default function ParcoursScreen() {
         index={index}
         onLessonPress={openLesson}
         theme={T}
+        onActiveNodeLayout={index === activeSectionIndex ? handleActiveNodeLayout : undefined}
       />
     ),
-    [openLesson, T],
+    [openLesson, T, activeSectionIndex, handleActiveNodeLayout],
   );
 
   const renderHeader = () => (

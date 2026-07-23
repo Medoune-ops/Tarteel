@@ -909,7 +909,7 @@ const fr = {
   "paymentCard.expiryLabel": "Expiration",
   "paymentCard.cvvLabel": "CVV",
   "paymentCard.processing": "Traitement…",
-  "paymentCard.ctaStartTrial": "Démarrer l'essai · puis {price}",
+  "paymentCard.ctaPay": "Payer {price}",
   "paymentCard.securityNote": "Tes informations sont chiffrées et ne sont pas stockées.",
   "paymentCard.errorTitle": "Paiement impossible",
   "paymentCard.errorMessage": "Réessaie dans un instant.",

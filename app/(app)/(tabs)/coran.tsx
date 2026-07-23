@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useTheme } from '../../../utils/useTheme';
+import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
 import { useT, type I18nKey } from '../../../lib/i18n';
 
 type Theme = {
@@ -28,6 +29,7 @@ export default function CoranScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const scrollRef = useScrollToTopOnTabPress();
   const FAITS = [
     { val: '114',   lbl: tr('coran.factSourates') },
     { val: '6 236', lbl: tr('coran.factVersets') },
@@ -37,7 +39,7 @@ export default function CoranScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
 
         {/* Header */}
         <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.header}>

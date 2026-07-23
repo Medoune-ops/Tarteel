@@ -1,27 +1,37 @@
 /**
- * Checkout carte via DexPay (DEXCHANGE PAY) — WebView chargeant le SDK JS
- * officiel (`dexpay.js`) dans une page HTML minimale, en mode carte
- * UNIQUEMENT (`paymentMethod: 'card'`, pas de mobile money).
+ * Checkout carte via DexPay (DEXCHANGE PAY) — la WebView charge `paymentUrl`
+ * DIRECTEMENT, en occupant tout l'écran (navigation top-level), PAS dans un
+ * cadre/iframe embarqué.
  *
- * Le numéro de carte ne transite JAMAIS par notre code : il reste dans
- * l'iframe DexPay à l'intérieur de la WebView (conformité PCI-DSS).
+ * Pourquoi pas le SDK popup officiel (`dexpay.js`) : la page de paiement
+ * DexPay envoie `Content-Security-Policy: frame-ancestors 'none'` et
+ * `X-Frame-Options: DENY` — elle refuse EXPLICITEMENT d'être affichée dans
+ * une iframe, quel que soit le site qui l'embarque (protection anti-
+ * clickjacking standard sur une page de paiement). Le SDK charge cette page
+ * dans une iframe interne : le navigateur bloque silencieusement ce
+ * chargement, d'où un écran qui tourne puis échoue sans jamais rien afficher.
+ * En chargeant `paymentUrl` en navigation directe (toute la WebView, pas un
+ * cadre à l'intérieur), on respecte cette règle et DexPay s'affiche.
+ *
+ * Le numéro de carte ne transite JAMAIS par notre code : il reste dans la
+ * page DexPay affichée par la WebView (conformité PCI-DSS).
  *
  * Flux :
- *  1. La WebView charge `paymentUrl` (reçu de POST /billing/*) via
- *     `DexPay.checkout(...)`.
- *  2. `onSuccess`/`onCancel`/`onError` du SDK ne sont que des signaux UI —
- *     JAMAIS une confirmation de paiement. On les utilise pour piloter
- *     l'affichage (fermer la WebView, afficher un état).
- *  3. Après `onSuccess`, on POLLE `GET /billing/transactions/:reference`
+ *  1. La WebView charge `paymentUrl` (reçu de POST /billing/*) directement.
+ *  2. On surveille la navigation (`onNavigationStateChange`) : DexPay
+ *     redirige vers `success_url`/`failure_url` (nos pages
+ *     dexpay.pages.ts) une fois le paiement terminé/annulé côté DexPay.
+ *     Ce n'est qu'un SIGNAL UI — jamais une confirmation de paiement.
+ *  3. Sur la redirection success, on POLLE `GET /billing/transactions/:reference`
  *     (toutes les POLL_INTERVAL_MS, jusqu'à POLL_TIMEOUT_MS) jusqu'à ce que
- *     `statut` devienne `success` ou `failed` — c'est le webhook, pas le
- *     popup, qui fait foi.
+ *     `statut` devienne `success` ou `failed` — c'est le webhook, pas la
+ *     redirection, qui fait foi.
  *  4. Sur `success`, on rehydrate le store (`refreshAfterPayment`) puis on
  *     notifie le parent via `onDone`.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Modal } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { Feather } from '@expo/vector-icons';
 import { getTransaction, refreshAfterPayment, type TransactionStatut } from '../lib/api/billing';
 import { useT } from '../lib/i18n';
@@ -39,79 +49,12 @@ interface DexPayCheckoutProps {
   onDone: (outcome: 'success' | 'failed' | 'cancelled') => void;
 }
 
-function buildHtml(paymentUrl: string): string {
-  // Le SDK DexPay attend d'être chargé dans une vraie page web ; on lui
-  // injecte le paymentUrl reçu du backend et on relaie ses callbacks au RN
-  // via `window.ReactNativeWebView.postMessage`.
-  //
-  // Le <script src="..."> est chargé de façon ASYNCHRONE : si on appelle
-  // DexPay.checkout() avant qu'il ait fini (ou s'il ne charge jamais — CDN
-  // injoignable depuis la WebView), on obtient un écran blanc silencieux au
-  // lieu d'une erreur visible. On attend explicitement `onload`/`onerror` du
-  // script, avec un timeout de secours, et on remonte tout au RN pour pouvoir
-  // diagnostiquer plutôt que de deviner.
-  const safeUrl = JSON.stringify(paymentUrl);
-  return `<!doctype html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>html,body{margin:0;padding:0;background:#fff;height:100%;}</style>
-</head>
-<body>
-<script>
-  function post(msg) {
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(JSON.stringify(msg));
-    }
-  }
-  window.onerror = function (message, source, lineno, colno, error) {
-    post({ type: 'error', data: { message: 'window.onerror: ' + message } });
-  };
-
-  var started = false;
-  function startCheckout() {
-    if (started) return;
-    started = true;
-    try {
-      if (typeof DexPay === 'undefined') {
-        post({ type: 'error', data: { message: 'DexPay SDK not loaded (script failed or blocked)' } });
-        return;
-      }
-      DexPay.checkout({
-        paymentUrl: ${safeUrl},
-        paymentMethod: 'card',
-        onReady: function () { post({ type: 'ready' }); },
-        onSuccess: function (data) { post({ type: 'success', data: data }); },
-        onCancel: function () { post({ type: 'cancel' }); },
-        onError: function (data) { post({ type: 'error', data: data }); },
-        onClose: function () { post({ type: 'close' }); },
-      });
-    } catch (e) {
-      post({ type: 'error', data: { message: String(e && e.message ? e.message : e) } });
-    }
-  }
-
-  var s = document.createElement('script');
-  s.src = 'https://checkout.dexpay.africa/dexpay.js';
-  s.onload = startCheckout;
-  s.onerror = function () {
-    post({ type: 'error', data: { message: 'Failed to load DexPay script (network/CDN unreachable)' } });
-  };
-  document.body.appendChild(s);
-  // Filet de sécurité : si ni onload ni onerror ne se déclenchent (certains
-  // WebView Android n'émettent pas toujours ces événements de façon fiable
-  // pour des scripts injectés dynamiquement), on tente quand même après 6s.
-  setTimeout(startCheckout, 6000);
-</script>
-</body>
-</html>`;
-}
-
 export default function DexPayCheckout({ visible, paymentUrl, reference, onDone }: DexPayCheckoutProps) {
   const tr = useT();
   const [phase, setPhase] = useState<Phase>('checkout');
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollDeadline = useRef<number>(0);
+  const redirected = useRef(false);
 
   const stopPolling = useCallback(() => {
     if (pollTimer.current) {
@@ -122,7 +65,10 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
 
   // Réinitialise l'état à chaque nouvelle ouverture (une session par référence).
   useEffect(() => {
-    if (visible) setPhase('checkout');
+    if (visible) {
+      setPhase('checkout');
+      redirected.current = false;
+    }
     return stopPolling;
   }, [visible, reference, stopPolling]);
 
@@ -172,32 +118,18 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
     pollTimer.current = setInterval(check, POLL_INTERVAL_MS);
   }, [reference, stopPolling]);
 
-  const handleMessage = useCallback(
-    (event: { nativeEvent: { data: string } }) => {
-      let msg: { type: string; data?: unknown };
-      try {
-        msg = JSON.parse(event.nativeEvent.data);
-      } catch {
-        return;
-      }
-      switch (msg.type) {
-        case 'success':
-          // Signal UI uniquement — le paiement réel sera confirmé par le
-          // webhook. On lance le polling, on ne crédite rien ici.
-          startPolling();
-          break;
-        case 'cancel':
-          setPhase('cancelled');
-          break;
-        case 'error':
-          // Diagnostic : le message exact (script non chargé, JS cassé, etc.)
-          // — jamais montré à l'utilisateur, juste pour identifier la cause
-          // d'un écran blanc/paiement annulé silencieux.
-          if (__DEV__) console.warn('[DexPayCheckout] error from WebView:', msg.data);
-          setPhase('failed');
-          break;
-        default:
-          break;
+  // DexPay redirige vers success_url/failure_url (dexpay.pages.ts côté
+  // backend) une fois le paiement terminé côté DexPay — un simple SIGNAL UI,
+  // jamais une confirmation de paiement (voir doc DexPay : le webhook fait foi).
+  const handleNavigationStateChange = useCallback(
+    (nav: WebViewNavigation) => {
+      if (redirected.current) return;
+      if (nav.url.includes('/billing/dexpay/success')) {
+        redirected.current = true;
+        startPolling();
+      } else if (nav.url.includes('/billing/dexpay/failure')) {
+        redirected.current = true;
+        setPhase('cancelled');
       }
     },
     [startPolling],
@@ -274,14 +206,12 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
 
         {phase === 'checkout' ? (
           <WebView
-            source={{ html: buildHtml(paymentUrl), baseUrl: 'https://checkout.dexpay.africa' }}
-            onMessage={handleMessage}
+            source={{ uri: paymentUrl }}
+            onNavigationStateChange={handleNavigationStateChange}
             style={styles.webview}
             startInLoadingState
             javaScriptEnabled
             domStorageEnabled
-            mixedContentMode="always"
-            originWhitelist={['*']}
             onError={(e) => {
               if (__DEV__) console.warn('[DexPayCheckout] WebView load error:', e.nativeEvent);
               setPhase('failed');
