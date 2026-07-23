@@ -20,3 +20,10 @@ jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'fr', languageTag: 'fr-FR', regionCode: 'FR' }],
   getCalendars: () => [{ timeZone: 'Europe/Paris' }],
 }));
+
+// react-native-webview (DexPayCheckout) charge un module natif introuvable en
+// test — un composant vide suffit, on ne teste jamais le rendu de la webview.
+jest.mock('react-native-webview', () => {
+  const { View } = require('react-native');
+  return { WebView: View };
+});

@@ -17,6 +17,16 @@ import { useT, t, type I18nKey } from '../../../lib/i18n';
 
 type Badge = { emoji: string; bg: string; bgDark: string; border: string; label: string; route?: Href };
 
+// Couleurs des stats reprises du palier des badges juste en dessous (or =
+// XP, orange = série, vert = sourates, violet = précision) pour que le
+// bandeau de stats et les badges se lisent comme un seul ensemble cohérent.
+const STAT_META = [
+  { icon: 'zap' as const,       emoji: null,  color: '#E8A800', bg: '#FFF3CD', bgDark: '#332A14' },
+  { icon: null,                 emoji: '🔥',  color: '#F0820C', bg: '#FFE7D2', bgDark: '#3A2712' },
+  { icon: 'book-open' as const, emoji: null,  color: '#2A9E1C', bg: '#E2F5E1', bgDark: '#1B3220' },
+  { icon: 'target' as const,    emoji: null,  color: '#6B4DFF', bg: '#EDE8FF', bgDark: '#241F3D' },
+];
+
 // Libellé du badge d'objectif de série.
 function streakGoalLabel(streak: number, goal: number | null): string {
   if (goal == null) return t('profil.badge.streakGoalSet');
@@ -140,22 +150,37 @@ export default function ProfilScreen() {
 
         <View style={styles.body}>
           {/* Stats bar */}
-          <View style={[styles.statsCard, { backgroundColor: T.cardBg }]}>
+          <LinearGradient
+            colors={T.isDark
+              ? ['rgba(36,31,61,0.6)', 'rgba(51,42,20,0.6)']
+              : ['rgba(237,232,255,0.7)', 'rgba(255,243,205,0.7)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statsCard}
+          >
             {[
               { value: xp.toLocaleString(localeTag), label: tr('profil.xpTotal') },
-              { value: String(streak), label: tr('profil.streakDays'), flame: true },
+              { value: String(streak), label: tr('profil.streakDays') },
               { value: String(sourates), label: tr('profil.sourates') },
               { value: precision > 0 ? `${precision}%` : '—', label: tr('profil.precision') },
-            ].map((s, i) => (
-              <View key={i} style={styles.statCol}>
-                <View style={styles.statValRow}>
-                  {s.flame && <Text style={{ fontSize: 20 }}>🔥</Text>}
-                  <Text style={[styles.statVal, { color: T.text }]}>{s.value}</Text>
+            ].map((s, i) => {
+              const meta = STAT_META[i];
+              return (
+                <View key={i} style={styles.statColWrap}>
+                  <View style={styles.statCol}>
+                    <View style={[styles.statIconWrap, { backgroundColor: T.isDark ? meta.bgDark : meta.bg }]}>
+                      {meta.icon
+                        ? <Feather name={meta.icon} size={15} color={meta.color} />
+                        : <Text style={styles.statIconEmoji}>{meta.emoji}</Text>}
+                    </View>
+                    <Text style={[styles.statVal, { color: T.text }]}>{s.value}</Text>
+                    <Text style={[styles.statLabel, { color: T.textSecondary }]} numberOfLines={1}>{s.label}</Text>
+                  </View>
+                  {i < 3 && <View style={[styles.statDivider, { backgroundColor: T.divider, opacity: T.isDark ? 0.3 : 0.4 }]} />}
                 </View>
-                <Text style={[styles.statLabel, { color: T.textSecondary }]}>{s.label}</Text>
-              </View>
-            ))}
-          </View>
+              );
+            })}
+          </LinearGradient>
 
           {/* Niveau — 2000 XP par niveau */}
           {(() => {
@@ -264,14 +289,20 @@ const styles = StyleSheet.create({
   stars: { flexDirection: 'row', gap: 3, marginTop: 5 },
   body: { padding: 22 },
   statsCard: {
-    borderRadius: 18, padding: 20,
-    flexDirection: 'row', justifyContent: 'space-between',
+    borderRadius: 18, paddingVertical: 18, paddingHorizontal: 8,
+    flexDirection: 'row', alignItems: 'stretch',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 14, elevation: 2,
   },
-  statCol: { alignItems: 'center' },
-  statValRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22 },
-  statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 12 },
+  statColWrap: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  statCol: { flex: 1, alignItems: 'center', gap: 3 },
+  statIconWrap: {
+    width: 30, height: 30, borderRadius: 10, marginBottom: 3,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  statIconEmoji: { fontSize: 15 },
+  statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20 },
+  statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 11.5 },
+  statDivider: { width: 1, height: 28, alignSelf: 'center' },
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 24, marginBottom: 10 },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   levelText: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
