@@ -77,18 +77,13 @@ export default function PaymentMethodScreen() {
         {/* Détail prix */}
         <View style={styles.priceCard}>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{tr('paymentMethod.freeTrialLabel')}</Text>
-            <Text style={styles.priceFree}>{tr('paymentMethod.freeTrialValue')}</Text>
-          </View>
-          <View style={styles.priceDivider} />
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{tr('paymentMethod.thenBilled', { plan: plan.titre.toLowerCase() })}</Text>
+            <Text style={styles.priceLabel}>{tr('paymentMethod.planLabel', { plan: plan.titre.toLowerCase() })}</Text>
             <Text style={styles.priceValue}>{plan.prix}</Text>
           </View>
           <View style={styles.priceDivider} />
           <View style={styles.priceRow}>
             <Text style={styles.totalLabel}>{tr('paymentMethod.dueToday')}</Text>
-            <Text style={styles.totalValue}>0,00 €</Text>
+            <Text style={styles.totalValue}>{plan.prix}</Text>
           </View>
         </View>
 
@@ -126,7 +121,7 @@ export default function PaymentMethodScreen() {
             <>
               <Feather name={method === 'card' ? 'arrow-right' : 'lock'} size={18} color="#fff" />
               <Text style={styles.ctaText}>
-                {method === 'card' ? tr('paymentMethod.ctaContinue') : tr('paymentMethod.ctaConfirmTrial')}
+                {method === 'card' ? tr('paymentMethod.ctaContinue') : tr('paymentMethod.ctaConfirmPay')}
               </Text>
             </>
           )}
