@@ -338,6 +338,18 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
   const sunDiscFill = lit ? 'url(#sunGlow)' : c;
   const sunHaloFill = lit ? 'url(#sunHalo)' : c;
   const sunHighlight = lit ? '#FFFFFF' : c;
+  // Masjid al-Haram + Kaaba : pierre claire/dômes verts-dorés le jour, tons
+  // bleu-violet + lueur dorée la nuit — silhouette plate (fill=c) hors premium.
+  const mosqueWall = lit ? (isDark ? '#4A4468' : '#EFE4CC') : c;
+  const mosqueDomeWhite = lit ? (isDark ? '#6B658C' : '#F5F1E4') : c;
+  const mosqueDomeGreen = lit ? (isDark ? '#2E6B52' : '#1B6B4A') : c;
+  const mosqueGold = lit ? (isDark ? '#FFD700' : '#F0A41E') : c;
+  const mosqueGoldDark = lit ? (isDark ? '#D4AF37' : '#C9860F') : c;
+  const kaabaFill = lit ? (isDark ? '#0B0B10' : '#1A1A1A') : c;
+  const kaabaBand = lit ? '#FFD700' : c;
+  // Comme le ciel : boostee au-dessus de l'opacite discrete du reste des
+  // batiments quand premium, pour que les couleurs se voient vraiment.
+  const mosqueOpacity = lit ? 0.95 : op;
   let starTint = 0;
   const starCel = () => (lit ? STAR_COLORS[starTint++ % STAR_COLORS.length] : c);
   let starGradTint = 0;
@@ -900,75 +912,6 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
         <Rect key={i} x={204} y={y} width={8}  height={12} rx={1} fill={c} opacity={0.5} />
       ))}
 
-      {/* ══ MINARETS DU MASJID AL-HARAM ══ */}
-      {/* minaret 1 — loin gauche */}
-      <Rect x={20}  y={490} width={14} height={150} fill={c} opacity={0.6} />
-      <Rect x={16}  y={530} width={22} height={5}   fill={c} opacity={0.5} />
-      <Rect x={16}  y={570} width={22} height={5}   fill={c} opacity={0.5} />
-      <Path d="M20 490 Q27 472 34 490 Z" fill={c} opacity={0.6} />
-      <Path d="M23 468 A4 4 0 1 0 23 476 A2.5 2.5 0 1 1 23 468 Z" fill={c} opacity={0.6} />
-      <Circle cx={31} cy={470} r={1.5} fill={c} opacity={0.6} />
-
-      {/* minaret 2 — gauche proche */}
-      <Rect x={78}  y={460} width={16} height={180} fill={c} opacity={0.75} />
-      <Rect x={73}  y={502} width={26} height={5}   fill={c} opacity={0.6} />
-      <Rect x={73}  y={548} width={26} height={5}   fill={c} opacity={0.6} />
-      <Path d="M78 460 Q86 440 94 460 Z" fill={c} opacity={0.75} />
-      <Path d="M81 436 A4.5 4.5 0 1 0 81 445 A3 3 0 1 1 81 436 Z" fill={c} opacity={0.75} />
-      <Circle cx={91} cy={438} r={1.8} fill={c} opacity={0.75} />
-
-      {/* minaret 3 — gauche milieu */}
-      <Rect x={132} y={430} width={14} height={210} fill={c} opacity={0.65} />
-      <Rect x={127} y={470} width={24} height={5}   fill={c} opacity={0.55} />
-      <Rect x={127} y={520} width={24} height={5}   fill={c} opacity={0.55} />
-      <Path d="M132 430 Q139 412 146 430 Z" fill={c} opacity={0.65} />
-      <Path d="M135 408 A4 4 0 1 0 135 416 A2.5 2.5 0 1 1 135 408 Z" fill={c} opacity={0.65} />
-      <Circle cx={143} cy={410} r={1.6} fill={c} opacity={0.65} />
-
-      {/* minaret 4 — droite milieu */}
-      <Rect x={254} y={430} width={14} height={210} fill={c} opacity={0.65} />
-      <Rect x={249} y={470} width={24} height={5}   fill={c} opacity={0.55} />
-      <Rect x={249} y={520} width={24} height={5}   fill={c} opacity={0.55} />
-      <Path d="M254 430 Q261 412 268 430 Z" fill={c} opacity={0.65} />
-      <Path d="M257 408 A4 4 0 1 0 257 416 A2.5 2.5 0 1 1 257 408 Z" fill={c} opacity={0.65} />
-      <Circle cx={265} cy={410} r={1.6} fill={c} opacity={0.65} />
-
-      {/* minaret 5 — droite proche */}
-      <Rect x={306} y={460} width={16} height={180} fill={c} opacity={0.75} />
-      <Rect x={301} y={502} width={26} height={5}   fill={c} opacity={0.6} />
-      <Rect x={301} y={548} width={26} height={5}   fill={c} opacity={0.6} />
-      <Path d="M306 460 Q314 440 322 460 Z" fill={c} opacity={0.75} />
-      <Path d="M309 436 A4.5 4.5 0 1 0 309 445 A3 3 0 1 1 309 436 Z" fill={c} opacity={0.75} />
-      <Circle cx={319} cy={438} r={1.8} fill={c} opacity={0.75} />
-
-      {/* minaret 6 — loin droite */}
-      <Rect x={366} y={490} width={14} height={150} fill={c} opacity={0.6} />
-      <Rect x={362} y={530} width={22} height={5}   fill={c} opacity={0.5} />
-      <Rect x={362} y={570} width={22} height={5}   fill={c} opacity={0.5} />
-      <Path d="M366 490 Q373 472 380 490 Z" fill={c} opacity={0.6} />
-      <Path d="M369 468 A4 4 0 1 0 369 476 A2.5 2.5 0 1 1 369 468 Z" fill={c} opacity={0.6} />
-      <Circle cx={377} cy={470} r={1.5} fill={c} opacity={0.6} />
-
-      {/* ══ MASJID AL-HARAM — grande coupole + corps ══ */}
-      {/* aile gauche */}
-      <Rect x={40}  y={600} width={120} height={40} fill={c} opacity={0.5} />
-      {/* aile droite */}
-      <Rect x={240} y={600} width={120} height={40} fill={c} opacity={0.5} />
-      {/* corps central */}
-      <Rect x={120} y={580} width={160} height={60} fill={c} opacity={0.6} />
-      {/* grande coupole centrale */}
-      <Path d="M150 580 Q200 530 250 580 Z" fill={c} opacity={0.65} />
-      {/* petites coupoles */}
-      <Path d="M120 600 Q137 582 154 600 Z" fill={c} opacity={0.5} />
-      <Path d="M246 600 Q263 582 280 600 Z" fill={c} opacity={0.5} />
-      {/* arches façade */}
-      {[50, 76, 102, 302, 328, 354].map((x, i) => (
-        <Path key={i} d={`M${x} 640 Q${x+13} 622 ${x+26} 640`} fill={c} opacity={0.4} />
-      ))}
-      {[130, 155, 180, 205, 230].map((x, i) => (
-        <Path key={i} d={`M${x} 640 Q${x+13} 618 ${x+26} 640`} fill={c} opacity={0.5} />
-      ))}
-
       {/* ══ IMMEUBLES ENVIRONNANTS ══ */}
       {/* gauche lointain */}
       <Rect x={0}   y={550} width={18} height={90}  fill={c} opacity={0.3} />
@@ -982,6 +925,99 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
       {/* immeubles hôtels droite */}
       <Rect x={326} y={500} width={30} height={140} fill={c} opacity={0.35} />
       <Rect x={300} y={520} width={22} height={120} fill={c} opacity={0.3} />
+      </Svg>
+
+      {/* Masjid al-Haram + Kaaba : colore et detaille en premium (opacite
+          boostee comme le ciel, independante des batiments discrets
+          ci-dessus) — simple silhouette plate sinon. */}
+      <Svg
+        width={width}
+        height={height}
+        viewBox="0 0 400 700"
+        preserveAspectRatio="xMidYMax meet"
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+        opacity={mosqueOpacity}
+      >
+      {/* ══ MINARETS DU MASJID AL-HARAM ══ */}
+      {/* minaret 1 — loin gauche */}
+      <Rect x={20}  y={490} width={14} height={150} fill={mosqueWall} opacity={bo(0.6)} />
+      <Rect x={16}  y={530} width={22} height={5}   fill={mosqueGoldDark} opacity={bo(0.5)} />
+      <Rect x={16}  y={570} width={22} height={5}   fill={mosqueGoldDark} opacity={bo(0.5)} />
+      <Path d="M20 490 Q27 472 34 490 Z" fill={mosqueDomeWhite} opacity={bo(0.6)} />
+      <Path d="M23 468 A4 4 0 1 0 23 476 A2.5 2.5 0 1 1 23 468 Z" fill={mosqueGold} opacity={bo(0.6)} />
+      <Circle cx={31} cy={470} r={1.5} fill={mosqueGold} opacity={bo(0.6)} />
+
+      {/* minaret 2 — gauche proche */}
+      <Rect x={78}  y={460} width={16} height={180} fill={mosqueWall} opacity={bo(0.75)} />
+      <Rect x={73}  y={502} width={26} height={5}   fill={mosqueGoldDark} opacity={bo(0.6)} />
+      <Rect x={73}  y={548} width={26} height={5}   fill={mosqueGoldDark} opacity={bo(0.6)} />
+      <Path d="M78 460 Q86 440 94 460 Z" fill={mosqueDomeGreen} opacity={bo(0.75)} />
+      <Path d="M81 436 A4.5 4.5 0 1 0 81 445 A3 3 0 1 1 81 436 Z" fill={mosqueGold} opacity={bo(0.75)} />
+      <Circle cx={91} cy={438} r={1.8} fill={mosqueGold} opacity={bo(0.75)} />
+
+      {/* minaret 3 — gauche milieu */}
+      <Rect x={132} y={430} width={14} height={210} fill={mosqueWall} opacity={bo(0.65)} />
+      <Rect x={127} y={470} width={24} height={5}   fill={mosqueGoldDark} opacity={bo(0.55)} />
+      <Rect x={127} y={520} width={24} height={5}   fill={mosqueGoldDark} opacity={bo(0.55)} />
+      <Path d="M132 430 Q139 412 146 430 Z" fill={mosqueDomeWhite} opacity={bo(0.65)} />
+      <Path d="M135 408 A4 4 0 1 0 135 416 A2.5 2.5 0 1 1 135 408 Z" fill={mosqueGold} opacity={bo(0.65)} />
+      <Circle cx={143} cy={410} r={1.6} fill={mosqueGold} opacity={bo(0.65)} />
+
+      {/* minaret 4 — droite milieu */}
+      <Rect x={254} y={430} width={14} height={210} fill={mosqueWall} opacity={bo(0.65)} />
+      <Rect x={249} y={470} width={24} height={5}   fill={mosqueGoldDark} opacity={bo(0.55)} />
+      <Rect x={249} y={520} width={24} height={5}   fill={mosqueGoldDark} opacity={bo(0.55)} />
+      <Path d="M254 430 Q261 412 268 430 Z" fill={mosqueDomeWhite} opacity={bo(0.65)} />
+      <Path d="M257 408 A4 4 0 1 0 257 416 A2.5 2.5 0 1 1 257 408 Z" fill={mosqueGold} opacity={bo(0.65)} />
+      <Circle cx={265} cy={410} r={1.6} fill={mosqueGold} opacity={bo(0.65)} />
+
+      {/* minaret 5 — droite proche */}
+      <Rect x={306} y={460} width={16} height={180} fill={mosqueWall} opacity={bo(0.75)} />
+      <Rect x={301} y={502} width={26} height={5}   fill={mosqueGoldDark} opacity={bo(0.6)} />
+      <Rect x={301} y={548} width={26} height={5}   fill={mosqueGoldDark} opacity={bo(0.6)} />
+      <Path d="M306 460 Q314 440 322 460 Z" fill={mosqueDomeGreen} opacity={bo(0.75)} />
+      <Path d="M309 436 A4.5 4.5 0 1 0 309 445 A3 3 0 1 1 309 436 Z" fill={mosqueGold} opacity={bo(0.75)} />
+      <Circle cx={319} cy={438} r={1.8} fill={mosqueGold} opacity={bo(0.75)} />
+
+      {/* minaret 6 — loin droite */}
+      <Rect x={366} y={490} width={14} height={150} fill={mosqueWall} opacity={bo(0.6)} />
+      <Rect x={362} y={530} width={22} height={5}   fill={mosqueGoldDark} opacity={bo(0.5)} />
+      <Rect x={362} y={570} width={22} height={5}   fill={mosqueGoldDark} opacity={bo(0.5)} />
+      <Path d="M366 490 Q373 472 380 490 Z" fill={mosqueDomeWhite} opacity={bo(0.6)} />
+      <Path d="M369 468 A4 4 0 1 0 369 476 A2.5 2.5 0 1 1 369 468 Z" fill={mosqueGold} opacity={bo(0.6)} />
+      <Circle cx={377} cy={470} r={1.5} fill={mosqueGold} opacity={bo(0.6)} />
+
+      {/* ══ MASJID AL-HARAM — grande coupole + corps ══ */}
+      {/* aile gauche */}
+      <Rect x={40}  y={600} width={120} height={40} fill={mosqueWall} opacity={bo(0.5)} />
+      {/* aile droite */}
+      <Rect x={240} y={600} width={120} height={40} fill={mosqueWall} opacity={bo(0.5)} />
+      {/* corps central */}
+      <Rect x={120} y={580} width={160} height={60} fill={mosqueWall} opacity={bo(0.6)} />
+      {/* grande coupole centrale */}
+      <Path d="M150 580 Q200 530 250 580 Z" fill={mosqueDomeGreen} opacity={bo(0.9)} />
+      <Circle cx={200} cy={528} r={2.4} fill={mosqueGold} opacity={bo(0.9)} />
+      {/* petites coupoles */}
+      <Path d="M120 600 Q137 582 154 600 Z" fill={mosqueDomeWhite} opacity={bo(0.75)} />
+      <Path d="M246 600 Q263 582 280 600 Z" fill={mosqueDomeWhite} opacity={bo(0.75)} />
+      {/* arches façade */}
+      {[50, 76, 102, 302, 328, 354].map((x, i) => (
+        <Path key={i} d={`M${x} 640 Q${x+13} 622 ${x+26} 640`} fill={mosqueWall} opacity={bo(0.4)} />
+      ))}
+      {[130, 155, 180, 205, 230].map((x, i) => (
+        <Path key={i} d={`M${x} 640 Q${x+13} 618 ${x+26} 640`} fill={mosqueWall} opacity={bo(0.5)} />
+      ))}
+
+      {/* ── LA KAABA — au centre de l'esplanade (premium uniquement) ── */}
+      {lit && (
+        <>
+          <Path d="M182 610 L191 601 L223 601 L214 610 Z" fill={kaabaFill} opacity={0.85} />
+          <Rect x={182} y={610} width={32} height={30} fill={kaabaFill} />
+          <Rect x={182} y={620} width={32} height={7} fill={kaabaBand} opacity={0.95} />
+          <Rect x={194} y={628} width={8} height={12} fill={mosqueGoldDark} opacity={0.9} />
+        </>
+      )}
       </Svg>
     </>
   );
