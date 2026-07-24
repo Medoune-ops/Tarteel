@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
@@ -10,18 +10,33 @@ import Animated, {
 import Otter from '../../components/Otter';
 import Confetti from '../../components/Confetti';
 import { useUserStore } from '../../store/userStore';
-import { saveOnboarding } from '../../lib/api';
+import { saveOnboarding, fetchSections } from '../../lib/api';
 import { useT } from '../../lib/i18n';
+
+const DAILY_MINUTES_LABELS: Record<number, string> = {
+  5: '1 leçon courte par jour',
+  10: '2 leçons par jour',
+  20: '3–4 leçons par jour',
+  30: '5–6 leçons + révisions SRS',
+};
+
+interface StartingSection {
+  titre: string;
+  lessonsTotal: number;
+  lessonsDone: number;
+}
 
 export default function PlanScreen() {
   const router = useRouter();
   const tr = useT();
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+  const dailyMinutes = useUserStore((s) => s.dailyMinutes);
+
+  const [loading, setLoading] = useState(true);
+  const [startingSection, setStartingSection] = useState<StartingSection | null>(null);
 
   const otterScale = useSharedValue(0);
   const otterRot   = useSharedValue(0);
-  // micro-pulse de la barre vide pour signaler qu'elle attend d'être remplie
-  const barOpacity = useSharedValue(0.35);
 
   useEffect(() => {
     otterScale.value = withSpring(1, { damping: 8, stiffness: 140, mass: 0.7 });
@@ -36,17 +51,35 @@ export default function PlanScreen() {
         true,
       ),
     );
-    barOpacity.value = withDelay(
-      900,
-      withRepeat(
-        withSequence(
-          withTiming(1,    { duration: 500 }),
-          withTiming(0.35, { duration: 500 }),
-        ),
-        3,
-        true,
-      ),
-    );
+  }, []);
+
+  // Persiste les choix du setup + onboardingDone côté serveur DÈS l'arrivée
+  // sur cet écran (pas seulement au clic final comme avant) : c'est ce qui
+  // fait passer le point de départ réel du parcours (applyOnboardingStart) —
+  // sans cet appel, impossible de savoir quelle unité/combien de leçons
+  // afficher, le texte restait donc figé quel que soit le vrai choix de
+  // l'utilisateur (niveau, sourates cochées).
+  useEffect(() => {
+    (async () => {
+      const { level, objectif, dailyMinutes: dm, memorizedSourates } = useUserStore.getState();
+      try {
+        await saveOnboarding({ level, objectif, dailyMinutes: dm, sourates: memorizedSourates });
+        const sections = await fetchSections();
+        const active = sections.find((s) => s.nodes.some((n) => n.state === 'active'));
+        if (active) {
+          setStartingSection({
+            titre: active.titre,
+            lessonsTotal: active.nodes.length,
+            lessonsDone: active.nodes.filter((n) => n.state === 'completed').length,
+          });
+        }
+      } catch {
+        // Hors-ligne : on continue quand même avec l'écran générique ; la
+        // prochaine session /me rattrapera l'état une fois le réseau revenu.
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const otterStyle = useAnimatedStyle(() => ({
@@ -56,24 +89,14 @@ export default function PlanScreen() {
     ],
   }));
 
-  const barStyle = useAnimatedStyle(() => ({
-    opacity: barOpacity.value,
-  }));
-
-  const start = async () => {
-    // Marque l'onboarding fini localement (réactivité immédiate).
+  const start = () => {
     completeOnboarding();
-    // Persiste les choix du setup + onboardingDone côté serveur : sans ça, la
-    // reconnexion relancerait la configuration (le flag local est effacé au logout).
-    const { level, objectif, dailyMinutes, memorizedSourates } = useUserStore.getState();
-    try {
-      await saveOnboarding({ level, objectif, dailyMinutes, sourates: memorizedSourates });
-    } catch {
-      // Hors-ligne : on continue quand même ; la prochaine session /me
-      // rattrapera l'état une fois le réseau revenu.
-    }
     router.replace('/(app)/(tabs)/parcours');
   };
+
+  const progressPct = startingSection && startingSection.lessonsTotal > 0
+    ? Math.round((startingSection.lessonsDone / startingSection.lessonsTotal) * 100)
+    : 0;
 
   return (
     <View style={styles.screen}>
@@ -90,18 +113,35 @@ export default function PlanScreen() {
       </Animated.Text>
 
       <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.card}>
-        <View style={styles.cardTitleRow}>
-          <Feather name="book" size={22} color="#6B4DFF" />
-          <Text style={styles.cardTitle}>{tr('plan.unit1')}</Text>
-        </View>
-        <Text style={styles.cardSub}>{tr('plan.lessonsInfo')}</Text>
-        <Animated.View style={[styles.emptyBar, barStyle]} />
-        <Text style={styles.cardSub}>{tr('plan.progress')}</Text>
-        <View style={styles.streakRow}>
-          <Text style={{ fontSize: 19 }}>🔥</Text>
-          <Text style={styles.streakText}>{tr('plan.streakActive')}</Text>
-        </View>
-        <Text style={styles.cardSubSmall}>{tr('plan.notifTime')}</Text>
+        {loading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color="#6B4DFF" />
+          </View>
+        ) : (
+          <>
+            <View style={styles.cardTitleRow}>
+              <Feather name="book" size={22} color="#6B4DFF" />
+              <Text style={styles.cardTitle}>{startingSection?.titre ?? tr('plan.unit1')}</Text>
+            </View>
+            <Text style={styles.cardSub}>
+              {startingSection
+                ? `${startingSection.lessonsTotal} leçons · ${DAILY_MINUTES_LABELS[dailyMinutes] ?? `${dailyMinutes} min/j`}`
+                : tr('plan.lessonsInfo')}
+            </Text>
+            <View style={styles.emptyBar}>
+              <View style={[styles.filledBar, { width: `${progressPct}%` }]} />
+            </View>
+            <Text style={styles.cardSub}>
+              {startingSection
+                ? `${startingSection.lessonsDone} / ${startingSection.lessonsTotal} leçons complétées`
+                : tr('plan.progress')}
+            </Text>
+            <View style={styles.streakRow}>
+              <Text style={{ fontSize: 19 }}>🔥</Text>
+              <Text style={styles.streakText}>{tr('plan.streakActive')}</Text>
+            </View>
+          </>
+        )}
       </Animated.View>
 
       <View style={{ flex: 1 }} />
@@ -125,12 +165,14 @@ const styles = StyleSheet.create({
   card: {
     width: '100%', backgroundColor: '#fff', borderRadius: 22, padding: 24, marginTop: 30,
     shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.18, shadowRadius: 40, elevation: 12,
+    minHeight: 180, justifyContent: 'center',
   },
+  loadingRow: { alignItems: 'center', paddingVertical: 20 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 20, color: '#1B2333' },
   cardSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, color: '#8A8F99', marginTop: 4 },
-  cardSubSmall: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#8A8F99', marginTop: 2 },
-  emptyBar: { height: 10, borderRadius: 6, backgroundColor: '#EAECF0', marginVertical: 16 },
+  emptyBar: { height: 10, borderRadius: 6, backgroundColor: '#EAECF0', marginVertical: 16, overflow: 'hidden' },
+  filledBar: { height: '100%', borderRadius: 6, backgroundColor: '#34C724' },
   streakRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 12 },
   streakText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#2A9E1C' },
   cta: {
