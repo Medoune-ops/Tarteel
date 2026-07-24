@@ -201,8 +201,8 @@ export default function PrivacyScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.modalDelete,
-                  (!password || deleting) && { opacity: 0.5 },
-                  pressed && !deleting && password && styles.modalDeletePressed,
+                  (!password || deleting) && styles.modalDeleteDisabled,
+                  pressed && !deleting && !!password && styles.modalDeletePressed,
                 ]}
                 android_ripple={{ color: '#D63C3C' }}
                 onPress={confirmerSuppression}
@@ -210,7 +210,12 @@ export default function PrivacyScreen() {
               >
                 {deleting
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.modalDeleteText}>{tr('account.deleteAction')}</Text>}
+                  : (
+                    <>
+                      <Feather name="trash-2" size={18} color="#fff" />
+                      <Text style={styles.modalDeleteText}>{tr('account.deleteAction')}</Text>
+                    </>
+                  )}
               </Pressable>
             </View>
           </View>
@@ -263,19 +268,21 @@ const styles = StyleSheet.create({
     marginTop: 8, paddingHorizontal: 2,
   },
   modalErrorText: { fontFamily: 'Nunito_600SemiBold', fontSize: 12.5, color: '#E5484D', flexShrink: 1 },
-  modalBtns: { width: '100%', flexDirection: 'row', gap: 10, marginTop: 18 },
+  modalBtns: { width: '100%', gap: 10, marginTop: 18 },
   modalCancel: {
-    flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#F0F1F4',
   },
   modalCancelPressed: { backgroundColor: '#E3E5EA' },
   modalCancelText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#5A6270' },
   modalDelete: {
-    flex: 1.4, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FF4B4B',
+    flexDirection: 'row', gap: 8, height: 56, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FF4B4B', borderBottomWidth: 4, borderBottomColor: '#D43A3A',
   },
-  modalDeletePressed: { backgroundColor: '#E23C3C' },
-  modalDeleteText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
+  modalDeletePressed: { backgroundColor: '#E23C3C', borderBottomWidth: 0 },
+  modalDeleteDisabled: { opacity: 0.45, borderBottomColor: 'transparent' },
+  modalDeleteText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#fff' },
   header: {
     backgroundColor: '#fff', paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
