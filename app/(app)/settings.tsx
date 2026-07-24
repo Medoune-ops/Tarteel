@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import Toggle from '../../components/Toggle';
 import { useUserStore } from '../../store/userStore';
+import { useAppConfigStore } from '../../store/appConfigStore';
 import { useTheme } from '../../utils/useTheme';
 import { logout, updateSettings } from '../../lib/api';
 import { fetchNotificationPrefs, updateNotificationPrefs } from '../../lib/api/notifications';
@@ -79,6 +80,7 @@ export default function SettingsScreen() {
   const theme = useUserStore((s) => s.theme);
   const setTheme = useUserStore((s) => s.setTheme);
   const isPremium = useUserStore((s) => s.isPremium);
+  const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
   const langue = LANGUES[language];
   const T = useTheme();
   const tr = useT();
@@ -174,22 +176,28 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* ABONNEMENT */}
-        <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionSubscription')}</Text>
-        <Pressable style={styles.premiumCard} onPress={() => router.push('/(app)/subscription')}>
-          <View style={styles.premiumIcon}>
-            <Feather name={isPremium ? 'check-circle' : 'star'} size={24} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.premiumTitle}>
-              {isPremium ? tr('settings.premiumActiveTitle') : tr('settings.premiumTitle')}
-            </Text>
-            <Text style={styles.premiumSub}>
-              {isPremium ? tr('settings.premiumActiveSub') : tr('settings.premiumSub')}
-            </Text>
-          </View>
-          <Feather name="chevron-right" size={22} color="#fff" />
-        </Pressable>
+        {/* ABONNEMENT — masqué seulement si pas premium ET paiements
+            désactivés (ex: revue store en cours) ; un abonné actif garde
+            toujours accès à son statut. */}
+        {(isPremium || paymentsEnabled) && (
+          <>
+            <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionSubscription')}</Text>
+            <Pressable style={styles.premiumCard} onPress={() => router.push('/(app)/subscription')}>
+              <View style={styles.premiumIcon}>
+                <Feather name={isPremium ? 'check-circle' : 'star'} size={24} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.premiumTitle}>
+                  {isPremium ? tr('settings.premiumActiveTitle') : tr('settings.premiumTitle')}
+                </Text>
+                <Text style={styles.premiumSub}>
+                  {isPremium ? tr('settings.premiumActiveSub') : tr('settings.premiumSub')}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={22} color="#fff" />
+            </Pressable>
+          </>
+        )}
 
         {/* CONFIDENTIALITÉ */}
         <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('settings.sectionPrivacy')}</Text>

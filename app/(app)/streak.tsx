@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
+import { useAppConfigStore } from '../../store/appConfigStore';
 import { fetchGems, fetchMe, repairStreak, type GemLedgerEntry, type CheckoutSession } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
@@ -35,6 +36,7 @@ export default function StreakScreen() {
   const streak = useUserStore((s) => s.streak);
   const streakGoal = useUserStore((s) => s.streakGoal);
   const streakFreezes = useUserStore((s) => s.streakFreezes);
+  const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
 
   const STREAK_REASONS: Record<string, { emoji: string; label: string }> = {
     daily_streak: { emoji: STREAK_REASON_EMOJIS.daily_streak, label: tr('streak.reasonDaily') },
@@ -125,31 +127,34 @@ export default function StreakScreen() {
           <Feather name="chevron-right" size={20} color="#F0820C" />
         </Pressable>
 
-        {/* Restaurer la série cassée en payant */}
-        <Pressable
-          style={[styles.repairBtn, { backgroundColor: T.cardBg }, (repairing || recoverable === 0) && { opacity: 0.6 }]}
-          onPress={onRepair}
-          disabled={repairing || recoverable === 0}
-        >
-          <View style={styles.repairIcon}>
-            <Feather name="credit-card" size={20} color="#FF4B4B" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.repairTitle, { color: T.text }]}>{tr('streak.repairTitle')}</Text>
-            <Text style={styles.repairHint}>
-              {recoverable > 0
-                ? (recoverable > 1 ? tr('streak.repairHintMany', { n: recoverable }) : tr('streak.repairHintOne', { n: recoverable }))
-                : tr('streak.repairHintNone')}
-            </Text>
-          </View>
-          {repairing ? (
-            <ActivityIndicator color="#FF4B4B" />
-          ) : (
-            <View style={[styles.repairCta, recoverable === 0 && { backgroundColor: '#B0B5BE' }]}>
-              <Text style={styles.repairCtaText}>{recoverable > 0 ? tr('streak.repairCtaPay', { n: recoverable }) : tr('streak.repairCtaPayDefault')}</Text>
+        {/* Restaurer la série cassée en payant — masqué si les paiements sont
+            désactivés (ex: revue store en cours). */}
+        {paymentsEnabled && (
+          <Pressable
+            style={[styles.repairBtn, { backgroundColor: T.cardBg }, (repairing || recoverable === 0) && { opacity: 0.6 }]}
+            onPress={onRepair}
+            disabled={repairing || recoverable === 0}
+          >
+            <View style={styles.repairIcon}>
+              <Feather name="credit-card" size={20} color="#FF4B4B" />
             </View>
-          )}
-        </Pressable>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.repairTitle, { color: T.text }]}>{tr('streak.repairTitle')}</Text>
+              <Text style={styles.repairHint}>
+                {recoverable > 0
+                  ? (recoverable > 1 ? tr('streak.repairHintMany', { n: recoverable }) : tr('streak.repairHintOne', { n: recoverable }))
+                  : tr('streak.repairHintNone')}
+              </Text>
+            </View>
+            {repairing ? (
+              <ActivityIndicator color="#FF4B4B" />
+            ) : (
+              <View style={[styles.repairCta, recoverable === 0 && { backgroundColor: '#B0B5BE' }]}>
+                <Text style={styles.repairCtaText}>{recoverable > 0 ? tr('streak.repairCtaPay', { n: recoverable }) : tr('streak.repairCtaPayDefault')}</Text>
+              </View>
+            )}
+          </Pressable>
+        )}
 
         <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('streak.historyTitle')}</Text>
 
