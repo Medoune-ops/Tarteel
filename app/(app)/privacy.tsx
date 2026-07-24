@@ -24,7 +24,12 @@ function Row({ iconBg, icon, title, subtitle, onPress, danger }: {
   subtitle?: string; onPress?: () => void; danger?: boolean;
 }) {
   return (
-    <Pressable style={styles.row} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && (danger ? styles.rowPressedDanger : styles.rowPressed)]}
+      android_ripple={{ color: danger ? '#FFD6D6' : '#E9EAF0' }}
+      hitSlop={4}
+      onPress={onPress}
+    >
       <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>
         <Feather name={icon} size={20} color="#fff" />
       </View>
@@ -143,11 +148,21 @@ export default function PrivacyScreen() {
               autoCapitalize="none"
             />
             <View style={styles.modalBtns}>
-              <Pressable style={styles.modalCancel} onPress={() => setAskPassword(false)} disabled={deleting}>
+              <Pressable
+                style={({ pressed }) => [styles.modalCancel, pressed && styles.modalCancelPressed]}
+                android_ripple={{ color: '#E3E5EA' }}
+                onPress={() => setAskPassword(false)}
+                disabled={deleting}
+              >
                 <Text style={styles.modalCancelText}>{tr('common.cancel')}</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalDelete, (!password || deleting) && { opacity: 0.5 }]}
+                style={({ pressed }) => [
+                  styles.modalDelete,
+                  (!password || deleting) && { opacity: 0.5 },
+                  pressed && !deleting && password && styles.modalDeletePressed,
+                ]}
+                android_ripple={{ color: '#D63C3C' }}
                 onPress={confirmerSuppression}
                 disabled={!password || deleting}
               >
@@ -184,11 +199,13 @@ const styles = StyleSheet.create({
     flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#F0F1F4',
   },
+  modalCancelPressed: { backgroundColor: '#E3E5EA' },
   modalCancelText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#5A6270' },
   modalDelete: {
     flex: 1.4, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FF4B4B',
   },
+  modalDeletePressed: { backgroundColor: '#E23C3C' },
   modalDeleteText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
   header: {
     backgroundColor: '#fff', paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
@@ -203,6 +220,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 14, elevation: 2,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
+  rowPressed: { backgroundColor: '#F5F6F9' },
+  rowPressedDanger: { backgroundColor: '#FFECEC' },
   rowIcon: { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   rowTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#1B2333' },
   rowSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#8A8F99', marginTop: 2 },
