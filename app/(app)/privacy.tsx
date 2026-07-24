@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, Pressable, ScrollView, StyleSheet, Linking, Alert,
-  Modal, TextInput, ActivityIndicator,
+  Modal, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -55,7 +55,9 @@ export default function PrivacyScreen() {
   // (Alert.prompt n'existe que sur iOS).
   const [askPassword, setAskPassword] = useState(false);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const supprimerCompte = () => {
     Alert.alert(tr('account.deleteTitle'), tr('account.deleteConfirm'), [
@@ -63,13 +65,19 @@ export default function PrivacyScreen() {
       {
         text: tr('account.deleteAction'),
         style: 'destructive',
-        onPress: () => { setPassword(''); setAskPassword(true); },
+        onPress: () => { setPassword(''); setError(null); setShowPassword(false); setAskPassword(true); },
       },
     ]);
   };
 
+  const fermerModal = () => {
+    if (deleting) return;
+    setAskPassword(false);
+  };
+
   const confirmerSuppression = async () => {
     if (deleting || !password) return;
+    setError(null);
     setDeleting(true);
     try {
       await deleteAccount(password);
@@ -77,7 +85,7 @@ export default function PrivacyScreen() {
       router.replace('/(onboarding)/signup');
     } catch (e) {
       const wrongPass = e instanceof ApiError && e.status === 401;
-      Alert.alert(wrongPass ? tr('account.wrongPassword') : tr('account.deleteError'));
+      setError(wrongPass ? tr('account.wrongPassword') : tr('account.deleteError'));
     } finally {
       setDeleting(false);
     }
@@ -133,25 +141,59 @@ export default function PrivacyScreen() {
       </ScrollView>
 
       {/* Confirmation par mot de passe avant la suppression définitive. */}
-      <Modal visible={askPassword} transparent animationType="fade" onRequestClose={() => setAskPassword(false)}>
-        <View style={styles.modalBackdrop}>
+      <Modal visible={askPassword} transparent animationType="fade" onRequestClose={fermerModal}>
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={fermerModal} />
           <View style={styles.modalCard}>
+            <Pressable
+              style={({ pressed }) => [styles.modalClose, pressed && styles.modalClosePressed]}
+              onPress={fermerModal}
+              disabled={deleting}
+              hitSlop={8}
+            >
+              <Feather name="x" size={18} color="#8A8F99" />
+            </Pressable>
+
+            <View style={styles.modalWarnIcon}>
+              <Feather name="alert-triangle" size={26} color="#FF4B4B" />
+            </View>
+
             <Text style={styles.modalTitle}>{tr('account.passwordPrompt')}</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={password}
-              onChangeText={setPassword}
-              placeholder={tr('account.passwordPlaceholder')}
-              placeholderTextColor="#9AA0AA"
-              secureTextEntry
-              autoFocus
-              autoCapitalize="none"
-            />
+            <Text style={styles.modalSub}>{tr('account.deleteConfirm')}</Text>
+
+            <View style={[styles.modalInputWrap, error && styles.modalInputWrapError]}>
+              <TextInput
+                style={styles.modalInput}
+                value={password}
+                onChangeText={(v) => { setPassword(v); if (error) setError(null); }}
+                placeholder={tr('account.passwordPlaceholder')}
+                placeholderTextColor="#9AA0AA"
+                secureTextEntry={!showPassword}
+                autoFocus
+                autoCapitalize="none"
+                editable={!deleting}
+                onSubmitEditing={confirmerSuppression}
+                returnKeyType="done"
+              />
+              <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10} disabled={deleting}>
+                <Feather name={showPassword ? 'eye-off' : 'eye'} size={19} color="#9AA0AA" />
+              </Pressable>
+            </View>
+            {error && (
+              <View style={styles.modalErrorRow}>
+                <Feather name="alert-circle" size={14} color="#E5484D" />
+                <Text style={styles.modalErrorText}>{error}</Text>
+              </View>
+            )}
+
             <View style={styles.modalBtns}>
               <Pressable
                 style={({ pressed }) => [styles.modalCancel, pressed && styles.modalCancelPressed]}
                 android_ripple={{ color: '#E3E5EA' }}
-                onPress={() => setAskPassword(false)}
+                onPress={fermerModal}
                 disabled={deleting}
               >
                 <Text style={styles.modalCancelText}>{tr('common.cancel')}</Text>
@@ -172,7 +214,7 @@ export default function PrivacyScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -186,15 +228,42 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '100%', maxWidth: 420, backgroundColor: '#fff',
-    borderRadius: 20, padding: 22,
+    borderRadius: 20, padding: 22, paddingTop: 18, alignItems: 'center',
   },
-  modalTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 19, color: '#1B2333', marginBottom: 14 },
-  modalInput: {
+  modalClose: {
+    position: 'absolute', top: 14, right: 14, width: 30, height: 30,
+    borderRadius: 15, backgroundColor: '#F0F1F4',
+    alignItems: 'center', justifyContent: 'center', zIndex: 1,
+  },
+  modalClosePressed: { backgroundColor: '#E3E5EA' },
+  modalWarnIcon: {
+    width: 52, height: 52, borderRadius: 26, backgroundColor: '#FFECEC',
+    alignItems: 'center', justifyContent: 'center', marginTop: 6, marginBottom: 12,
+  },
+  modalTitle: {
+    fontFamily: 'Baloo2_800ExtraBold', fontSize: 19, color: '#1B2333',
+    marginBottom: 6, textAlign: 'center',
+  },
+  modalSub: {
+    fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99',
+    textAlign: 'center', lineHeight: 18, marginBottom: 18,
+  },
+  modalInputWrap: {
+    width: '100%', flexDirection: 'row', alignItems: 'center',
     borderWidth: 1.5, borderColor: '#E3E5EA', borderRadius: 14,
-    paddingHorizontal: 16, paddingVertical: 12,
+    paddingHorizontal: 16, gap: 10,
+  },
+  modalInputWrapError: { borderColor: '#E5484D', backgroundColor: '#FFF5F5' },
+  modalInput: {
+    flex: 1, paddingVertical: 12,
     fontFamily: 'Nunito_600SemiBold', fontSize: 16, color: '#1B2333',
   },
-  modalBtns: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  modalErrorRow: {
+    width: '100%', flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 8, paddingHorizontal: 2,
+  },
+  modalErrorText: { fontFamily: 'Nunito_600SemiBold', fontSize: 12.5, color: '#E5484D', flexShrink: 1 },
+  modalBtns: { width: '100%', flexDirection: 'row', gap: 10, marginTop: 18 },
   modalCancel: {
     flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#F0F1F4',
