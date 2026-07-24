@@ -8,7 +8,6 @@ import { useT } from '../../lib/i18n';
 const LANGUES = [
   { id: 'fr' as const, drapeau: '🇫🇷', nomKey: 'langue.fr' as const, natif: 'Français' },
   { id: 'en' as const, drapeau: '🇬🇧', nomKey: 'langue.en' as const, natif: 'English'  },
-  { id: 'ar' as const, drapeau: '🇸🇦', nomKey: 'langue.ar' as const, natif: 'العربية'  },
 ];
 
 export default function LangueScreen() {
@@ -19,7 +18,7 @@ export default function LangueScreen() {
 
   // Change la langue immédiatement (optimistic) puis persiste côté serveur.
   // Hors-ligne / non connecté : on garde le choix local sans bloquer l'UI.
-  const chooseLanguage = (id: 'fr' | 'en' | 'ar') => {
+  const chooseLanguage = (id: 'fr' | 'en') => {
     setLanguage(id);
     updateSettings({ language: id }).catch(() => { /* resync au prochain /me */ });
   };
