@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStore } from '../../store/userStore';
+import { useAppConfigStore } from '../../store/appConfigStore';
 import { useT } from '../../lib/i18n';
 
 function formatDate(iso: string, locale: string): string {
@@ -34,6 +35,7 @@ export default function SubscriptionScreen() {
   const isPremium = useUserStore((s) => s.isPremium);
   const premiumUntil = useUserStore((s) => s.premiumUntil);
   const language = useUserStore((s) => s.language);
+  const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
   const AVANTAGES = buildAvantages(tr);
   const PLANS = buildPlans(tr);
   const [plan, setPlan] = useState('annuel');
@@ -90,8 +92,9 @@ export default function SubscriptionScreen() {
             </View>
           ))}
 
-          {/* Plans — masqués si déjà premium, rien à choisir avant expiration. */}
-          {!isPremium && (
+          {/* Plans — masqués si déjà premium (rien à choisir avant expiration)
+              ou si les paiements sont désactivés (ex: revue store en cours). */}
+          {!isPremium && paymentsEnabled && (
             <>
               <Text style={styles.plansTitle}>{tr('subscription.plansTitle')}</Text>
               {PLANS.map((p) => {
@@ -121,8 +124,8 @@ export default function SubscriptionScreen() {
             </>
           )}
 
-          {/* CTA — inutile si déjà premium (pas de reconduction à prolonger avant expiration). */}
-          {!isPremium && (
+          {/* CTA — inutile si déjà premium, masqué si les paiements sont désactivés. */}
+          {!isPremium && paymentsEnabled && (
             <>
               <Pressable style={styles.cta} onPress={goToPayment}>
                 <Text style={styles.ctaText}>{tr('subscription.ctaStartTrial')}</Text>
@@ -133,15 +136,18 @@ export default function SubscriptionScreen() {
             </>
           )}
 
-          {/* Plan familial : partage le premium avec jusqu'à 5 comptes. */}
-          <Pressable style={styles.familyLink} onPress={() => router.push('/(app)/household' as never)}>
-            <Text style={styles.familyEmoji}>👨‍👩‍👧‍👦</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.familyTitle}>{tr('household.subscriptionLinkTitle')}</Text>
-              <Text style={styles.familyHint}>{tr('household.subscriptionLinkHint')}</Text>
-            </View>
-            <Text style={styles.familyChevron}>›</Text>
-          </Pressable>
+          {/* Plan familial : partage le premium avec jusqu'à 5 comptes — autre
+              chemin de paiement, masqué avec le reste. */}
+          {paymentsEnabled && (
+            <Pressable style={styles.familyLink} onPress={() => router.push('/(app)/household' as never)}>
+              <Text style={styles.familyEmoji}>👨‍👩‍👧‍👦</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.familyTitle}>{tr('household.subscriptionLinkTitle')}</Text>
+                <Text style={styles.familyHint}>{tr('household.subscriptionLinkHint')}</Text>
+              </View>
+              <Text style={styles.familyChevron}>›</Text>
+            </Pressable>
+          )}
 
           <View style={{ height: 24 }} />
         </View>

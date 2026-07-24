@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
+import { useAppConfigStore } from '../../store/appConfigStore';
 import { refillHeartsWithGems, buyStreakFreeze, buyDoubleXp, buyGemPack, type GemPackId } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
@@ -65,6 +66,7 @@ export default function GemsScreen() {
   const gems = useUserStore((s) => s.gems);
   const streakFreezes = useUserStore((s) => s.streakFreezes);
   const doubleXpUntil = useUserStore((s) => s.doubleXpUntil);
+  const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
 
   // Action en cours (clé unique) → désactive et montre le spinner sur la bonne carte.
   const [busy, setBusy] = useState<string | null>(null);
@@ -163,19 +165,25 @@ export default function GemsScreen() {
           disabled={gems < DOUBLE_XP_COST || doubleXpActive}
         />
 
-        <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('gems.sectionGet')}</Text>
+        {/* Achat de gemmes avec argent réel — masqué si les paiements sont
+            désactivés (ex: revue store en cours). */}
+        {paymentsEnabled && (
+          <>
+            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('gems.sectionGet')}</Text>
 
-        {PACKS.map((p) => (
-          <OptionCard
-            key={p.id}
-            emoji="💎" tint="#6B4DFF" cardBg={T.cardBg} textColor={T.text}
-            title={tr('gems.packTitle', { count: p.gems.toLocaleString('fr-FR') })}
-            hint={tr('gems.packHint')}
-            cta={tr('gems.packCta')}
-            onPress={() => onBuyPack(p)}
-            loading={busy === `pack-${p.id}`}
-          />
-        ))}
+            {PACKS.map((p) => (
+              <OptionCard
+                key={p.id}
+                emoji="💎" tint="#6B4DFF" cardBg={T.cardBg} textColor={T.text}
+                title={tr('gems.packTitle', { count: p.gems.toLocaleString('fr-FR') })}
+                hint={tr('gems.packHint')}
+                cta={tr('gems.packCta')}
+                onPress={() => onBuyPack(p)}
+                loading={busy === `pack-${p.id}`}
+              />
+            ))}
+          </>
+        )}
 
         <View style={{ height: 24 }} />
       </ScrollView>

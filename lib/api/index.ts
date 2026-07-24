@@ -43,3 +43,5 @@ export {
 export type {
   HouseholdView, HouseholdMemberView, HouseholdInvitationView, ReceivedInvitationView,
 } from './household';
+export { fetchAppConfig } from './appConfig';
+export type { AppConfig } from './appConfig';

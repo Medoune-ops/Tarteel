@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
+import { useAppConfigStore } from '../../store/appConfigStore';
 import {
   fetchHousehold, createHousehold, deleteHousehold, leaveHousehold, transferHousehold,
   inviteToHousehold, acceptHouseholdInvite, declineHouseholdInvite,
@@ -35,6 +36,7 @@ export default function HouseholdScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
 
   const [data, setData] = useState<HouseholdView | null>(null);
   const [error, setError] = useState(false);
@@ -242,8 +244,9 @@ export default function HouseholdScreen() {
                 </View>
               </View>
 
-              {/* Choix du plan familial (propriétaire uniquement) */}
-              {h.isOwner && (
+              {/* Choix du plan familial (propriétaire uniquement) — masqué si
+                  les paiements sont désactivés (ex: revue store en cours). */}
+              {h.isOwner && paymentsEnabled && (
                 <View style={styles.section}>
                   <Text style={[styles.sectionTitle, { color: T.text }]}>
                     {h.subscriptionActive ? tr('household.renewTitle') : tr('household.activateTitle')}

@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore, MAX_HEARTS } from '../../store/userStore';
+import { useAppConfigStore } from '../../store/appConfigStore';
 import { refillHeartsWithGems } from '../../lib/api/gems';
 import { buyHearts, type CheckoutSession } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
@@ -64,6 +65,7 @@ export default function HeartsScreen() {
   const hearts = useUserStore((s) => s.hearts);
   const gems = useUserStore((s) => s.gems);
   const isPremium = useUserStore((s) => s.isPremium);
+  const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
   const syncHearts = useUserStore((s) => s.syncHearts);
   const msUntilNextHeart = useUserStore((s) => s.msUntilNextHeart);
 
@@ -162,15 +164,19 @@ export default function HeartsScreen() {
               disabled={full || gems < REFILL_GEM_COST}
             />
 
-            <OptionCard
-              emoji="💳" tint="#F0820C" cardBg={T.cardBg} textColor={T.text}
-              title={tr('heartsPage.buyWithMoney')}
-              hint={tr('heartsPage.buyWithMoneyHint')}
-              cta={tr('heartsPage.buy')}
-              onPress={onBuyMoney}
-              loading={buying}
-              disabled={full}
-            />
+            {/* Achat avec argent réel — masqué si les paiements sont
+                désactivés (ex: revue store en cours). */}
+            {paymentsEnabled && (
+              <OptionCard
+                emoji="💳" tint="#F0820C" cardBg={T.cardBg} textColor={T.text}
+                title={tr('heartsPage.buyWithMoney')}
+                hint={tr('heartsPage.buyWithMoneyHint')}
+                cta={tr('heartsPage.buy')}
+                onPress={onBuyMoney}
+                loading={buying}
+                disabled={full}
+              />
+            )}
 
             <OptionCard
               emoji="📖" tint="#34C724" cardBg={T.cardBg} textColor={T.text}
@@ -187,12 +193,14 @@ export default function HeartsScreen() {
               onPress={() => router.push('/(app)/referral')}
             />
 
-            <Pressable onPress={() => router.push('/(app)/subscription')} style={styles.premiumCtaWrap}>
-              <LinearGradient colors={['#FFA53D', '#F0820C']} style={styles.premiumCta}>
-                <Feather name="star" size={18} color="#fff" />
-                <Text style={styles.premiumCtaText}>{tr('heartsPage.goPremium')}</Text>
-              </LinearGradient>
-            </Pressable>
+            {paymentsEnabled && (
+              <Pressable onPress={() => router.push('/(app)/subscription')} style={styles.premiumCtaWrap}>
+                <LinearGradient colors={['#FFA53D', '#F0820C']} style={styles.premiumCta}>
+                  <Feather name="star" size={18} color="#fff" />
+                  <Text style={styles.premiumCtaText}>{tr('heartsPage.goPremium')}</Text>
+                </LinearGradient>
+              </Pressable>
+            )}
           </>
         )}
         <View style={{ height: 24 }} />
