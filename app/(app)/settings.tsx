@@ -14,7 +14,6 @@ import { useT } from '../../lib/i18n';
 const LANGUES = {
   fr: { drapeau: '🇫🇷', nomKey: 'langue.fr' },
   en: { drapeau: '🇬🇧', nomKey: 'langue.en' },
-  ar: { drapeau: '🇸🇦', nomKey: 'langue.ar' },
 } as const;
 
 /** Initiales à partir du nom (fallback avatar). */
@@ -81,7 +80,7 @@ export default function SettingsScreen() {
   const setTheme = useUserStore((s) => s.setTheme);
   const isPremium = useUserStore((s) => s.isPremium);
   const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
-  const langue = LANGUES[language];
+  const langue = LANGUES[language as 'fr' | 'en'] ?? LANGUES.fr;
   const T = useTheme();
   const tr = useT();
 
