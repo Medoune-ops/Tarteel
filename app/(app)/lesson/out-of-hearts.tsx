@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Otter from '../../../components/Otter';
 import { useUserStore } from '../../../store/userStore';
+import { useAppConfigStore } from '../../../store/appConfigStore';
 import { refillHeartsWithGems } from '../../../lib/api/gems';
 import { ApiError } from '../../../lib/api/client';
 import { useT, t } from '../../../lib/i18n';
@@ -28,6 +29,7 @@ export default function OutOfHeartsScreen() {
   const msUntilNextHeart = useUserStore((s) => s.msUntilNextHeart);
   const hearts = useUserStore((s) => s.hearts);
   const gems = useUserStore((s) => s.gems);
+  const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
 
   const [remaining, setRemaining] = useState(msUntilNextHeart());
   const [refilling, setRefilling] = useState(false);
@@ -120,13 +122,16 @@ export default function OutOfHeartsScreen() {
 
       <View style={{ flex: 1 }} />
 
-      {/* Porte n°4 — Premium (CTA doux, jamais agressif). */}
-      <Pressable onPress={() => router.replace('/(app)/subscription')} style={{ width: '100%' }}>
-        <LinearGradient colors={['#FFA53D', '#F0820C']} style={styles.premiumCta}>
-          <Feather name="star" size={20} color="#fff" />
-          <Text style={styles.premiumLabel}>{tr('hearts.premiumCta')}</Text>
-        </LinearGradient>
-      </Pressable>
+      {/* Porte n°4 — Premium (CTA doux, jamais agressif). Masqué si les
+          paiements sont désactivés (ex: revue store en cours). */}
+      {paymentsEnabled && (
+        <Pressable onPress={() => router.replace('/(app)/subscription')} style={{ width: '100%' }}>
+          <LinearGradient colors={['#FFA53D', '#F0820C']} style={styles.premiumCta}>
+            <Feather name="star" size={20} color="#fff" />
+            <Text style={styles.premiumLabel}>{tr('hearts.premiumCta')}</Text>
+          </LinearGradient>
+        </Pressable>
+      )}
 
       <Pressable style={styles.waitBtn} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
         <Text style={styles.waitLabel}>{tr('hearts.wait')}</Text>

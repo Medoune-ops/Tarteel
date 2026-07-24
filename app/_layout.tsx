@@ -16,6 +16,7 @@ import {
 } from '@expo-google-fonts/scheherazade-new';
 import { preloadSounds } from '../constants/sounds';
 import { useTheme } from '../utils/useTheme';
+import { useAppConfigStore } from '../store/appConfigStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -48,6 +49,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     preloadSounds();
+    useAppConfigStore.getState().load();
   }, []);
 
   useEffect(() => {
