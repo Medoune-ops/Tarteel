@@ -158,6 +158,11 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   timeoutMs?: number;
   /** Usage interne : empêche une 2e tentative de refresh en boucle. */
   _retry?: boolean;
+  /** À passer sur les endpoints où un 401 signifie "mot de passe de
+   *  confirmation incorrect" (ex: DELETE /me, change de mot de passe) et non
+   *  "token expiré" : évite un refresh + une 2e requête inutiles, et surtout
+   *  évite un clearTokens() (déconnexion silencieuse) si ce refresh échoue. */
+  skipAuthRetry?: boolean;
 }
 
 /** Un seul refresh en vol à la fois, partagé entre les appels concurrents. */
@@ -205,7 +210,7 @@ export async function apiFetch<T = unknown>(
   path: string,
   options: ApiFetchOptions = {},
 ): Promise<T> {
-  const { json, formData, auth = true, timeoutMs, _retry = false, headers, ...rest } = options;
+  const { json, formData, auth = true, timeoutMs, _retry = false, skipAuthRetry = false, headers, ...rest } = options;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs ?? API_TIMEOUT_MS);
@@ -238,7 +243,7 @@ export async function apiFetch<T = unknown>(
   clearTimeout(timeout);
 
   // 401 → tenter un refresh une seule fois, puis rejouer la requête.
-  if (res.status === 401 && auth && !_retry) {
+  if (res.status === 401 && auth && !_retry && !skipAuthRetry) {
     const ok = await refreshTokens();
     if (ok) {
       return apiFetch<T>(path, { ...options, _retry: true });
