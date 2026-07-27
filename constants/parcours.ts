@@ -32,6 +32,13 @@ export interface ParcoursNode {
   id: string;
   /** Référence vers la leçon backend (sera l'id Lesson de l'API). */
   lessonId: string | null;
+  /** Numéro (1-114) de la sourate RÉELLEMENT enseignée par cette leçon, null
+   *  pour l'alphabet/harakat — indispensable pour identifier la bonne
+   *  sourate quand une section en regroupe plusieurs sur des nombres de
+   *  leçons différents (ex: Al-Baqarah ~150 leçons + Al-Fatiha 4 leçons dans
+   *  la même section) : NE PAS déduire la sourate via l'index du nœud dans
+   *  `section.sourates`, ça suppose à tort "1 nœud = 1 sourate". */
+  sourateNumero: number | null;
   label?: string;          // ex: "Leçon 4" — affiché sous le nœud actif
   icon: NodeIcon;
   align: NodeAlign;
@@ -157,6 +164,7 @@ function buildNodes(
     return {
       id: `${sectionId}-n${i + 1}`,
       lessonId: state === 'locked' ? null : `${sectionId}-lesson-${i + 1}`,
+      sourateNumero: null,
       label: state === 'active' ? `Leçon ${i + 1}` : undefined,
       icon,
       align: state === 'active' ? 'center' : ALIGNS[i % ALIGNS.length],
