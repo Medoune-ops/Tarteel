@@ -12,6 +12,7 @@ import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
 import { buildPlans } from './subscription';
 import { useT } from '../../lib/i18n';
+import { useAppConfigStore } from '../../store/appConfigStore';
 
 // ─── Helpers de formatage (aperçu carte purement visuel — DexPay collecte la
 // vraie carte dans son iframe, ces champs ne sont jamais envoyés à notre
@@ -34,8 +35,9 @@ const detectBrand = (num: string): keyof typeof Feather.glyphMap | null => {
 export default function PaymentCardScreen() {
   const router = useRouter();
   const tr = useT();
+  const pricing = useAppConfigStore((s) => s.pricing);
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
-  const PLANS = buildPlans(tr);
+  const PLANS = buildPlans(tr, pricing);
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 
   const [number, setNumber] = useState('');
