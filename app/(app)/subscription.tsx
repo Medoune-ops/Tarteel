@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStore } from '../../store/userStore';
 import { useAppConfigStore } from '../../store/appConfigStore';
 import { useT } from '../../lib/i18n';
+import type { AppConfigPricing } from '../../lib/api';
 
 function formatDate(iso: string, locale: string): string {
   return new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -22,10 +23,30 @@ function buildAvantages(tr: ReturnType<typeof useT>) {
   ];
 }
 
-export function buildPlans(tr: ReturnType<typeof useT>) {
+function formatEur(value: number): string {
+  return value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+/** `pricing` vient de useAppConfigStore — vraies valeurs, modifiables depuis
+ *  le back-office sans redéploiement (avec un repli si /config est hors-ligne). */
+export function buildPlans(tr: ReturnType<typeof useT>, pricing: AppConfigPricing) {
   return [
-    { id: 'annuel',  titre: tr('subscription.planYearlyTitle'),  prix: '15,24 €', detail: '1,27 €/mois', badge: tr('subscription.planYearlyBadge'), best: true },
-    { id: 'mensuel', titre: tr('subscription.planMonthlyTitle'), prix: '1,52 €',  detail: tr('subscription.planMonthlyDetail'),    badge: null,            best: false },
+    {
+      id: 'annuel',
+      titre: tr('subscription.planYearlyTitle'),
+      prix: formatEur(pricing.premiumYearlyPriceEur),
+      detail: `${formatEur(pricing.premiumYearlyPriceEur / 12)}/mois`,
+      badge: tr('subscription.planYearlyBadge'),
+      best: true,
+    },
+    {
+      id: 'mensuel',
+      titre: tr('subscription.planMonthlyTitle'),
+      prix: formatEur(pricing.premiumMonthlyPriceEur),
+      detail: tr('subscription.planMonthlyDetail'),
+      badge: null,
+      best: false,
+    },
   ];
 }
 
@@ -36,8 +57,9 @@ export default function SubscriptionScreen() {
   const premiumUntil = useUserStore((s) => s.premiumUntil);
   const language = useUserStore((s) => s.language);
   const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
+  const pricing = useAppConfigStore((s) => s.pricing);
   const AVANTAGES = buildAvantages(tr);
-  const PLANS = buildPlans(tr);
+  const PLANS = buildPlans(tr, pricing);
   const [plan, setPlan] = useState('annuel');
 
   // On passe l'offre choisie à l'écran de paiement.
