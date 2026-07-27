@@ -12,11 +12,6 @@ import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
 import { useT } from '../../lib/i18n';
 
-// Coûts en gemmes (source de vérité : backend ; repris ici pour l'affichage).
-const REFILL_COST = 350;
-const FREEZE_COST = 200;
-const DOUBLE_XP_COST = 100;
-
 // Packs de gemmes (achat avec de l'argent, paiement mock côté backend).
 const PACKS: { id: GemPackId; gems: number }[] = [
   { id: 'p500', gems: 500 },
@@ -67,6 +62,10 @@ export default function GemsScreen() {
   const streakFreezes = useUserStore((s) => s.streakFreezes);
   const doubleXpUntil = useUserStore((s) => s.doubleXpUntil);
   const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
+  const pricing = useAppConfigStore((s) => s.pricing);
+  const REFILL_COST = pricing.gemCostHeartRefill;
+  const FREEZE_COST = pricing.gemCostStreakFreeze;
+  const DOUBLE_XP_COST = pricing.gemCostDoubleXp;
 
   // Action en cours (clé unique) → désactive et montre le spinner sur la bonne carte.
   const [busy, setBusy] = useState<string | null>(null);

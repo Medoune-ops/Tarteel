@@ -8,14 +8,16 @@ import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
 import { buildPlans } from './subscription';
 import { useT } from '../../lib/i18n';
+import { useAppConfigStore } from '../../store/appConfigStore';
 
 type MethodId = 'apple' | 'google' | 'card';
 
 export default function PaymentMethodScreen() {
   const router = useRouter();
   const tr = useT();
+  const pricing = useAppConfigStore((s) => s.pricing);
   const { plan: planId } = useLocalSearchParams<{ plan: string }>();
-  const PLANS = buildPlans(tr);
+  const PLANS = buildPlans(tr, pricing);
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 
   const METHODES: { id: MethodId; label: string; sub: string; icon: keyof typeof Feather.glyphMap; iconBg: string }[] = [

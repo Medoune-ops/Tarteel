@@ -44,19 +44,24 @@ function formatProchaineRevision(iso: string | null): string {
  * sourate sautée d'un coup à l'onboarding via une déclaration "déjà
  * maîtrisée") fait échouer GET .../guided avec 403 "Sourate not yet learned"
  * côté serveur (countLearnedChainLessons vaut 0 tant qu'aucune leçon de
- * cette sourate n'est complétée). On parcourt donc les sections de la plus
- * avancée à la moins avancée, et dans chacune, on prend la DERNIÈRE sourate
- * (dans l'ordre du parcours) ayant au moins un nœud `completed` — une
- * section hizb a exactement un nœud par sourate. La section Alphabet n'a pas
- * de sourates (nodes purement alphabet/harakat).
+ * cette sourate n'est complétée).
+ *
+ * Utilise `node.sourateNumero` (la sourate RÉELLEMENT enseignée par cette
+ * leçon précise) — PAS l'index du nœud dans `section.sourates` : cette
+ * hypothèse "1 nœud = 1 sourate" est fausse dès qu'une section regroupe
+ * plusieurs sourates sur des nombres de leçons différents (ex: Al-Baqarah
+ * ~150 leçons + Al-Fatiha 4 leçons dans la même section hizb), ce qui
+ * faisait planter cette fonction en pratique (retournait null en boucle).
+ * On parcourt les sections de la plus avancée à la moins avancée, et dans
+ * chacune, le dernier nœud `completed` ayant une sourate associée.
  */
 function findSourateEnCours(sections: ParcoursSection[]): number | null {
   for (let i = sections.length - 1; i >= 0; i--) {
     const section = sections[i]!;
     for (let idx = section.nodes.length - 1; idx >= 0; idx--) {
-      if (section.nodes[idx]!.state !== 'completed') continue;
-      const sourate = section.sourates[idx];
-      if (sourate) return sourate.numero;
+      const node = section.nodes[idx]!;
+      if (node.state !== 'completed') continue;
+      if (node.sourateNumero != null) return node.sourateNumero;
     }
   }
   return null;
