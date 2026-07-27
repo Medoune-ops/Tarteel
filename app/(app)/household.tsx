@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { useAppConfigStore } from '../../store/appConfigStore';
+import { useUserStore } from '../../store/userStore';
 import {
   fetchHousehold, createHousehold, deleteHousehold, leaveHousehold, transferHousehold,
   inviteToHousehold, acceptHouseholdInvite, declineHouseholdInvite,
@@ -23,11 +24,25 @@ function errMsg(e: unknown, fallback: string): string {
   return e instanceof ApiError && e.status !== 0 ? e.message : fallback;
 }
 
-// Plans familiaux : clés i18n (titre/détail/prix traduits & localisés).
+// Plans familiaux : titre/détail traduits (clés i18n), prix construit à
+// partir de la VRAIE tarification (useAppConfigStore, modifiable depuis le
+// back-office sans redéploiement) — voir formatFamilyPrice ci-dessous.
 const FAMILY_PLANS = [
-  { id: 'famille_annuel' as const, titleKey: 'household.planAnnualTitle', detailKey: 'household.planAnnualDetail', priceKey: 'household.planAnnualPrice', best: true },
-  { id: 'famille_mensuel' as const, titleKey: 'household.planMonthlyTitle', detailKey: 'household.planMonthlyDetail', priceKey: 'household.planMonthlyPrice', best: false },
+  { id: 'famille_annuel' as const, titleKey: 'household.planAnnualTitle', detailKey: 'household.planAnnualDetail', best: true },
+  { id: 'famille_mensuel' as const, titleKey: 'household.planMonthlyTitle', detailKey: 'household.planMonthlyDetail', best: false },
 ] as const;
+
+function formatFamilyPrice(
+  planId: (typeof FAMILY_PLANS)[number]['id'],
+  pricing: { premiumFamilyMonthlyPriceEur: number; premiumFamilyYearlyPriceEur: number },
+  language: string,
+): string {
+  const value = planId === 'famille_annuel' ? pricing.premiumFamilyYearlyPriceEur : pricing.premiumFamilyMonthlyPriceEur;
+  const amount = value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const isYearly = planId === 'famille_annuel';
+  if (language === 'fr') return isYearly ? `${amount} €/an` : `${amount} €/mois`;
+  return isYearly ? `€${amount}/yr` : `€${amount}/mo`;
+}
 
 // Écran « Plan familial » (foyer). Créer un foyer, inviter jusqu'à 5 comptes,
 // gérer les membres et les invitations, s'abonner au plan familial (tous les
@@ -37,6 +52,8 @@ export default function HouseholdScreen() {
   const T = useTheme();
   const tr = useT();
   const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
+  const pricing = useAppConfigStore((s) => s.pricing);
+  const language = useUserStore((s) => s.language);
 
   const [data, setData] = useState<HouseholdView | null>(null);
   const [error, setError] = useState(false);
@@ -255,7 +272,7 @@ export default function HouseholdScreen() {
                     <Pressable
                       key={p.id}
                       style={[styles.planCard, { backgroundColor: T.cardBg, borderColor: p.best ? '#6B4DFF' : T.border }]}
-                      onPress={() => subscribeFamily(p.id, tr(p.titleKey), tr(p.priceKey))}
+                      onPress={() => subscribeFamily(p.id, tr(p.titleKey), formatFamilyPrice(p.id, pricing, language))}
                       disabled={busy != null}
                     >
                       <View style={{ flex: 1 }}>
@@ -278,7 +295,7 @@ export default function HouseholdScreen() {
                         <Text style={styles.cardHint} numberOfLines={2}>{tr(p.detailKey)}</Text>
                       </View>
                       <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                        <Text style={[styles.planPrice, { color: T.text }]}>{tr(p.priceKey)}</Text>
+                        <Text style={[styles.planPrice, { color: T.text }]}>{formatFamilyPrice(p.id, pricing, language)}</Text>
                         {busy === 'sub' ? <ActivityIndicator color="#6B4DFF" /> : <Feather name="chevron-right" size={20} color="#6B4DFF" />}
                       </View>
                     </Pressable>

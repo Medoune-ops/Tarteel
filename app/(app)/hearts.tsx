@@ -13,9 +13,6 @@ import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
 import { useT, t } from '../../lib/i18n';
 
-/** Coût serveur d'un refill complet en gemmes (source de vérité : backend). */
-const REFILL_GEM_COST = 350;
-
 /** Formate un nombre de ms en "Xh Ymin" / "Y min". */
 function formatRemaining(ms: number): string {
   if (ms <= 0) return t('heartsPage.soon');
@@ -66,6 +63,7 @@ export default function HeartsScreen() {
   const gems = useUserStore((s) => s.gems);
   const isPremium = useUserStore((s) => s.isPremium);
   const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
+  const REFILL_GEM_COST = useAppConfigStore((s) => s.pricing.gemCostHeartRefill);
   const syncHearts = useUserStore((s) => s.syncHearts);
   const msUntilNextHeart = useUserStore((s) => s.msUntilNextHeart);
 
