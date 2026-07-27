@@ -655,7 +655,6 @@ const fr = {
   'plan.lessonsInfo': '12 leçons · 3 semaines à 10 min/j',
   'plan.progress': '0 / 12 leçons complétées',
   'plan.streakActive': 'Streak quotidien activé',
-  'plan.notifTime': 'Notification à 20h00 chaque jour',
   'plan.startLesson1': 'Commencer la leçon 1',
 
   // ─── Mes cœurs (page hearts.tsx) ───────────────────────────────────────────
@@ -1698,7 +1697,6 @@ const en: Dict = {
   'plan.lessonsInfo': '12 lessons · 3 weeks at 10 min/day',
   'plan.progress': '0 / 12 lessons completed',
   'plan.streakActive': 'Daily streak enabled',
-  'plan.notifTime': 'Notification at 8:00 PM every day',
   'plan.startLesson1': 'Start lesson 1',
 
   // ─── My hearts (hearts.tsx page) ────────────────────────────────────────────

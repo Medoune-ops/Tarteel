@@ -8,9 +8,9 @@ import { useUserStore } from '../../store/userStore';
 import { playSound } from '../../constants/sounds';
 
 /**
- * Sélection des sourates DÉJÀ MÉMORISÉES (onboarding, avant l'écran « plan »).
- * Les sourates cochées seront marquées comme acquises côté serveur → le parcours
- * démarre directement au premier contenu que l'utilisateur ne connaît pas.
+ * Sélection des sourates DÉJÀ APPRISES ET MAÎTRISÉES (onboarding, avant l'écran
+ * « plan »). Les sourates cochées seront marquées comme acquises côté serveur →
+ * le parcours démarre directement au premier contenu non encore maîtrisé.
  *
  * Liste = Al-Fatiha + Juz 'Amma (78→114), dans l'ordre du parcours (décroissant),
  * car ce sont de loin les sourates les plus fréquemment mémorisées.
@@ -90,11 +90,20 @@ export default function SouratesScreen() {
         <View style={styles.iconWrap}>
           <Feather name="book-open" size={46} color="#6B4DFF" />
         </View>
-        <Text style={styles.title}>Connais-tu déjà des sourates ?</Text>
+        <Text style={styles.title}>As-tu déjà appris des sourates ?</Text>
         <Text style={styles.subtitle}>
-          Coche celles que tu as mémorisées — on les marquera comme acquises et ton
-          parcours commencera directement au bon endroit.
+          Coche celles que tu as apprises et maîtrisées — on les marquera comme
+          acquises et ton parcours commencera directement au bon endroit.
         </Text>
+
+        {/* Incitation : mieux vaut repartir des bases que sauter du contenu mal su. */}
+        <View style={styles.tip}>
+          <Feather name="info" size={16} color="#6B4DFF" />
+          <Text style={styles.tipText}>
+            Dans le doute, ne coche rien : mieux vaut des bases solides que des
+            lacunes. Ne coche que ce que tu récites parfaitement de mémoire.
+          </Text>
+        </View>
       </View>
 
       <ScrollView
@@ -146,6 +155,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#7A828F',
     textAlign: 'center', marginTop: 8, lineHeight: 20,
+  },
+  tip: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#F3F0FF', borderRadius: 14, borderWidth: 1.5, borderColor: '#E0D8FF',
+    paddingVertical: 12, paddingHorizontal: 14, marginTop: 14,
+  },
+  tipText: {
+    flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#5B3FD6', lineHeight: 18,
   },
   list: { flex: 1, marginTop: 16 },
   listContent: { paddingHorizontal: 24 },

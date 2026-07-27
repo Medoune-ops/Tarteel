@@ -37,19 +37,27 @@ function formatProchaineRevision(iso: string | null): string {
 }
 
 /**
- * Détermine la sourate "en cours d'apprentissage" à partir du parcours : dans
- * la section active, le nœud actif (state === 'active') correspond, dans
- * l'ordre, à `section.sourates[index]` — une section hizb a exactement un
- * nœud par sourate. La section Alphabet n'a pas de sourates (nodes purement
- * alphabet/harakat) : si c'est elle qui est active, aucune sourate n'est
- * encore en cours de chaînage.
+ * Détermine la sourate à proposer en révision GUIDÉE : la plus RÉCEMMENT
+ * COMMENCÉE (au moins une leçon `completed`), pas la prochaine à découvrir.
+ * La révision guidée rejoue l'ordre réel d'apprentissage déjà entamé — la
+ * proposer sur une sourate encore `active` (jamais commencée, y compris une
+ * sourate sautée d'un coup à l'onboarding via une déclaration "déjà
+ * maîtrisée") fait échouer GET .../guided avec 403 "Sourate not yet learned"
+ * côté serveur (countLearnedChainLessons vaut 0 tant qu'aucune leçon de
+ * cette sourate n'est complétée). On parcourt donc les sections de la plus
+ * avancée à la moins avancée, et dans chacune, on prend la DERNIÈRE sourate
+ * (dans l'ordre du parcours) ayant au moins un nœud `completed` — une
+ * section hizb a exactement un nœud par sourate. La section Alphabet n'a pas
+ * de sourates (nodes purement alphabet/harakat).
  */
 function findSourateEnCours(sections: ParcoursSection[]): number | null {
-  for (const section of sections) {
-    const activeIndex = section.nodes.findIndex((n) => n.state === 'active');
-    if (activeIndex === -1) continue;
-    const sourate = section.sourates[activeIndex];
-    return sourate ? sourate.numero : null;
+  for (let i = sections.length - 1; i >= 0; i--) {
+    const section = sections[i]!;
+    for (let idx = section.nodes.length - 1; idx >= 0; idx--) {
+      if (section.nodes[idx]!.state !== 'completed') continue;
+      const sourate = section.sourates[idx];
+      if (sourate) return sourate.numero;
+    }
   }
   return null;
 }
