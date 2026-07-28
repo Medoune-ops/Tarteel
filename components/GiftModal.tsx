@@ -10,10 +10,11 @@ import { playSound } from '../constants/sounds';
 import { useGiftModalStore, type GiftKind } from '../store/giftModalStore';
 import { useT } from '../lib/i18n';
 
-const GIFT_META: Record<GiftKind, { emoji: string; labelKey: 'gift.hearts' | 'gift.gems' | 'gift.premium' }> = {
+const GIFT_META: Record<GiftKind, { emoji: string; labelKey: 'gift.hearts' | 'gift.gems' | 'gift.premium' | 'gift.xp' }> = {
   hearts: { emoji: '❤️', labelKey: 'gift.hearts' },
   gems: { emoji: '💎', labelKey: 'gift.gems' },
   premium: { emoji: '👑', labelKey: 'gift.premium' },
+  xp: { emoji: '⚡', labelKey: 'gift.xp' },
 };
 
 /**

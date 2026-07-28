@@ -7,6 +7,8 @@ import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { useTheme } from '../../utils/useTheme';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
+import { sourateMeaning } from '../../constants/sourateMeaning';
+import { useUserStore } from '../../store/userStore';
 import { useT } from '../../lib/i18n';
 
 // Minuscules + suppression des accents → recherche tolérante ("fatiha" trouve
@@ -23,6 +25,7 @@ export default function LectureLibreScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const language = useUserStore((s) => s.language);
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -68,16 +71,23 @@ export default function LectureLibreScreen() {
         <View style={styles.numBadge}>
           <Text style={styles.numText}>{item.numero}</Text>
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           {/* Nom de la sourate — permet de la reconnaître d'un coup d'œil. */}
           <Text style={[styles.nom, { color: T.text }]}>{item.nom}</Text>
+          {/* Sens/thème de la sourate, sous le nom (ex. « Les Hypocrites » — …). */}
+          {(() => {
+            const sens = sourateMeaning(item.numero, language);
+            return sens ? (
+              <Text style={[styles.sens, { color: T.textSecondary }]}>{sens}</Text>
+            ) : null;
+          })()}
           <Text style={[styles.arabe, { color: T.text }]}>{item.nomArabe}</Text>
           <Text style={[styles.versets, { color: T.textTertiary }]}>{tr('lectureLibre.versetsCount', { n: item.nombreVersets })}</Text>
         </View>
-        <Feather name="play-circle" size={26} color="#6B4DFF" />
+        <Feather name="play-circle" size={26} color="#6B4DFF" style={{ alignSelf: 'center' }} />
       </Pressable>
     ),
-    [T, router, tr],
+    [T, router, tr, language],
   );
 
   return (
@@ -178,7 +188,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 18, paddingTop: 12 },
   emptyBox: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingVertical: 14 },
   divider: { borderTopWidth: 1 },
   numBadge: {
     width: 40, height: 40, borderRadius: 12, backgroundColor: '#EDE8FF',
@@ -186,6 +196,7 @@ const styles = StyleSheet.create({
   },
   numText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, color: '#6B4DFF' },
   nom: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16 },
+  sens: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, lineHeight: 16, marginTop: 2 },
   arabe: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 24, marginTop: 2, writingDirection: 'rtl' },
   versets: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: 2 },
 });
