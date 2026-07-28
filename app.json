@@ -14,7 +14,16 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.tarteel.app",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": ["audio"],
+        "LSApplicationQueriesSchemes": [
+          "wave",
+          "orangemoney",
+          "orange-money",
+          "mtnmomo",
+          "moovmoney",
+          "freemoney",
+          "wizall"
+        ]
       },
       "icon": {
         "light": "./assets/icon-light.png",
@@ -39,7 +48,16 @@
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
-      ]
+      ],
+      "queries": {
+        "intent": [
+          { "action": "android.intent.action.VIEW", "data": { "scheme": "wave" } },
+          { "action": "android.intent.action.VIEW", "data": { "scheme": "orange-money" } },
+          { "action": "android.intent.action.VIEW", "data": { "scheme": "orangemoney" } },
+          { "action": "android.intent.action.VIEW", "data": { "scheme": "mtnmomo" } },
+          { "action": "android.intent.action.VIEW", "data": { "scheme": "moovmoney" } }
+        ]
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",

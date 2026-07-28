@@ -8,7 +8,9 @@ import { Feather } from '@expo/vector-icons';
 import Toggle from '../../components/Toggle';
 import { deleteAccount } from '../../lib/api/me';
 import { ApiError } from '../../lib/api/client';
+import { API_URL } from '../../lib/api/config';
 import { t as tr } from '../../lib/i18n';
+import { useUserStore } from '../../store/userStore';
 
 function useToggles() {
   return [
@@ -44,6 +46,8 @@ function Row({ iconBg, icon, title, subtitle, onPress, danger }: {
 
 export default function PrivacyScreen() {
   const router = useRouter();
+  const language = useUserStore((s) => s.language);
+  const langSuffix = language === 'en' ? '/en' : '';
   const TOGGLES = useToggles();
   const [states, setStates] = useState<Record<string, boolean>>(
     Object.fromEntries(TOGGLES.map((t) => [t.id, t.default]))
@@ -132,9 +136,9 @@ export default function PrivacyScreen() {
         {/* Liens légaux */}
         <Text style={styles.sectionLabel}>{tr('privacy.sectionLegal')}</Text>
         <View style={styles.card}>
-          <Row iconBg="#8A8F99" icon="file-text" title={tr('privacy.privacyPolicy')} onPress={() => Linking.openURL('https://tarteel.app/privacy')} />
+          <Row iconBg="#8A8F99" icon="file-text" title={tr('privacy.privacyPolicy')} onPress={() => Linking.openURL(`${API_URL}/legal/privacy${langSuffix}`)} />
           <View style={styles.divider} />
-          <Row iconBg="#8A8F99" icon="file" title={tr('privacy.termsOfUse')} onPress={() => Linking.openURL('https://tarteel.app/terms')} />
+          <Row iconBg="#8A8F99" icon="file" title={tr('privacy.termsOfUse')} onPress={() => Linking.openURL(`${API_URL}/legal/terms${langSuffix}`)} />
         </View>
 
         <View style={{ height: 24 }} />
