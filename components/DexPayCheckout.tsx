@@ -30,7 +30,7 @@
  *     notifie le parent via `onDone`.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Modal, Linking } from 'react-native';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { Feather } from '@expo/vector-icons';
 import { getTransaction, refreshAfterPayment, type TransactionStatut } from '../lib/api/billing';
@@ -135,6 +135,38 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
     [startPolling],
   );
 
+  // Les moyens de paiement mobiles (Wave, Orange Money…) redirigent vers un
+  // schéma d'app custom (`wave://`, `orange-money://`…) que la WebView ne sait
+  // PAS charger (elle ne gère que http/https), d'où « Can't open url ». On
+  // intercepte ces schémas et on les délègue au système via Linking, qui ouvre
+  // l'app correspondante (ou le store si elle n'est pas installée). On laisse
+  // la WebView charger normalement tout ce qui est http(s).
+  const handleShouldStartLoad = useCallback((req: WebViewNavigation) => {
+    const url = req.url;
+    if (__DEV__) console.log('[DexPayCheckout] shouldStartLoad:', url);
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('about:')) {
+      return true; // navigation web normale : la WebView s'en charge
+    }
+    // Schéma custom (wave://, tel:…) → on le délègue au système. Wave encode le
+    // deep link sous la forme `wave://capture/https://pay.wave.com/...` : on
+    // ouvre en PRIORITÉ l'URL https embarquée (universal link) — l'OS la route
+    // vers l'app Wave si installée, sinon vers la page de paiement web —, et on
+    // retombe sur le schéma brut si l'extraction ne donne rien.
+    const embedded = url.match(/https?:\/\/[^\s]+/)?.[0];
+    const target = embedded ?? url;
+    Linking.openURL(target).catch(() => {
+      // Cible indisponible : on tente le schéma brut en dernier recours.
+      if (embedded) {
+        Linking.openURL(url).catch(() => {
+          if (__DEV__) console.warn('[DexPayCheckout] impossible d’ouvrir:', url);
+        });
+      } else if (__DEV__) {
+        console.warn('[DexPayCheckout] impossible d’ouvrir le schéma:', url);
+      }
+    });
+    return false; // on empêche la WebView de tenter (et d’échouer sur) ce schéma
+  }, []);
+
   const renderOverlay = () => {
     if (phase === 'verifying') {
       return (
@@ -208,6 +240,7 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
           <WebView
             source={{ uri: paymentUrl }}
             onNavigationStateChange={handleNavigationStateChange}
+            onShouldStartLoadWithRequest={handleShouldStartLoad}
             style={styles.webview}
             startInLoadingState
             javaScriptEnabled
