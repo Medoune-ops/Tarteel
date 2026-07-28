@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, useWindowDimensions, Alert, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, ActivityIndicator, FlatList } from 'react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
@@ -11,6 +11,7 @@ import Svg, { Rect, Path, Circle, Ellipse, Line, Defs, RadialGradient, Stop, G }
 import DeviceStatusBar from '../../../components/StatusBar';
 import { MosqueIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
+import { useGiftModalStore } from '../../../store/giftModalStore';
 import { useTheme } from '../../../utils/useTheme';
 import { Colors, type ThemeColors } from '../../../constants/colors';
 import {
@@ -1128,14 +1129,44 @@ const SectionBlock = memo(function SectionBlock({
 /** Carte « coffre quotidien » — affichée une fois par jour, en haut du parcours.
  *  Tirage et plafond 1×/jour jugés CÔTÉ SERVEUR ; si les cœurs sont déjà
  *  pleins, le serveur convertit la récompense en gemmes. */
-function DailyChest() {
+/**
+ * Bouton "coffre quotidien" FLOTTANT — reste fixe en bas à droite de l'écran
+ * (par-dessus le parcours qui scrolle), se secoue en boucle pour attirer l'œil.
+ * Au tap : réclame la récompense côté serveur puis délègue l'animation
+ * d'ouverture (cadeau qui grossit → explose → contenu qui sort) à GiftModal,
+ * la même que pour un cadeau admin. Disparaît ensuite jusqu'au lendemain.
+ */
+function DailyChestButton() {
   const [available, setAvailable] = useState(false);
   const [opening, setOpening] = useState(false);
-  const tr = useT();
+  const showGift = useGiftModalStore((s) => s.show);
 
   useEffect(() => {
     fetchDailyChestAvailable().then(setAvailable).catch(() => setAvailable(false));
   }, []);
+
+  // Secousse en boucle : légère rotation alternée + petit rebond vertical.
+  const shake = useSharedValue(0);
+  useEffect(() => {
+    if (!available) return;
+    shake.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 90, easing: Easing.inOut(Easing.quad) }),
+        withTiming(-1, { duration: 90, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 90, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 90, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 900 }), // pause avant la prochaine secousse
+      ),
+      -1,
+      false,
+    );
+  }, [available]);
+  const shakeStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotate: `${shake.value * 12}deg` },
+      { translateY: -Math.abs(shake.value) * 4 },
+    ],
+  }));
 
   if (!available) return null;
 
@@ -1144,48 +1175,34 @@ function DailyChest() {
     setOpening(true);
     const reward = await claimDailyChestApi();
     setOpening(false);
-    setAvailable(false);
+    setAvailable(false); // le coffre disparaît, revient demain
     if (!reward) return;
-    playSound('finish');
-    const msg =
-      reward.type === 'xp'
-        ? t('chest.xp', { n: reward.amount })
-        : reward.type === 'gems'
-          ? t('chest.gems', { n: reward.amount })
-          : reward.amount > 1
-            ? t('chest.hearts', { n: reward.amount })
-            : t('chest.heart');
-    Alert.alert(t('chest.alertTitle'), msg);
+    // Même animation que le cadeau admin : grossir → exploser → contenu.
+    showGift(reward.type, reward.amount);
   };
 
   return (
-    <Pressable onPress={open} style={{ width: '100%', alignItems: 'center' }}>
-      <LinearGradient
-        colors={['#FFC247', '#F0A41E']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={chestStyles.card}
-      >
+    <Animated.View style={[chestStyles.floating, shakeStyle]}>
+      <Pressable onPress={open} hitSlop={12} style={chestStyles.bubble}>
         <Text style={chestStyles.emoji}>🎁</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={chestStyles.title}>{tr('chest.title')}</Text>
-          <Text style={chestStyles.sub}>{tr('chest.sub')}</Text>
-        </View>
-        <Feather name="chevron-right" size={22} color="#fff" />
-      </LinearGradient>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 const chestStyles = StyleSheet.create({
-  card: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    marginHorizontal: 18, marginTop: 16, paddingHorizontal: 18, paddingVertical: 16, borderRadius: 20,
-    width: '100%', maxWidth: 520, alignSelf: 'center',
-    shadowColor: '#E07A0C', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 6,
+  // Flotte au-dessus du parcours, ancré en bas à droite (au-dessus de la tab bar).
+  floating: {
+    position: 'absolute', right: 18, bottom: 24, zIndex: 20,
   },
-  emoji: { fontSize: 34 },
-  title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 18, color: '#fff' },
-  sub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 1 },
+  bubble: {
+    width: 62, height: 62, borderRadius: 31,
+    backgroundColor: '#F0A41E',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#E07A0C', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+    borderWidth: 3, borderColor: '#FFD97A',
+  },
+  emoji: { fontSize: 30 },
 });
 
 export default function ParcoursScreen() {
@@ -1342,7 +1359,6 @@ export default function ParcoursScreen() {
 
   const renderHeader = () => (
     <>
-      <DailyChest />
       {loadError && (
         <View style={styles.centerState}>
           <Feather name="wifi-off" size={32} color={T.textSecondary} />
@@ -1434,6 +1450,9 @@ export default function ParcoursScreen() {
           }}
         />
       )}
+
+      {/* Coffre quotidien flottant : toujours visible, ne scrolle pas. */}
+      <DailyChestButton />
     </View>
   );
 }

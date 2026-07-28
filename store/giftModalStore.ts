@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 
-/** Ce qu'un admin peut offrir depuis le back-office — voir adminUsers.service.ts (backend). */
-export type GiftKind = 'hearts' | 'gems' | 'premium';
+/**
+ * Ce qu'un admin peut offrir depuis le back-office (hearts/gems/premium) — voir
+ * adminUsers.service.ts (backend). `xp` s'y ajoute pour réutiliser la même
+ * animation d'ouverture sur le coffre quotidien du parcours.
+ */
+export type GiftKind = 'hearts' | 'gems' | 'premium' | 'xp';
 
 interface GiftModalState {
   visible: boolean;
