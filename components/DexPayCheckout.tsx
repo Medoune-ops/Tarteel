@@ -143,13 +143,26 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
   // la WebView charger normalement tout ce qui est http(s).
   const handleShouldStartLoad = useCallback((req: WebViewNavigation) => {
     const url = req.url;
+    if (__DEV__) console.log('[DexPayCheckout] shouldStartLoad:', url);
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('about:')) {
       return true; // navigation web normale : la WebView s'en charge
     }
-    // Schéma custom (wave://, tel:, etc.) → on le passe au système.
-    Linking.openURL(url).catch(() => {
-      // App cible absente / lien non gérable : on ne bloque pas le checkout.
-      if (__DEV__) console.warn('[DexPayCheckout] impossible d’ouvrir le schéma:', url);
+    // Schéma custom (wave://, tel:…) → on le délègue au système. Wave encode le
+    // deep link sous la forme `wave://capture/https://pay.wave.com/...` : on
+    // ouvre en PRIORITÉ l'URL https embarquée (universal link) — l'OS la route
+    // vers l'app Wave si installée, sinon vers la page de paiement web —, et on
+    // retombe sur le schéma brut si l'extraction ne donne rien.
+    const embedded = url.match(/https?:\/\/[^\s]+/)?.[0];
+    const target = embedded ?? url;
+    Linking.openURL(target).catch(() => {
+      // Cible indisponible : on tente le schéma brut en dernier recours.
+      if (embedded) {
+        Linking.openURL(url).catch(() => {
+          if (__DEV__) console.warn('[DexPayCheckout] impossible d’ouvrir:', url);
+        });
+      } else if (__DEV__) {
+        console.warn('[DexPayCheckout] impossible d’ouvrir le schéma:', url);
+      }
     });
     return false; // on empêche la WebView de tenter (et d’échouer sur) ce schéma
   }, []);
