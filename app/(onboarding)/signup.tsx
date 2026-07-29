@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather, FontAwesome } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
 import { login, register, ApiError } from '../../lib/api';
@@ -180,22 +180,10 @@ export default function SignupScreen() {
             </Pressable>
           </View>
 
-          {/* Boutons sociaux */}
-          <Pressable style={styles.googleBtn}>
-            <Text style={styles.googleG}>G</Text>
-            <Text style={styles.socialLabel}>{tr('signup.continueGoogle')}</Text>
-          </Pressable>
-          <Pressable style={styles.appleBtn}>
-            <FontAwesome name="apple" size={22} color="#fff" />
-            <Text style={styles.appleLabel}>{tr('signup.continueApple')}</Text>
-          </Pressable>
-
-          {/* Séparateur */}
-          <View style={styles.separator}>
-            <View style={styles.line} />
-            <Text style={styles.ou}>{isSignup ? tr('signup.orSignupEmail') : tr('signup.orLoginEmail')}</Text>
-            <View style={styles.line} />
-          </View>
+          {/* Connexion Google / Apple : masquee tant que ces providers ne
+              sont pas configures cote backend. Email/mot de passe reste
+              le seul mode d'authentification visible. */}
+          <View style={{ height: 28 }} />
 
           {/* Champs spécifiques à l'inscription */}
           {isSignup && (
@@ -288,22 +276,6 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
   tabText: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#9AA0AA' },
   tabTextActive: { fontFamily: 'Nunito_800ExtraBold', color: '#6B4DFF' },
-
-  googleBtn: {
-    width: '100%', height: 56, borderRadius: 16, borderWidth: 1.5, borderColor: '#E2E4EA',
-    backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 18,
-  },
-  googleG: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, color: '#4285F4' },
-  socialLabel: { fontFamily: 'Nunito_700Bold', fontSize: 16, color: '#2B3240' },
-  appleBtn: {
-    width: '100%', height: 56, borderRadius: 16, backgroundColor: '#16181F',
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 12,
-  },
-  appleLabel: { fontFamily: 'Nunito_700Bold', fontSize: 16, color: '#fff' },
-
-  separator: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 18 },
-  line: { flex: 1, height: 1, backgroundColor: '#E6E8EC' },
-  ou: { fontFamily: 'Nunito_600SemiBold', fontSize: 12.5, color: '#A6ABB4', textAlign: 'center' },
 
   input: {
     width: '100%', height: 56, borderRadius: 14, backgroundColor: '#F2F3F6',

@@ -171,7 +171,10 @@ export async function updateNotificationPrefs(
  * token volé ne suffit pas). Efface ensuite les jetons locaux et vide le store.
  */
 export async function deleteAccount(password: string): Promise<void> {
-  await apiFetch('/me', { method: 'DELETE', json: { password } });
+  // skipAuthRetry : un 401 ici signifie "mot de passe incorrect", pas "token
+  // expiré" — sans ça, apiFetch tenterait un refresh + une 2e suppression, et
+  // déconnecterait l'utilisateur si ce refresh échoue pour une autre raison.
+  await apiFetch('/me', { method: 'DELETE', json: { password }, skipAuthRetry: true });
   await clearTokens();
   useUserStore.getState().logout();
 }
