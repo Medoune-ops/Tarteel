@@ -143,7 +143,6 @@ export default function DexPayCheckout({ visible, paymentUrl, reference, onDone 
   // la WebView charger normalement tout ce qui est http(s).
   const handleShouldStartLoad = useCallback((req: WebViewNavigation) => {
     const url = req.url;
-    if (__DEV__) console.log('[DexPayCheckout] shouldStartLoad:', url);
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('about:')) {
       return true; // navigation web normale : la WebView s'en charge
     }
