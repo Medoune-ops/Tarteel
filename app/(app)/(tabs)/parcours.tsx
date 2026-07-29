@@ -1209,7 +1209,12 @@ export default function ParcoursScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const T = useTheme();
-  const { streak, xp, hearts, gems, isPremium, syncHearts } = useUserStore();
+  const streak = useUserStore((s) => s.streak);
+  const xp = useUserStore((s) => s.xp);
+  const hearts = useUserStore((s) => s.hearts);
+  const gems = useUserStore((s) => s.gems);
+  const isPremium = useUserStore((s) => s.isPremium);
+  const syncHearts = useUserStore((s) => s.syncHearts);
   const { width, height } = useWindowDimensions();
   const listRef = useRef<FlatList<ParcoursSection>>(null);
 
