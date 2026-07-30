@@ -30,6 +30,17 @@ struct StreakSmallView: View {
                 .foregroundColor(.white.opacity(0.18))
                 .offset(x: 30, y: 28)
 
+            // Mascotte (loutre) en haut à droite
+            Image("Otter")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 46, height: 46)
+                .opacity(0.9)
+                .shadow(color: Color(hex: "#960028").opacity(0.3), radius: 4, y: 3)
+                .frame(maxWidth: .infinity, alignment: .topTrailing)
+                .padding(.trailing, 12)
+                .padding(.top, 2)
+
             VStack(alignment: .leading, spacing: 0) {
                 // Label "Série"
                 HStack(spacing: 4) {

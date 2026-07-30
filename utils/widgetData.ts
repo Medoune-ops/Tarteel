@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
+import { t, type I18nKey } from '../lib/i18n';
 
 const APP_GROUP = 'group.com.tarteel.app';
 
@@ -13,12 +14,14 @@ export interface WidgetData {
   motivationMsg: string;
 }
 
-const MOTIVATION_MSGS = [
-  'Du temps pour tout… sauf pour Son Livre ?',
-  'Une minute pour le Coran aujourd\'hui ?',
-  'Chaque verset compte. Continue !',
-  'Ta série t\'attend. Ne la brise pas.',
+const MOTIVATION_KEYS: I18nKey[] = [
+  'widgets.motivation.1', 'widgets.motivation.2', 'widgets.motivation.3', 'widgets.motivation.4',
 ];
+
+export function currentMotivationMsg(): string {
+  const idx = Math.floor(Date.now() / (1000 * 60 * 60 * 6)) % MOTIVATION_KEYS.length;
+  return t(MOTIVATION_KEYS[idx]!);
+}
 
 function getTodayActiveDays(streak: number): boolean[] {
   // On considère que les <streak> derniers jours jusqu'à aujourd'hui sont actifs
@@ -39,7 +42,6 @@ export function syncWidgetData(params: {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
 
   const activeDays = getTodayActiveDays(params.streak);
-  const msgIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 6)) % MOTIVATION_MSGS.length;
 
   const data: WidgetData = {
     streak: params.streak,
@@ -48,7 +50,7 @@ export function syncWidgetData(params: {
     lessonProgress: 42, // sera remplacé par la vraie progression leçon
     lessonSection: 'Alphabet',
     activeDays,
-    motivationMsg: MOTIVATION_MSGS[msgIndex],
+    motivationMsg: currentMotivationMsg(),
   };
 
   try {

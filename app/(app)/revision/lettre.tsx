@@ -248,6 +248,7 @@ export default function LettreRevisionScreen() {
                 <Text style={styles.resultSub}>{tr('lettre.pronunciation')}</Text>
               </View>
               <Text style={styles.headerSub}>{tr('lettre.cardsSucceeded', { n: successes, total: cards.length })}</Text>
+              <Text style={styles.masteryNote}>{tr('lettre.masteryNote')}</Text>
             </>
           )}
         </LinearGradient>
@@ -464,6 +465,10 @@ const styles = StyleSheet.create({
   headerEmoji: { fontSize: 40, marginBottom: 4 },
   headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff', textAlign: 'center' },
   headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.85)' },
+  masteryNote: {
+    fontFamily: 'Nunito_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center', marginTop: 8, paddingHorizontal: 16,
+  },
   resultCircle: {
     width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center', marginVertical: 8,

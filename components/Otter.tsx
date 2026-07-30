@@ -3,11 +3,19 @@ import Svg, {
   Ellipse, Circle, Path, Rect, Defs, LinearGradient, Stop,
 } from 'react-native-svg';
 import Animated, {
-  useSharedValue, useAnimatedStyle,
-  withRepeat, withSequence, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, useAnimatedProps,
+  withRepeat, withSequence, withTiming, withDelay, Easing, runOnJS,
 } from 'react-native-reanimated';
 
 const AnimatedSvg = Animated.createAnimatedComponent(Svg);
+const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
+
+// Durée d'un clignement et pause aléatoire entre deux clignements, pour un
+// mouvement naturel plutôt qu'un tic répétitif et prévisible.
+const BLINK_DURATION = 90;
+function randomBlinkPause() {
+  return 2200 + Math.random() * 3000;
+}
 
 interface OtterProps {
   size?: number;
@@ -17,6 +25,7 @@ interface OtterProps {
 export default function Otter({ size = 100, showBook = false }: OtterProps) {
   const translateY = useSharedValue(0);
   const rotate = useSharedValue(0);
+  const eyeScale = useSharedValue(1);
 
   useEffect(() => {
     translateY.value = withRepeat(
@@ -33,6 +42,23 @@ export default function Otter({ size = 100, showBook = false }: OtterProps) {
       ),
       -1,
     );
+    // Clignement à intervalle aléatoire (pas une boucle répétitive figée) :
+    // chaque cycle programme lui-même le suivant avec une nouvelle pause.
+    let cancelled = false;
+    const scheduleBlink = () => {
+      if (cancelled) return;
+      eyeScale.value = withDelay(
+        randomBlinkPause(),
+        withSequence(
+          withTiming(0.05, { duration: BLINK_DURATION }),
+          withTiming(1, { duration: BLINK_DURATION }, (finished) => {
+            if (finished) runOnJS(scheduleBlink)();
+          }),
+        ),
+      );
+    };
+    scheduleBlink();
+    return () => { cancelled = true; };
   }, [size]);
 
   const containerStyle = useAnimatedStyle(() => ({
@@ -41,6 +67,15 @@ export default function Otter({ size = 100, showBook = false }: OtterProps) {
       { rotate: `${rotate.value}deg` },
     ],
   }));
+
+  // Paupières : on écrase les yeux verticalement autour de leur centre (cy)
+  // plutôt que de scaler tout le SVG, pour un clignement localisé et naturel.
+  const leftEyeProps = useAnimatedProps(() => ({ ry: 8.25 * eyeScale.value }));
+  const rightEyeProps = useAnimatedProps(() => ({ ry: 8.25 * eyeScale.value }));
+  const leftPupilProps = useAnimatedProps(() => ({ ry: 6 * eyeScale.value }));
+  const rightPupilProps = useAnimatedProps(() => ({ ry: 6 * eyeScale.value }));
+  const leftShineProps = useAnimatedProps(() => ({ ry: 2.25 * eyeScale.value }));
+  const rightShineProps = useAnimatedProps(() => ({ ry: 2.25 * eyeScale.value }));
 
   return (
     <Animated.View style={[{ width: size, height: size }, containerStyle]}>
@@ -101,14 +136,14 @@ export default function Otter({ size = 100, showBook = false }: OtterProps) {
         <Ellipse cx={66} cy={44} rx={5.25} ry={4} fill="rgba(255,138,138,0.55)" />
 
         {/* Eyes white */}
-        <Ellipse cx={39} cy={27} rx={7.5} ry={8.25} fill="#ffffff" />
-        <Ellipse cx={61} cy={27} rx={7.5} ry={8.25} fill="#ffffff" />
+        <AnimatedEllipse cx={39} cy={27} rx={7.5} animatedProps={leftEyeProps} fill="#ffffff" />
+        <AnimatedEllipse cx={61} cy={27} rx={7.5} animatedProps={rightEyeProps} fill="#ffffff" />
         {/* Pupils */}
-        <Ellipse cx={41} cy={30} rx={5.5} ry={6} fill="#2A201A" />
-        <Ellipse cx={63} cy={30} rx={5.5} ry={6} fill="#2A201A" />
+        <AnimatedEllipse cx={41} cy={30} rx={5.5} animatedProps={leftPupilProps} fill="#2A201A" />
+        <AnimatedEllipse cx={63} cy={30} rx={5.5} animatedProps={rightPupilProps} fill="#2A201A" />
         {/* Shine */}
-        <Ellipse cx={43.5} cy={27.5} rx={2.25} ry={2.25} fill="#ffffff" />
-        <Ellipse cx={65.5} cy={27.5} rx={2.25} ry={2.25} fill="#ffffff" />
+        <AnimatedEllipse cx={43.5} cy={27.5} rx={2.25} animatedProps={leftShineProps} fill="#ffffff" />
+        <AnimatedEllipse cx={65.5} cy={27.5} rx={2.25} animatedProps={rightShineProps} fill="#ffffff" />
 
         {/* Nose */}
         <Ellipse cx={50} cy={40} rx={4.25} ry={3.1} fill="#3A2B20" />

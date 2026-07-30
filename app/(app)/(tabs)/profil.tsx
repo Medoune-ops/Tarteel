@@ -41,6 +41,7 @@ function buildBadges(streak: number, streakGoal: number | null, sourates: number
     { emoji: '🎧', bg: '#F0E8FF', bgDark: '#2A2140', border: '#8A5CF0', label: t('profil.badge.tajwid'), route: '/(app)/tajwid' },
     { emoji: '📖', bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: t(sourates > 1 ? 'profil.badge.sourates' : 'profil.badge.sourate', { n: sourates }), route: '/(app)/sourates' },
     { emoji: '🏆', bg: '#FFF3CD', bgDark: '#332A14', border: '#E0A02C', label: t('profil.badge.podiums'), route: '/(app)/podiums' },
+    { emoji: '🧩', bg: '#FFE7D2', bgDark: '#3A2712', border: '#F0820C', label: t('profil.badge.widgets'), route: '/(app)/widgets' },
   ];
 }
 

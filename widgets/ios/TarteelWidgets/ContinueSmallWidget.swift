@@ -58,12 +58,11 @@ struct ContinueSmallView: View {
 
                 Spacer()
 
-                // Otter (icône app en substitut — SF Symbol)
-                Image(systemName: "figure.mind.and.body")
+                // Mascotte Tarteel
+                Image("Otter")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 54, height: 54)
-                    .foregroundColor(.white.opacity(0.9))
+                    .frame(width: 70, height: 70)
                     .shadow(color: Color(hex: "#1E0A50").opacity(0.4), radius: 8, y: 6)
 
                 Spacer()
