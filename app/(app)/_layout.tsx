@@ -1,9 +1,26 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { Stack } from 'expo-router';
-import { fetchMe, fetchPendingGift, ackPendingGift } from '../../lib/api/me';
+import { fetchMe, fetchPendingGift, ackPendingGift, syncTimezone } from '../../lib/api/me';
+import { registerForPushNotifications } from '../../lib/pushNotifications';
 import GiftModal from '../../components/GiftModal';
+import MiniPlayer from '../../components/MiniPlayer';
 import { useGiftModalStore } from '../../store/giftModalStore';
+
+/**
+ * Enregistre le token push et la timezone du device au lancement de l'app
+ * pour un utilisateur DÉJÀ connecté (session restaurée depuis les jetons
+ * stockés). `register()`/`login()` (lib/api/auth.ts) le font déjà au moment
+ * de la connexion, mais rien ne le refaisait au simple relancement de l'app —
+ * un utilisateur déjà connecté avant l'ajout de ce code n'avait donc jamais
+ * de token enregistré. Best-effort, ne bloque jamais l'affichage de l'app.
+ */
+function useRegisterPushOnMount() {
+  useEffect(() => {
+    registerForPushNotifications();
+    syncTimezone();
+  }, []);
+}
 
 // En dessous de ce délai depuis le dernier fetchMe(), un retour au premier
 // plan ne redéclenche pas d'appel — évite les rafales sur des va-et-vient
@@ -85,6 +102,7 @@ function usePendingGiftPolling() {
 }
 
 export default function AppLayout() {
+  useRegisterPushOnMount();
   useRefreshMeOnForeground();
   usePendingGiftPolling();
   return (
@@ -108,6 +126,7 @@ export default function AppLayout() {
         <Stack.Screen name="coran-player" />
         <Stack.Screen name="household" />
         <Stack.Screen name="podiums" />
+        <Stack.Screen name="widgets" />
         <Stack.Screen name="subscription" />
         <Stack.Screen name="hearts" />
         <Stack.Screen name="referral" />
@@ -117,6 +136,7 @@ export default function AppLayout() {
         <Stack.Screen name="docs" />
         <Stack.Screen name="lesson" />
       </Stack>
+      <MiniPlayer />
       <GiftModal />
     </>
   );

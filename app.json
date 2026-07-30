@@ -14,7 +14,10 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.tarteel.app",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
+        "UIBackgroundModes": [
+          "audio",
+          "audio"
+        ],
         "LSApplicationQueriesSchemes": [
           "wave",
           "orangemoney",
@@ -22,8 +25,16 @@
           "mtnmomo",
           "moovmoney",
           "freemoney",
+          "wizall",
+          "wave",
+          "orangemoney",
+          "orange-money",
+          "mtnmomo",
+          "moovmoney",
+          "freemoney",
           "wizall"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "icon": {
         "light": "./assets/icon-light.png",
@@ -32,6 +43,7 @@
       },
       "entitlements": {
         "com.apple.security.application-groups": [
+          "group.com.tarteel.app",
           "group.com.tarteel.app"
         ]
       }
@@ -47,15 +59,42 @@
       "package": "com.tarteel.app",
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "queries": {
         "intent": [
-          { "action": "android.intent.action.VIEW", "data": { "scheme": "wave" } },
-          { "action": "android.intent.action.VIEW", "data": { "scheme": "orange-money" } },
-          { "action": "android.intent.action.VIEW", "data": { "scheme": "orangemoney" } },
-          { "action": "android.intent.action.VIEW", "data": { "scheme": "mtnmomo" } },
-          { "action": "android.intent.action.VIEW", "data": { "scheme": "moovmoney" } }
+          {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "wave"
+            }
+          },
+          {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "orange-money"
+            }
+          },
+          {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "orangemoney"
+            }
+          },
+          {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "mtnmomo"
+            }
+          },
+          {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "moovmoney"
+            }
+          }
         ]
       }
     },
@@ -89,6 +128,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cff220aa-194a-4aa9-8133-09d153db68d1"
+      }
+    },
+    "owner": "medouness-team"
   }
 }

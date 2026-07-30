@@ -298,6 +298,19 @@ export default function LiguesScreen() {
                 transform: [{ translateX: (rows[i] ?? new Animated.Value(1)).interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
               }}
             >
+              {/* Un seul bandeau, juste avant le premier joueur en relégation
+                  (comme la zone de promotion), pas répété entre chaque ligne. */}
+              {p.relegation && !v.around[i - 1]?.relegation && (
+                <View style={[styles.zoneTagInline, { backgroundColor: T.cardBg }]}>
+                  <View style={[styles.zoneLine, { backgroundColor: T.isDark ? '#4A2330' : '#FBD5D5' }]} />
+                  <View style={[styles.zonePill, { backgroundColor: T.isDark ? '#3A1F26' : '#FDE8E8' }]}>
+                    <Feather name="chevrons-down" size={13} color="#FF4B4B" />
+                    <Text style={[styles.zoneText, { color: '#FF4B4B' }]}>{tr('ligues.relegationZone')}</Text>
+                  </View>
+                  <View style={[styles.zoneLine, { backgroundColor: '#FBD5D5' }]} />
+                </View>
+              )}
+
               <View style={[styles.listRow, p.me && [styles.listRowMe, T.isDark && { backgroundColor: '#241F3D' }], i > 0 && !p.me && !v.around[i - 1].me && [styles.listBorder, { borderTopColor: T.divider }]]}>
                 <Text style={[styles.rankNum, p.me && { color: '#6B4DFF' }, p.relegation && { color: '#FF4B4B' }]}>{p.rang}</Text>
                 <View style={[styles.avatar, { backgroundColor: p.me ? '#6B4DFF' : '#C9C3B4' }]}>
@@ -312,17 +325,6 @@ export default function LiguesScreen() {
                   <Text style={[styles.xpText, { color: p.me ? '#6B4DFF' : '#6B7280' }]}>{p.weeklyXp}</Text>
                 </View>
               </View>
-
-              {v.around[i + 1]?.relegation && (
-                <View style={[styles.zoneTagInline, { backgroundColor: T.cardBg }]}>
-                  <View style={[styles.zoneLine, { backgroundColor: T.isDark ? '#4A2330' : '#FBD5D5' }]} />
-                  <View style={[styles.zonePill, { backgroundColor: T.isDark ? '#3A1F26' : '#FDE8E8' }]}>
-                    <Feather name="chevrons-down" size={13} color="#FF4B4B" />
-                    <Text style={[styles.zoneText, { color: '#FF4B4B' }]}>{tr('ligues.relegationZone')}</Text>
-                  </View>
-                  <View style={[styles.zoneLine, { backgroundColor: '#FBD5D5' }]} />
-                </View>
-              )}
             </Animated.View>
           ))}
           {v.around.length === 0 && (

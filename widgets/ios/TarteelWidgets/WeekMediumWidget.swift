@@ -30,11 +30,10 @@ struct WeekMediumView: View {
                     .offset(x: 20, y: 24)
 
                 VStack(spacing: 2) {
-                    Image(systemName: "figure.mind.and.body")
+                    Image("Otter")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 40, height: 40)
-                        .foregroundColor(.white.opacity(0.9))
+                        .frame(width: 52, height: 52)
                         .shadow(color: Color(hex: "#960028").opacity(0.35), radius: 6, y: 4)
 
                     Text("\(data.streak)")

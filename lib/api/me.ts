@@ -132,6 +132,23 @@ export async function updateSettings(input: UpdateSettingsInput): Promise<MeResp
   return data;
 }
 
+/**
+ * Envoie la timezone IANA du téléphone (ex: "Africa/Dakar") au serveur, qui
+ * s'en sert pour calculer "l'heure locale" du rappel quotidien (jobs/reminders).
+ * Sans cet appel, `User.timezone` reste à sa valeur par défaut ("UTC") et
+ * l'heure de rappel choisie dans l'app ne correspond pas à l'heure réelle de
+ * l'utilisateur. Best-effort : ne bloque jamais le démarrage de l'app.
+ */
+export async function syncTimezone(): Promise<void> {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!timezone) return;
+    await apiFetch('/me', { method: 'PATCH', json: { timezone } });
+  } catch {
+    // hors-ligne / timezone non résolue : pas grave, on réessaiera au prochain lancement
+  }
+}
+
 export interface NotificationPrefs {
   notifDailyReminder: boolean;
   notifStreakAlert: boolean;

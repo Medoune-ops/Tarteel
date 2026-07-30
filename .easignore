@@ -1,0 +1,24 @@
+# EAS Build a besoin de TOUT le code source, y compris /lib/
+# (contrairement à .gitignore qui exclut /lib/ du repo GitHub public
+# pour garder le code d'intégration backend privé).
+# Ne pas lister /lib/, README.md ou BACKEND.md ici.
+
+node_modules/
+.expo/
+dist/
+web-build/
+.git/
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+*.tsbuildinfo
