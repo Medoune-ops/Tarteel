@@ -1,4 +1,5 @@
-import { Platform, View, Text, Pressable, ScrollView, StyleSheet, Linking } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { Platform, View, Text, Pressable, ScrollView, StyleSheet, Linking, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +9,109 @@ import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
 import { currentMotivationMsg } from '../../utils/widgetData';
 import { useT } from '../../lib/i18n';
+
+// `expo-alternate-app-icons` est un module NATIF : dans Expo Go (pas de code
+// natif custom), le simple `import` déclenche `requireNativeModule` qui plante
+// et fait crasher toute l'app au scan des routes. On le charge donc de façon
+// résiliente : si le module n'est pas là (Expo Go), on retombe sur des stubs
+// inertes et le sélecteur d'icône s'affiche comme « non supporté ».
+let supportsAlternateIcons = false;
+let setAlternateAppIcon: (name: string | null) => Promise<void> = async () => {};
+let getAppIconName: () => string | null = () => null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = require('expo-alternate-app-icons');
+  supportsAlternateIcons = mod.supportsAlternateIcons ?? false;
+  setAlternateAppIcon = mod.setAlternateAppIcon;
+  getAppIconName = mod.getAppIconName;
+} catch {
+  /* Expo Go / module natif absent : on garde les stubs ci-dessus. */
+}
+
+// null = icône par défaut (Nuit, celle déclarée dans app.json → icon/ios.icon/
+// android.adaptiveIcon), 'Sun' = alternative déclarée via le plugin
+// expo-alternate-app-icons (voir app.json → plugins). Le nom DOIT correspondre
+// exactement (PascalCase) à celui déclaré dans la config du plugin.
+type AppIconChoice = { key: string; name: string | null; source: number; labelKey: 'widgets.icon.night' | 'widgets.icon.sun' };
+const APP_ICON_CHOICES: AppIconChoice[] = [
+  { key: 'night', name: null, source: require('../../assets/icon.png'), labelKey: 'widgets.icon.night' },
+  { key: 'sun', name: 'Sun', source: require('../../assets/icon-sun.png'), labelKey: 'widgets.icon.sun' },
+];
+
+/** Sélecteur d'icône d'app (Nuit/Soleil) — natif iOS/Android, hors Expo Go. */
+function AppIconPicker() {
+  const T = useTheme();
+  const tr = useT();
+  const [active, setActive] = useState<string | null | undefined>(undefined); // undefined = pas encore lu
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    try { setActive(getAppIconName()); } catch { setActive(null); }
+  }, []);
+
+  const choose = useCallback(async (choice: AppIconChoice) => {
+    if (busy || active === choice.name) return;
+    setError(false);
+    setBusy(choice.key);
+    try {
+      await setAlternateAppIcon(choice.name);
+      setActive(choice.name);
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(null);
+    }
+  }, [busy, active]);
+
+  // On affiche TOUJOURS les aperçus des icônes (ce sont de simples images
+  // locales, disponibles partout). Si le changement d'icône n'est pas supporté
+  // (Expo Go, iOS ancien), les aperçus restent visibles mais non cliquables
+  // (grisés) avec une note explicative — l'utilisateur voit à quoi ressemblent
+  // les options même sans pouvoir encore les activer.
+  return (
+    <View>
+      <View style={styles.iconRow}>
+        {APP_ICON_CHOICES.map((choice) => {
+          const isActive = active === choice.name;
+          return (
+            <Pressable
+              key={choice.key}
+              style={[
+                styles.iconOption,
+                isActive && supportsAlternateIcons && styles.iconOptionActive,
+                !supportsAlternateIcons && styles.iconOptionDisabled,
+              ]}
+              onPress={() => choose(choice)}
+              disabled={busy != null || !supportsAlternateIcons}
+            >
+              <View style={[styles.iconPreviewWrap, isActive && supportsAlternateIcons && styles.iconPreviewWrapActive]}>
+                <Image source={choice.source} style={styles.iconPreviewImg} />
+                {busy === choice.key && (
+                  <View style={styles.iconPreviewOverlay}>
+                    <ActivityIndicator size="small" color="#fff" />
+                  </View>
+                )}
+                {isActive && busy == null && supportsAlternateIcons && (
+                  <View style={styles.iconCheckBadge}>
+                    <Feather name="check" size={12} color="#fff" />
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.iconOptionLabel, { color: T.text }]}>{tr(choice.labelKey)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {!supportsAlternateIcons && (
+        <Text style={[styles.iconUnsupportedNote, { color: T.textSecondary }]}>
+          {tr('widgets.icon.unsupported')}
+        </Text>
+      )}
+      {error && <Text style={styles.iconErrorText}>{tr('widgets.icon.error')}</Text>}
+    </View>
+  );
+}
 
 const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
@@ -182,6 +286,10 @@ export default function WidgetsScreen() {
           </View>
         ))}
 
+        <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('widgets.iconTitle')}</Text>
+        <Text style={[styles.iconSubtitle, { color: T.textSecondary }]}>{tr('widgets.iconSubtitle')}</Text>
+        <AppIconPicker />
+
         <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('widgets.howToTitle')}</Text>
         <View style={[styles.howToBox, { backgroundColor: T.cardBg, borderColor: T.border }]}>
           <Text style={[styles.howToText, { color: T.text }]}>{howTo}</Text>
@@ -230,6 +338,38 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 14, marginBottom: 10 },
   howToBox: { borderRadius: 16, borderWidth: 1.5, padding: 16, width: '100%' },
   howToText: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, lineHeight: 22 },
+
+  iconSubtitle: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: -6, marginBottom: 14 },
+  iconRow: { flexDirection: 'row', gap: 20, justifyContent: 'center' },
+  iconOption: { alignItems: 'center', gap: 8 },
+  iconOptionActive: {},
+  // Aperçu visible mais fonctionnalité pas encore dispo (Expo Go / iOS ancien).
+  iconOptionDisabled: { opacity: 0.55 },
+  iconUnsupportedNote: {
+    fontFamily: 'Nunito_600SemiBold', fontSize: 12, lineHeight: 18,
+    textAlign: 'center', marginTop: 12,
+  },
+  iconPreviewWrap: {
+    width: 72, height: 72, borderRadius: 18, overflow: 'hidden',
+    borderWidth: 2.5, borderColor: 'transparent',
+  },
+  iconPreviewWrapActive: { borderColor: '#6B4DFF' },
+  iconPreviewImg: { width: '100%', height: '100%' },
+  iconPreviewOverlay: {
+    ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  iconCheckBadge: {
+    position: 'absolute', bottom: 4, right: 4,
+    width: 18, height: 18, borderRadius: 9, backgroundColor: '#6B4DFF',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  iconOptionLabel: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
+  iconErrorText: {
+    fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#FF4B4B',
+    textAlign: 'center', marginTop: 10,
+  },
 
   settingsBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,

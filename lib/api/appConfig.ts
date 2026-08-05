@@ -17,6 +17,9 @@ export interface AppConfigPricing {
 
 export interface AppConfig {
   paymentsEnabled: boolean;
+  /** Vérification d'email par code à 4 chiffres après l'inscription — feature
+   *  désactivée par défaut côté serveur (EMAIL_VERIFICATION_ENABLED). */
+  emailVerificationEnabled: boolean;
   pricing: AppConfigPricing;
 }
 

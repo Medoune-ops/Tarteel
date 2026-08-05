@@ -12,6 +12,7 @@
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@types/jest": "29.5.14",
     "expo": "~54.0.0",
+    "expo-alternate-app-icons": "^8.0.0",
     "expo-asset": "~12.0.13",
     "expo-audio": "~1.1.1",
     "expo-constants": "~18.0.8",
@@ -54,10 +55,10 @@
     "typescript": "~5.9.2"
   },
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "start": "expo start --offline",
+    "android": "expo start --offline --android",
+    "ios": "expo start --offline --ios",
+    "web": "expo start --offline --web",
     "test": "jest",
     "check:i18n": "node scripts/check-i18n.js"
   },

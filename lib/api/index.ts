@@ -33,6 +33,7 @@ export type {
   SourateSegmentsView, RevisionQuality, LettreRevisionView, GuidedRevisionView,
 } from './revision';
 export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';
+export { verifyEmailCode, resendVerificationCode } from './emailVerification';
 export { bootstrapSession } from './session';
 export { getDeviceId } from './tokens';
 export {

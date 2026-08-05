@@ -36,6 +36,7 @@ export interface MeResponse {
   objectif?: 'lire' | 'hifz' | 'tafsir' | 'complet';
   dailyMinutes?: number;
   voiceEnabled?: boolean;
+  streakGoal?: number | null;
   /** Présents uniquement sur la réponse de POST /lesson/complete (voir completeLesson). */
   xpGained?: number;
   /** true si le boost ×2 XP (100 gemmes) était actif pendant CETTE complétion. */

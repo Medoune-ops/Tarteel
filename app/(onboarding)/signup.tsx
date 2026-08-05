@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
+import { useAppConfigStore } from '../../store/appConfigStore';
 import { login, register, ApiError } from '../../lib/api';
 import { useT } from '../../lib/i18n';
 
@@ -137,6 +138,17 @@ export default function SignupScreen() {
         });
       } else {
         await login({ email: email.trim(), password });
+      }
+
+      // Vérification d'email : DÉSACTIVÉE par défaut (voir GET /config côté
+      // serveur). N'y va que si le flag est explicitement actif — sinon
+      // comportement inchangé (routage direct comme avant cette fonctionnalité).
+      if (isSignup && useAppConfigStore.getState().emailVerificationEnabled) {
+        router.replace({
+          pathname: '/(onboarding)/verify-email',
+          params: { email: email.trim(), forceSetup: '1' },
+        });
+        return;
       }
 
       // Inscription → toujours la config sur mesure (niveau → objectif → temps → plan).

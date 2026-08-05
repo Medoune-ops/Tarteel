@@ -9,6 +9,16 @@
 import { apiFetch } from './client';
 import { fetchMe } from './me';
 
+/**
+ * PUT /me/streak-goal — enregistre l'objectif de série côté serveur (source
+ * de vérité pour claimStreakGoal, qui vérifie streak >= streakGoal en base).
+ * Rehydrate le store pour que streakGoal reste en phase avec le serveur.
+ */
+export async function setStreakGoalApi(days: number): Promise<void> {
+  await apiFetch('/me/streak-goal', { method: 'PUT', json: { days } });
+  await fetchMe();
+}
+
 export type LigueTier = 'bronze' | 'argent' | 'or' | 'emeraude' | 'diamant';
 
 export interface PodiumEntry {
@@ -38,6 +48,22 @@ export async function claimPodium(ref: string): Promise<number> {
     { method: 'POST' },
   );
   await fetchMe(); // met à jour l'XP dans le store
+  return res.xpGained;
+}
+
+/**
+ * POST /me/streak-goal/claim — réclame la récompense de l'objectif de série
+ * (si atteint). L'XP est crédité côté serveur (weeklyXp, donc reflété dans le
+ * classement de ligue) ; on ré-hydrate le store via /me pour refléter le
+ * nouveau total. Renvoie l'XP gagné (0 si l'objectif n'est pas encore atteint
+ * ou déjà réclamé).
+ */
+export async function claimStreakGoal(): Promise<number> {
+  const res = await apiFetch<{ xpGained: number; totalXp: number; streakGoal: number | null }>(
+    '/me/streak-goal/claim',
+    { method: 'POST' },
+  );
+  await fetchMe(); // met à jour l'XP (et efface streakGoal) dans le store
   return res.xpGained;
 }
 

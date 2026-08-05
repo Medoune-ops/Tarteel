@@ -18,6 +18,7 @@ import {
 } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
+import { askPaymentProvider } from '../../utils/askPaymentProvider';
 import { useT } from '../../lib/i18n';
 
 function errMsg(e: unknown, fallback: string): string {
@@ -132,9 +133,11 @@ export default function HouseholdScreen() {
           text: tr('household.activate'),
           onPress: async () => {
             if (busy) return;
+            const provider = await askPaymentProvider();
+            if (!provider) return;
             setBusy('sub');
             try {
-              setSession(await subscribePremium(planId));
+              setSession(await subscribePremium(planId, provider));
             } catch (e) {
               Alert.alert(tr('household.title'), errMsg(e, tr('household.actionError')));
             } finally {

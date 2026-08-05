@@ -102,7 +102,12 @@ export default function SettingsScreen() {
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: T.headerBg, borderBottomColor: T.border }]}>
-        <Text style={[styles.headerTitle, { color: T.text }]}>{tr('settings.title')}</Text>
+        <View style={styles.headerLeft}>
+          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+            <Feather name="chevron-left" size={28} color={T.text} />
+          </Pressable>
+          <Text style={[styles.headerTitle, { color: T.text }]}>{tr('settings.title')}</Text>
+        </View>
         <View style={styles.logoPill}>
           <Otter size={42} />
         </View>
@@ -276,6 +281,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', paddingTop: 50, paddingBottom: 18, paddingHorizontal: 24,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  backBtn: { marginLeft: -6 },
   headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#1B2333' },
   logoPill: {
     width: 56, height: 46, borderRadius: 21, backgroundColor: '#6B4DFF',

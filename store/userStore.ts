@@ -2,9 +2,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
-import {
-  streakReward, PODIUM_REWARD, rollDailyChest, type DailyChestReward,
-} from '../constants/rewards';
 import { syncWidgetData } from '../utils/widgetData';
 import { clearSwrCache } from '../lib/api/swr';
 
@@ -69,30 +66,8 @@ interface UserState {
   setMemorizedSourates: (v: number[]) => void;
   setLanguage: (v: UserState['language']) => void;
   setTheme: (v: UserState['theme']) => void;
-  /** Fixe (ou remplace) l'objectif de série. */
-  setStreakGoal: (days: number) => void;
   /** Change l'heure du rappel quotidien (0–23, heure locale). */
   setReminderHour: (hour: number) => void;
-  /**
-   * Réclame le cadeau quand l'objectif est atteint : crédite des XP bonus
-   * et efface l'objectif (l'utilisateur pourra en fixer un nouveau).
-   * Renvoie le nb d'XP offerts (0 si objectif non atteint / inexistant).
-   */
-  claimStreakReward: () => number;
-  /**
-   * Crédite la récompense d'un podium (1er/2e/3e d'une ligue), une seule fois.
-   * Renvoie le nb d'XP offerts (0 si déjà réclamé).
-   */
-  claimPodiumReward: (id: string, rang: 1 | 2 | 3) => number;
-  /** true si la récompense de ce podium n'a pas encore été réclamée. */
-  isPodiumClaimed: (id: string) => boolean;
-  /** true si le coffre quotidien n'a pas encore été réclamé aujourd'hui. */
-  canClaimDailyChest: () => boolean;
-  /**
-   * Réclame le coffre quotidien (1×/jour). Applique la récompense (XP ou cœurs)
-   * et renvoie ce qui a été gagné, ou null si déjà réclamé aujourd'hui.
-   */
-  claimDailyChest: () => DailyChestReward | null;
   setDailyMinutes: (v: number) => void;
   completeOnboarding: () => void;
   /** Ajoute des XP (×2 si premium). */
@@ -136,6 +111,7 @@ interface UserState {
     objectif?: UserState['objectif'];
     dailyMinutes?: number;
     voiceEnabled?: boolean;
+    streakGoal?: number | null;
   }) => void;
   logout: () => void;
 }
@@ -221,45 +197,7 @@ export const useUserStore = create<UserState>()(
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
 
-      setStreakGoal: (days) => set({ streakGoal: days }),
       setReminderHour: (hour) => set({ reminderHour: hour }),
-
-      claimStreakReward: () => {
-        const s = get();
-        // Objectif atteint ? (objectif défini ET série >= objectif)
-        if (s.streakGoal == null || s.streak < s.streakGoal) return 0;
-        // Cadeau selon le barème non-linéaire (×2 si premium, via addXP).
-        const reward = streakReward(s.streakGoal);
-        get().addXP(reward);
-        // On efface l'objectif : l'utilisateur pourra en fixer un nouveau (non forcé).
-        set({ streakGoal: null });
-        return s.isPremium ? reward * 2 : reward;
-      },
-
-      claimPodiumReward: (id, rang) => {
-        if (get().claimedPodiums.includes(id)) return 0; // déjà réclamé
-        const reward = PODIUM_REWARD[rang];
-        get().addXP(reward);
-        set((s) => ({ claimedPodiums: [...s.claimedPodiums, id] }));
-        return get().isPremium ? reward * 2 : reward;
-      },
-
-      isPodiumClaimed: (id) => get().claimedPodiums.includes(id),
-
-      canClaimDailyChest: () => {
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-        return get().lastChestDay !== today;
-      },
-
-      claimDailyChest: () => {
-        const today = new Date().toISOString().slice(0, 10);
-        if (get().lastChestDay === today) return null; // déjà réclamé aujourd'hui
-        const reward = rollDailyChest();
-        if (reward.type === 'xp') get().addXP(reward.amount);
-        else set((s) => ({ hearts: Math.min(MAX_HEARTS, s.hearts + reward.amount) }));
-        set({ lastChestDay: today });
-        return reward;
-      },
 
       setDailyMinutes: (dailyMinutes) => set({ dailyMinutes }),
       completeOnboarding: () => set({ onboardingDone: true }),
@@ -341,6 +279,7 @@ export const useUserStore = create<UserState>()(
           ...(data.objectif     != null && { objectif:     data.objectif }),
           ...(data.dailyMinutes != null && { dailyMinutes: data.dailyMinutes }),
           ...(data.voiceEnabled != null && { voiceEnabled: data.voiceEnabled }),
+          ...(data.streakGoal !== undefined && { streakGoal: data.streakGoal }),
         });
         syncWidgetData({
           streak: data.streak,

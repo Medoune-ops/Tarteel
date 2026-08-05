@@ -11,6 +11,7 @@ import { refillHeartsWithGems } from '../../lib/api/gems';
 import { buyHearts, type CheckoutSession } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
+import { askPaymentProvider } from '../../utils/askPaymentProvider';
 import { useT, t } from '../../lib/i18n';
 
 /** Formate un nombre de ms en "Xh Ymin" / "Y min". */
@@ -100,12 +101,14 @@ export default function HeartsScreen() {
     }
   };
 
-  /** Acheter un refill complet avec de l'argent — ouvre le checkout DexPay (carte). */
+  /** Acheter un refill complet avec de l'argent — demande le mode de paiement puis ouvre le checkout. */
   const onBuyMoney = async () => {
     if (buying || full) return;
+    const provider = await askPaymentProvider();
+    if (!provider) return;
     setBuying(true);
     try {
-      const s = await buyHearts();
+      const s = await buyHearts(provider);
       setSession(s);
     } catch (e) {
       const msg =

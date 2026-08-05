@@ -60,7 +60,8 @@ export default function PaymentCardScreen() {
     if (!valid || paying) return;
     setPaying(true);
     try {
-      const s = await subscribePremium(plan.id as PremiumPlan);
+      // Écran carte bancaire dédié → provider 'stripe' (couverture mondiale).
+      const s = await subscribePremium(plan.id as PremiumPlan, 'stripe');
       setSession(s);
     } catch (e) {
       const msg = e instanceof ApiError && e.status !== 0 ? e.message : tr('paymentCard.errorMessage');
