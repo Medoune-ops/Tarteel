@@ -11,6 +11,7 @@
  */
 import { apiFetch } from './client';
 import { fetchMe } from './me';
+import type { PaymentProvider } from './billing';
 
 export interface GemLedgerEntry {
   id: string;
@@ -87,14 +88,18 @@ export async function buyDoubleXp() {
 export type GemPackId = 'p500' | 'p3000' | 'p7000';
 
 /**
- * POST /billing/gems — crée une session de paiement DexPay pour un pack de
- * gemmes. Ne crédite RIEN immédiatement : il faut ouvrir `paymentUrl` dans le
- * checkout DexPay (voir components/DexPayCheckout.tsx) puis poller
- * `getTransaction(reference)` (lib/api/billing.ts) jusqu'à confirmation.
+ * POST /billing/gems — crée une session de paiement (DexPay ou Stripe selon
+ * `provider`) pour un pack de gemmes. Ne crédite RIEN immédiatement : il faut
+ * ouvrir `paymentUrl` dans le checkout (voir components/DexPayCheckout.tsx)
+ * puis poller `getTransaction(reference)` (lib/api/billing.ts) jusqu'à
+ * confirmation.
  */
-export async function buyGemPack(pack: GemPackId): Promise<{ reference: string; paymentUrl: string }> {
+export async function buyGemPack(
+  pack: GemPackId,
+  provider: PaymentProvider,
+): Promise<{ reference: string; paymentUrl: string }> {
   return apiFetch<{ reference: string; paymentUrl: string }>('/billing/gems', {
     method: 'POST',
-    json: { pack },
+    json: { pack, provider },
   });
 }

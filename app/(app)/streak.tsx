@@ -10,6 +10,7 @@ import { useAppConfigStore } from '../../store/appConfigStore';
 import { fetchGems, fetchMe, repairStreak, type GemLedgerEntry, type CheckoutSession } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
+import { askPaymentProvider } from '../../utils/askPaymentProvider';
 import { useT } from '../../lib/i18n';
 
 // Évènements du ledger de gemmes liés à la SÉRIE (flammes). On ne garde que
@@ -67,9 +68,11 @@ export default function StreakScreen() {
   // Restaure la série cassée en payant — ouvre le checkout DexPay (carte).
   const onRepair = useCallback(async () => {
     if (repairing) return;
+    const provider = await askPaymentProvider();
+    if (!provider) return;
     setRepairing(true);
     try {
-      const s = await repairStreak();
+      const s = await repairStreak(provider);
       setSession(s);
     } catch (e) {
       const msg =

@@ -114,7 +114,20 @@
           "color": "#6B4DFF"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-alternate-app-icons",
+        [
+          {
+            "name": "Sun",
+            "ios": "./assets/icon-sun.png",
+            "android": {
+              "foregroundImage": "./assets/android-icon-foreground.png",
+              "backgroundImage": "./assets/android-icon-background-sun.png"
+            }
+          }
+        ]
+      ]
     ],
     "_widgetPlugin_activateForEASBuild": [
       "expo-widget",

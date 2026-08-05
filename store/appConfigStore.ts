@@ -24,6 +24,12 @@ interface AppConfigState {
    *  normal à cause d'une panne réseau ponctuelle. */
   loaded: boolean;
   paymentsEnabled: boolean;
+  /** Fail-CLOSED (contrairement à paymentsEnabled) : si /config est injoignable
+   *  au démarrage, on ne réclame JAMAIS un code de vérification — mieux vaut
+   *  laisser l'inscription passer que la bloquer sur une fonctionnalité pas
+   *  garantie disponible. Reste `false` tant que le serveur ne confirme pas
+   *  explicitement `true`. */
+  emailVerificationEnabled: boolean;
   /** Tarification réelle, modifiable depuis le back-office SANS redéploiement
    *  — voir back-office/Monétisation. Toujours ces valeurs de repli tant que
    *  /config n'a pas répondu. */
@@ -41,11 +47,17 @@ interface AppConfigState {
 export const useAppConfigStore = create<AppConfigState>((set) => ({
   loaded: false,
   paymentsEnabled: true,
+  emailVerificationEnabled: false,
   pricing: FALLBACK_PRICING,
   load: async () => {
     try {
       const cfg = await fetchAppConfig();
-      set({ paymentsEnabled: cfg.paymentsEnabled, pricing: cfg.pricing, loaded: true });
+      set({
+        paymentsEnabled: cfg.paymentsEnabled,
+        emailVerificationEnabled: cfg.emailVerificationEnabled,
+        pricing: cfg.pricing,
+        loaded: true,
+      });
     } catch {
       // Hors-ligne / erreur réseau au démarrage : on garde les défauts
       // (paiements visibles, prix de repli) plutôt que de bloquer l'app.

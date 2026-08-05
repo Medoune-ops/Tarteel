@@ -1,23 +1,27 @@
 /**
- * Billing — paiement carte via DexPay (DEXCHANGE PAY, https://dexpay.africa).
+ * Billing — paiement via DexPay (mobile money : Wave, Orange Money, MTN,
+ * Moov… — Afrique de l'Ouest/Centrale) ou Stripe (carte bancaire, mondial),
+ * choisi par l'utilisateur (voir `PaymentProvider` + app/(app)/payment-method.tsx).
  *
- * Flux ASYNCHRONE en 2 temps :
+ * Flux ASYNCHRONE en 2 temps, IDENTIQUE pour les deux providers :
  *  1. On demande au backend une "session de paiement" → il répond
  *     `{ reference, paymentUrl }`. Ça n'active RIEN côté serveur.
- *  2. Le front ouvre `paymentUrl` dans le SDK DexPay (WebView, voir
- *     components/DexPayCheckout.tsx). L'utilisateur paie sa carte DANS le
- *     popup DexPay — le numéro de carte ne transite jamais par notre code
- *     (conformité PCI-DSS : on reste hors du scope carte).
+ *  2. Le front ouvre `paymentUrl` dans une WebView (voir
+ *     components/DexPayCheckout.tsx, réutilisé pour Stripe Checkout — même
+ *     mécanique de redirection succès/échec). L'utilisateur paie DANS cette
+ *     page hébergée par le provider — le numéro de carte ne transite jamais
+ *     par notre code (conformité PCI-DSS : on reste hors du scope carte).
  *  3. Le paiement réel est confirmé par un WEBHOOK côté backend, qui fait
  *     passer la Transaction de `pending` à `success`/`failed`. Le front doit
- *     POLLER `getTransaction(reference)` jusqu'à voir ce changement — le
- *     callback `onSuccess` du SDK n'est qu'un signal UI, jamais une preuve
- *     de paiement.
+ *     POLLER `getTransaction(reference)` jusqu'à voir ce changement — la
+ *     redirection n'est qu'un signal UI, jamais une preuve de paiement.
  */
 import { apiFetch } from './client';
 import { fetchMe } from './me';
 
 export type PremiumPlan = 'mensuel' | 'annuel' | 'famille_mensuel' | 'famille_annuel';
+/** 'dexpay' = mobile money (Afrique de l'Ouest/Centrale), 'stripe' = carte bancaire (mondial). */
+export type PaymentProvider = 'dexpay' | 'stripe';
 
 /** Réponse commune à toutes les créations de session de paiement DexPay. */
 export interface CheckoutSession {
@@ -41,22 +45,22 @@ export interface Transaction {
   createdAt: string;
 }
 
-/** POST /billing/subscribe — crée une session de paiement DexPay pour l'abonnement Premium. */
-export async function subscribePremium(plan: PremiumPlan): Promise<CheckoutSession> {
+/** POST /billing/subscribe — crée une session de paiement (DexPay ou Stripe) pour l'abonnement Premium. */
+export async function subscribePremium(plan: PremiumPlan, provider: PaymentProvider): Promise<CheckoutSession> {
   return apiFetch<CheckoutSession>('/billing/subscribe', {
     method: 'POST',
-    json: { plan },
+    json: { plan, provider },
   });
 }
 
-/** POST /billing/repair-streak — crée une session de paiement pour restaurer la série cassée. */
-export async function repairStreak(): Promise<CheckoutSession> {
-  return apiFetch<CheckoutSession>('/billing/repair-streak', { method: 'POST' });
+/** POST /billing/repair-streak — crée une session de paiement (DexPay ou Stripe) pour restaurer la série cassée. */
+export async function repairStreak(provider: PaymentProvider): Promise<CheckoutSession> {
+  return apiFetch<CheckoutSession>('/billing/repair-streak', { method: 'POST', json: { provider } });
 }
 
-/** POST /billing/hearts — crée une session de paiement pour un refill complet des cœurs. */
-export async function buyHearts(): Promise<CheckoutSession> {
-  return apiFetch<CheckoutSession>('/billing/hearts', { method: 'POST' });
+/** POST /billing/hearts — crée une session de paiement (DexPay ou Stripe) pour un refill complet des cœurs. */
+export async function buyHearts(provider: PaymentProvider): Promise<CheckoutSession> {
+  return apiFetch<CheckoutSession>('/billing/hearts', { method: 'POST', json: { provider } });
 }
 
 /**

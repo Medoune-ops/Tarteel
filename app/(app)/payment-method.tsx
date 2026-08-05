@@ -3,14 +3,12 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { subscribePremium, type PremiumPlan, type CheckoutSession } from '../../lib/api/billing';
+import { subscribePremium, type PremiumPlan, type PaymentProvider, type CheckoutSession } from '../../lib/api/billing';
 import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
 import { buildPlans } from './subscription';
 import { useT } from '../../lib/i18n';
 import { useAppConfigStore } from '../../store/appConfigStore';
-
-type MethodId = 'apple' | 'google' | 'card';
 
 export default function PaymentMethodScreen() {
   const router = useRouter();
@@ -20,23 +18,24 @@ export default function PaymentMethodScreen() {
   const PLANS = buildPlans(tr, pricing);
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 
-  const METHODES: { id: MethodId; label: string; sub: string; icon: keyof typeof Feather.glyphMap; iconBg: string }[] = [
-    { id: 'apple',  label: tr('paymentMethod.applePay'),     sub: tr('paymentMethod.oneTapPayment'),  icon: 'smartphone',  iconBg: '#1B2333' },
-    { id: 'google', label: tr('paymentMethod.googlePay'),    sub: tr('paymentMethod.oneTapPayment'),  icon: 'smartphone',  iconBg: '#2C9CE0' },
-    { id: 'card',   label: tr('paymentMethod.cardLabel'),    sub: tr('paymentMethod.cardSub'),         icon: 'credit-card', iconBg: '#6B4DFF' },
+  // Deux providers réels : 'dexpay' = mobile money (Afrique de l'Ouest/
+  // Centrale uniquement), 'stripe' = carte bancaire (couverture mondiale).
+  // Le choix ici détermine directement quel provider traite le paiement —
+  // voir billing.service.ts côté backend.
+  const METHODES: { id: PaymentProvider; label: string; sub: string; icon: keyof typeof Feather.glyphMap; iconBg: string }[] = [
+    { id: 'dexpay', label: tr('paymentMethod.mobileMoney'),  sub: tr('paymentMethod.mobileMoneySub'), icon: 'smartphone',  iconBg: '#34C724' },
+    { id: 'stripe', label: tr('paymentMethod.cardLabel'),    sub: tr('paymentMethod.cardSub'),        icon: 'credit-card', iconBg: '#6B4DFF' },
   ];
 
-  const [method, setMethod] = useState<MethodId>('apple');
+  const [method, setMethod] = useState<PaymentProvider>('dexpay');
   const [paying, setPaying] = useState(false);
   const [session, setSession] = useState<CheckoutSession | null>(null);
 
-  // DexPay ne gère QUE la carte (choix produit acté) — quelle que soit la
-  // méthode affichée ici, le paiement réel passe par le checkout DexPay carte.
   const handleContinue = async () => {
     if (paying) return;
     setPaying(true);
     try {
-      const s = await subscribePremium(plan.id as PremiumPlan);
+      const s = await subscribePremium(plan.id as PremiumPlan, method);
       setSession(s);
     } catch (e) {
       const msg = e instanceof ApiError && e.status !== 0 ? e.message : tr('paymentMethod.errorMessage');
@@ -121,10 +120,8 @@ export default function PaymentMethodScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Feather name={method === 'card' ? 'arrow-right' : 'lock'} size={18} color="#fff" />
-              <Text style={styles.ctaText}>
-                {method === 'card' ? tr('paymentMethod.ctaContinue') : tr('paymentMethod.ctaConfirmPay')}
-              </Text>
+              <Feather name="arrow-right" size={18} color="#fff" />
+              <Text style={styles.ctaText}>{tr('paymentMethod.ctaContinue')}</Text>
             </>
           )}
         </Pressable>

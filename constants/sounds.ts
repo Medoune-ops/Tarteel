@@ -111,6 +111,10 @@ export function setRemotePlaybackRate(rate: number) {
 
 /** Coupe la lecture distante en cours et résout la promesse associée. */
 function clearRemote() {
+  // pause() AVANT remove() : sur iOS/Android, remove() seul peut laisser le
+  // buffer déjà en lecture continuer quelques centaines de ms (son audible
+  // après l'appui sur pause) — pause() coupe le son immédiatement.
+  try { remotePlayer?.pause(); } catch {}
   try { remotePlayer?.remove(); } catch {}
   remotePlayer = null;
   if (remoteResolve) {

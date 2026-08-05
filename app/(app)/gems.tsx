@@ -10,6 +10,7 @@ import { useAppConfigStore } from '../../store/appConfigStore';
 import { refillHeartsWithGems, buyStreakFreeze, buyDoubleXp, buyGemPack, type GemPackId } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
 import DexPayCheckout from '../../components/DexPayCheckout';
+import { askPaymentProvider } from '../../utils/askPaymentProvider';
 import { useT } from '../../lib/i18n';
 
 // Packs de gemmes (achat avec de l'argent, paiement mock côté backend).
@@ -100,9 +101,11 @@ export default function GemsScreen() {
   const onBuyPack = async (p: (typeof PACKS)[number]) => {
     const key = `pack-${p.id}`;
     if (busy) return;
+    const provider = await askPaymentProvider();
+    if (!provider) return;
     setBusy(key);
     try {
-      const s = await buyGemPack(p.id);
+      const s = await buyGemPack(p.id, provider);
       setPendingPackMsg({
         title: tr('gems.packOkTitle'),
         msg: tr('gems.packOkMsg', { count: p.gems.toLocaleString('fr-FR') }),

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, Pressable, ScrollView, StyleSheet, Alert,
-  TextInput, KeyboardAvoidingView, Platform,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStore } from '../../store/userStore';
 import { playSound } from '../../constants/sounds';
 import { streakReward } from '../../constants/rewards';
+import { setStreakGoalApi, claimStreakGoal } from '../../lib/api/rewards';
 import { useT } from '../../lib/i18n';
 
 const PRESETS = [7, 14, 30, 50, 100, 365];
@@ -19,8 +20,8 @@ export default function StreakGoalScreen() {
   const tr = useT();
   const streak = useUserStore((s) => s.streak);
   const streakGoal = useUserStore((s) => s.streakGoal);
-  const setStreakGoal = useUserStore((s) => s.setStreakGoal);
-  const claimStreakReward = useUserStore((s) => s.claimStreakReward);
+  const [saving, setSaving] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
   const defaultGoal = streakGoal ?? PRESETS.find((p) => p > streak) ?? 30;
   // Si l'objectif courant n'est pas un preset, on le met directement dans le champ libre.
@@ -39,19 +40,34 @@ export default function StreakGoalScreen() {
   const goalReached = streakGoal != null && streak >= streakGoal;
   const progress = streakGoal ? Math.min(1, streak / streakGoal) : 0;
 
-  const claim = () => {
-    const gained = claimStreakReward();
-    if (gained > 0) {
-      playSound('finish');
-      Alert.alert(tr('streakGoal.claimAlertTitle'), tr('streakGoal.claimAlertMsg', { n: gained }));
+  const claim = async () => {
+    if (claiming) return;
+    setClaiming(true);
+    try {
+      const gained = await claimStreakGoal();
+      if (gained > 0) {
+        playSound('finish');
+        Alert.alert(tr('streakGoal.claimAlertTitle'), tr('streakGoal.claimAlertMsg', { n: gained }));
+      }
+    } catch {
+      Alert.alert(tr('streakGoal.headerTitle'), tr('streakGoal.claimError'));
+    } finally {
+      setClaiming(false);
     }
   };
 
-  const save = () => {
-    if (!canSave) return;
-    setStreakGoal(target);
-    playSound('start');
-    router.back();
+  const save = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    try {
+      await setStreakGoalApi(target);
+      playSound('start');
+      router.back();
+    } catch {
+      Alert.alert(tr('streakGoal.headerTitle'), tr('streakGoal.saveError'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const pickPreset = (p: number) => {
@@ -92,9 +108,9 @@ export default function StreakGoalScreen() {
 
         {/* Cadeau à réclamer si atteint */}
         {goalReached && (
-          <Pressable style={styles.claimCard} onPress={claim}>
+          <Pressable style={[styles.claimCard, claiming && { opacity: 0.7 }]} onPress={claim} disabled={claiming}>
             <View style={styles.giftIcon}>
-              <Feather name="gift" size={24} color="#fff" />
+              {claiming ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="gift" size={24} color="#fff" />}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.claimTitle}>{tr('streakGoal.claimTitle')}</Text>
@@ -150,10 +166,14 @@ export default function StreakGoalScreen() {
           <Text style={styles.rewardPreviewValue}>{tr('streakGoal.rewardPreviewValue', { n: streakReward(target).toLocaleString('fr-FR') })}</Text>
         </View>
 
-        <Pressable style={[styles.cta, !canSave && styles.ctaDisabled]} onPress={save} disabled={!canSave}>
-          <Text style={styles.ctaText}>
-            {streakGoal === target ? tr('streakGoal.ctaKeep') : tr('streakGoal.ctaAim', { n: target })}
-          </Text>
+        <Pressable style={[styles.cta, (!canSave || saving) && styles.ctaDisabled]} onPress={save} disabled={!canSave || saving}>
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.ctaText}>
+              {streakGoal === target ? tr('streakGoal.ctaKeep') : tr('streakGoal.ctaAim', { n: target })}
+            </Text>
+          )}
         </Pressable>
 
         <View style={{ height: 24 }} />
