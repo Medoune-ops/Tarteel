@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Platform, View, Text, Pressable, ScrollView, StyleSheet, Linking, Image, ActivityIndicator } from 'react-native';
+import { Platform, View, Text, Pressable, ScrollView, StyleSheet, Linking, Image, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import HeaderPattern from '../../components/HeaderPattern';
 import DeviceStatusBar from '../../components/StatusBar';
 import Otter from '../../components/Otter';
 import { useTheme } from '../../utils/useTheme';
@@ -249,6 +250,7 @@ export default function WidgetsScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const { width } = useWindowDimensions();
   const streak = useUserStore((s) => s.streak);
   const xp = useUserStore((s) => s.xp);
   const currentLesson = useUserStore((s) => s.currentLesson);
@@ -265,12 +267,16 @@ export default function WidgetsScreen() {
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
 
-      <LinearGradient colors={['#F0820C', '#E8A800']} style={styles.header}>
+      <LinearGradient colors={['#FFA733', '#F0820C', '#D96E00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+        <HeaderPattern width={width} height={180} variant="grid" />
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
-        <Text style={styles.headerEmoji}>🧩</Text>
+        <View style={styles.headerMedallion}>
+          <Text style={styles.headerEmoji}>🧩</Text>
+        </View>
         <Text style={styles.headerTitle}>{tr('widgets.title')}</Text>
+        <View style={styles.headerRule} />
         <Text style={styles.headerSub}>{tr('widgets.subtitle')}</Text>
       </LinearGradient>
 
@@ -311,13 +317,23 @@ export default function WidgetsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { paddingTop: 16, paddingBottom: 22, paddingHorizontal: 24, alignItems: 'center' },
+  header: {
+    paddingTop: 16, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center',
+    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+  },
   backBtn: { position: 'absolute', top: 16, left: 16, zIndex: 2 },
-  headerEmoji: { fontSize: 34, marginTop: 6 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 4 },
+  headerMedallion: {
+    width: 68, height: 68, borderRadius: 34, marginTop: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
+  },
+  headerEmoji: { fontSize: 32 },
+  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 12 },
+  headerRule: { width: 46, height: 3, borderRadius: 2, marginTop: 8, backgroundColor: '#fff' },
   headerSub: {
     fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)',
-    marginTop: 6, textAlign: 'center', paddingHorizontal: 12,
+    marginTop: 8, textAlign: 'center', paddingHorizontal: 12,
   },
 
   content: { padding: 18 },

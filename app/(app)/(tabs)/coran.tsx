@@ -1,8 +1,9 @@
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../../components/StatusBar';
+import HeaderPattern from '../../../components/HeaderPattern';
 import { useTheme } from '../../../utils/useTheme';
 import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
 import { useT, type I18nKey } from '../../../lib/i18n';
@@ -30,6 +31,7 @@ export default function CoranScreen() {
   const T = useTheme();
   const tr = useT();
   const scrollRef = useScrollToTopOnTabPress();
+  const { width } = useWindowDimensions();
   const FAITS = [
     { val: '114',   lbl: tr('coran.factSourates') },
     { val: '6 236', lbl: tr('coran.factVersets') },
@@ -41,10 +43,27 @@ export default function CoranScreen() {
       <DeviceStatusBar />
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
-        <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.header}>
+        {/* Header — pièce maîtresse : calligraphie « القرآن » sur dégradé nuit,
+            trame d'étoiles, halo lumineux et stats en pastilles. */}
+        <LinearGradient
+          colors={['#8B5CF6', '#6B4DFF', '#3B2A8C']}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={styles.header}
+        >
+          <HeaderPattern width={width} height={280} variant="stars" opacity={0.16} />
+
+          {/* Calligraphie « القرآن » posée sur un halo lumineux, dans un
+              conteneur dédié pour que le cercle soit bien centré derrière. */}
+          <View style={styles.calliWrap}>
+            <View style={styles.halo} />
+            <Text style={styles.calligraphy} allowFontScaling={false}>القرآن</Text>
+          </View>
+
           <Text style={styles.headerTitle}>{tr('coran.headerTitle')}</Text>
+          <View style={styles.headerRule} />
           <Text style={styles.headerSub}>{tr('coran.headerSub')}</Text>
+
           <View style={styles.faits}>
             {FAITS.map((f, i) => (
               <View key={i} style={styles.fait}>
@@ -83,16 +102,35 @@ export default function CoranScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { paddingTop: 16, paddingBottom: 26, paddingHorizontal: 24 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#fff' },
-  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2, marginBottom: 20 },
-  faits: { flexDirection: 'row', gap: 12 },
+  header: {
+    paddingTop: 24, paddingBottom: 26, paddingHorizontal: 24, alignItems: 'center',
+    overflow: 'hidden', borderBottomLeftRadius: 30, borderBottomRightRadius: 30,
+  },
+  // Conteneur de la calligraphie : centre le texte ET le halo l'un sur l'autre.
+  calliWrap: {
+    marginTop: 8, alignItems: 'center', justifyContent: 'center',
+  },
+  // Halo lumineux centré DERRIÈRE la calligraphie (absolu dans calliWrap).
+  halo: {
+    position: 'absolute', width: 190, height: 110, borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.13)',
+  },
+  calligraphy: {
+    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 56, lineHeight: 80, color: '#fff',
+    textAlign: 'center', includeFontPadding: false,
+    textShadowColor: 'rgba(0,0,0,0.22)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
+  },
+  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 26, color: '#fff', textAlign: 'center', marginTop: 2 },
+  headerRule: { width: 50, height: 3, borderRadius: 2, marginTop: 8, backgroundColor: '#F6B100' },
+  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 8, marginBottom: 22, textAlign: 'center' },
+  faits: { flexDirection: 'row', gap: 12, alignSelf: 'stretch' },
   fait: {
-    flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14,
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 16,
     paddingVertical: 12, alignItems: 'center', gap: 2,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
   },
   faitVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff' },
-  faitLbl: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.8)' },
+  faitLbl: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.85)' },
   body: { padding: 18 },
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 6, marginBottom: 14 },
   card: {

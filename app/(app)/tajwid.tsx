@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView, Alert, useWindowDimensions } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import HeaderPattern from '../../components/HeaderPattern';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
@@ -20,6 +21,7 @@ export default function TajwidScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const { width } = useWindowDimensions();
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -94,13 +96,17 @@ export default function TajwidScreen() {
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
 
-      {/* Header */}
-      <LinearGradient colors={['#9A6CF5', '#7C3AED']} style={styles.header}>
+      {/* Header — dégradé + trame géométrique + médaillon */}
+      <LinearGradient colors={['#9A6CF5', '#7C3AED', '#5B21B6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+        <HeaderPattern width={width} height={180} variant="arcs" />
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
-        <Text style={styles.headerEmoji}>🎧</Text>
+        <View style={styles.headerMedallion}>
+          <Text style={styles.headerEmoji}>🎧</Text>
+        </View>
         <Text style={styles.headerTitle}>{tr('tajwid.headerTitle')}</Text>
+        <View style={styles.headerRule} />
         <Text style={styles.headerSub}>{tr('tajwid.headerSub')}</Text>
       </LinearGradient>
 
@@ -176,11 +182,21 @@ export default function TajwidScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { paddingTop: 16, paddingBottom: 22, paddingHorizontal: 24, alignItems: 'center' },
+  header: {
+    paddingTop: 16, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center',
+    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+  },
   backBtn: { position: 'absolute', top: 16, left: 16, zIndex: 2 },
-  headerEmoji: { fontSize: 34, marginTop: 6 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 4 },
-  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  headerMedallion: {
+    width: 68, height: 68, borderRadius: 34, marginTop: 4,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.32)',
+  },
+  headerEmoji: { fontSize: 32 },
+  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 12 },
+  headerRule: { width: 46, height: 3, borderRadius: 2, marginTop: 8, backgroundColor: '#F6B100' },
+  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 8 },
 
   stateBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },

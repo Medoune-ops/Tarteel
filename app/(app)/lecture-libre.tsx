@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, Pressable, TextInput, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, TextInput, FlatList, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import HeaderPattern from '../../components/HeaderPattern';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { useTheme } from '../../utils/useTheme';
@@ -26,6 +27,7 @@ export default function LectureLibreScreen() {
   const T = useTheme();
   const tr = useT();
   const language = useUserStore((s) => s.language);
+  const { width } = useWindowDimensions();
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -92,13 +94,17 @@ export default function LectureLibreScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
-      {/* Header */}
-      <LinearGradient colors={['#7C5CFF', '#6B4DFF']} style={styles.header}>
+      {/* Header — dégradé + trame géométrique + médaillon */}
+      <LinearGradient colors={['#8B5CF6', '#6B4DFF', '#4A2FB8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+        <HeaderPattern width={width} height={180} variant="waves" />
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
-        <Text style={styles.headerEmoji}>🎧</Text>
+        <View style={styles.headerMedallion}>
+          <Text style={styles.headerEmoji}>🎧</Text>
+        </View>
         <Text style={styles.headerTitle}>{tr('lectureLibre.headerTitle')}</Text>
+        <View style={styles.headerRule} />
         <Text style={styles.headerSub}>{tr('lectureLibre.headerSub')}</Text>
       </LinearGradient>
 
@@ -167,11 +173,21 @@ export default function LectureLibreScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { paddingTop: 54, paddingBottom: 22, paddingHorizontal: 24, alignItems: 'center' },
-  backBtn: { position: 'absolute', top: 54, left: 16 },
-  headerEmoji: { fontSize: 34 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 4 },
-  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  header: {
+    paddingTop: 52, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center',
+    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+  },
+  backBtn: { position: 'absolute', top: 54, left: 16, zIndex: 2 },
+  headerMedallion: {
+    width: 68, height: 68, borderRadius: 34, marginTop: 4,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.32)',
+  },
+  headerEmoji: { fontSize: 32 },
+  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 12 },
+  headerRule: { width: 46, height: 3, borderRadius: 2, marginTop: 8, backgroundColor: '#F6B100' },
+  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 8 },
 
   stateBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
