@@ -8,7 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import Toggle from '../../components/Toggle';
 import { deleteAccount } from '../../lib/api/me';
 import { ApiError } from '../../lib/api/client';
-import { API_URL } from '../../lib/api/config';
+import { WEBSITE_URL } from '../../lib/api/config';
 import { t as tr } from '../../lib/i18n';
 import { useUserStore } from '../../store/userStore';
 
@@ -136,9 +136,9 @@ export default function PrivacyScreen() {
         {/* Liens légaux */}
         <Text style={styles.sectionLabel}>{tr('privacy.sectionLegal')}</Text>
         <View style={styles.card}>
-          <Row iconBg="#8A8F99" icon="file-text" title={tr('privacy.privacyPolicy')} onPress={() => Linking.openURL(`${API_URL}/legal/privacy${langSuffix}`)} />
+          <Row iconBg="#8A8F99" icon="file-text" title={tr('privacy.privacyPolicy')} onPress={() => Linking.openURL(`${WEBSITE_URL}/confidentialite.html`)} />
           <View style={styles.divider} />
-          <Row iconBg="#8A8F99" icon="file" title={tr('privacy.termsOfUse')} onPress={() => Linking.openURL(`${API_URL}/legal/terms${langSuffix}`)} />
+          <Row iconBg="#8A8F99" icon="file" title={tr('privacy.termsOfUse')} onPress={() => Linking.openURL(`${WEBSITE_URL}/conditions.html`)} />
         </View>
 
         <View style={{ height: 24 }} />
