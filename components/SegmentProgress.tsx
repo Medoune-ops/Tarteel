@@ -5,6 +5,7 @@ interface SegmentProgressProps {
   filled: number;
   color?: string; 
   
+  color?: string;  // 🆕 Nouvelle prop pour la couleur du chapitre
 }
 
 /** Barre de progression à segments (config onboarding). */
@@ -15,6 +16,7 @@ export default function SegmentProgress({ total, filled, color = '#34C724' }: Se
         <View
           key={i}
           style={[styles.seg, { backgroundColor: i < filled ? color : '#DDE0E6' }]} 
+          style={[styles.seg, { backgroundColor: i < filled ? color : '#DDE0E6' }]}
         />
       ))}
     </View>
