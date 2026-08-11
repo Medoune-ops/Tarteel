@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, TextInput, ActivityIndicator, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
@@ -37,6 +37,14 @@ export default function VerifyEmailScreen() {
     }
   };
 
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(onboarding)/signup');
+    }
+  };
+
   const setDigit = (index: number, value: string) => {
     const clean = value.replace(/\D/g, '').slice(-1);
     setDigits((prev) => {
@@ -54,6 +62,7 @@ export default function VerifyEmailScreen() {
   };
 
   const submit = async () => {
+    Keyboard.dismiss();
     if (loading || code.length !== CODE_LENGTH || !activeEmail) return;
     setLoading(true);
     setError(null);
@@ -74,6 +83,7 @@ export default function VerifyEmailScreen() {
   };
 
   const resend = async () => {
+    Keyboard.dismiss();
     if (resending || !activeEmail) return;
     setResending(true);
     setError(null);
@@ -90,12 +100,19 @@ export default function VerifyEmailScreen() {
   };
 
   return (
-    <LinearGradient colors={['#1A0F3A', '#2D1A6E', '#6B4DFF']} style={styles.screen}>
-      <View style={styles.iconWrap}>
-        <View style={styles.iconCircle}>
-          <Feather name="mail" size={44} color="#fff" />
-        </View>
-      </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <LinearGradient colors={['#1A0F3A', '#2D1A6E', '#6B4DFF']} style={styles.screen}>
+          
+          <Pressable style={styles.backBtn} onPress={goBack} hitSlop={20}>
+            <Feather name="arrow-left" size={28} color="#fff" />
+          </Pressable>
+
+          <View style={styles.iconWrap}>
+            <View style={styles.iconCircle}>
+              <Feather name="mail" size={44} color="#fff" />
+            </View>
+          </View>
 
       <Text style={styles.title}>{tr('verifyEmail.title')}</Text>
       <Text style={styles.sub}>
@@ -139,12 +156,25 @@ export default function VerifyEmailScreen() {
           <Text style={styles.resendText}>{tr('verifyEmail.resend')}</Text>
         )}
       </Pressable>
-    </LinearGradient>
+        </LinearGradient>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', paddingHorizontal: 28, paddingTop: 110, paddingBottom: 38 },
+
+  backBtn: {
+    position: 'absolute',
+    top: 60,
+    left: 24,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   iconWrap: { marginBottom: 28 },
   iconCircle: {
