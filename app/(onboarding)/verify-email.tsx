@@ -10,15 +10,15 @@ import { useT } from '../../lib/i18n';
 const CODE_LENGTH = 4;
 
 /**
- * Vérification d'email après l'inscription — feature DÉSACTIVÉE par défaut
- * (voir useAppConfigStore.emailVerificationEnabled). Cet écran n'est atteint
- * que si signup.tsx y navigue explicitement, ce qui n'arrive que si le
- * serveur a confirmé le flag actif via GET /config.
+ * Vérification d'email après l'inscription — tant que user.emailVerified est
+ * false, l'utilisateur reste ici (register, splash, ou filet EMAIL_NOT_VERIFIED).
  */
 export default function VerifyEmailScreen() {
   const router = useRouter();
   const tr = useT();
   const { email, forceSetup } = useLocalSearchParams<{ email: string; forceSetup?: string }>();
+  const storeEmail = useUserStore((s) => s.email);
+  const activeEmail = (email || storeEmail || '').trim();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
@@ -54,14 +54,18 @@ export default function VerifyEmailScreen() {
   };
 
   const submit = async () => {
-    if (loading || code.length !== CODE_LENGTH || !email) return;
+    if (loading || code.length !== CODE_LENGTH || !activeEmail) return;
     setLoading(true);
     setError(null);
     try {
-      await verifyEmailCode(email, code);
+      await verifyEmailCode(activeEmail, code.trim());
       routeAfterVerify();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : tr('verifyEmail.errGeneric'));
+      if (e instanceof ApiError && e.code === 'TOKEN_EXPIRED') {
+        setError(tr('verifyEmail.codeExpired'));
+      } else {
+        setError(e instanceof ApiError ? e.message : tr('verifyEmail.errGeneric'));
+      }
       setDigits(Array(CODE_LENGTH).fill(''));
       inputs.current[0]?.focus();
     } finally {
@@ -70,11 +74,11 @@ export default function VerifyEmailScreen() {
   };
 
   const resend = async () => {
-    if (resending || !email) return;
+    if (resending || !activeEmail) return;
     setResending(true);
     setError(null);
     try {
-      await resendVerificationCode(email);
+      await resendVerificationCode(activeEmail);
       setResent(true);
       setDigits(Array(CODE_LENGTH).fill(''));
       inputs.current[0]?.focus();
@@ -96,7 +100,7 @@ export default function VerifyEmailScreen() {
       <Text style={styles.title}>{tr('verifyEmail.title')}</Text>
       <Text style={styles.sub}>
         {tr('verifyEmail.subBefore')}{'\n'}
-        <Text style={styles.emailHighlight}>{email ?? tr('verifyEmail.yourEmail')}</Text>
+        <Text style={styles.emailHighlight}>{activeEmail || tr('verifyEmail.yourEmail')}</Text>
       </Text>
 
       <View style={styles.codeRow}>

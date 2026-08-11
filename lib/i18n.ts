@@ -624,6 +624,7 @@ const fr = {
   'verifyEmail.yourEmail': 'ton adresse email',
   'verifyEmail.confirm': 'Confirmer',
   'verifyEmail.resend': 'Renvoyer le code',
+  'verifyEmail.codeExpired': 'Code expiré',
   'verifyEmail.resentConfirm': 'Un nouveau code a été envoyé.',
   'verifyEmail.errGeneric': 'Une erreur est survenue, réessaie.',
 
@@ -1716,6 +1717,7 @@ const en: Dict = {
   'verifyEmail.yourEmail': 'your email address',
   'verifyEmail.confirm': 'Confirm',
   'verifyEmail.resend': 'Resend code',
+  'verifyEmail.codeExpired': 'Code expired',
   'verifyEmail.resentConfirm': 'A new code has been sent.',
   'verifyEmail.errGeneric': 'Something went wrong, try again.',
 
