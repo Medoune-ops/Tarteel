@@ -12,6 +12,7 @@ import { API_URL, API_TIMEOUT_MS } from './config';
 import {
   getAccessToken, getRefreshToken, getDeviceId, setTokens, clearTokens,
 } from './tokens';
+import { redirectToVerifyEmail } from '../emailVerificationRedirect';
 
 /** Erreur normalisée renvoyée par l'API (status + message convivial + code). */
 export class ApiError extends Error {
@@ -27,8 +28,7 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Messages CONVIVIAUX par code d'erreur backend. On n'expose JAMAIS le message
+/** Messages CONVIVIAUX par code d'erreur backend. On n'expose JAMAIS le message
  * technique brut du serveur à l'utilisateur — on le remplace par un texte clair.
  */
 const FRIENDLY_BY_CODE: Record<string, string> = {
@@ -45,6 +45,9 @@ const FRIENDLY_BY_CODE: Record<string, string> = {
   RATE_LIMITED: 'Trop de tentatives. Réessaie dans un instant.',
   SERVICE_UNAVAILABLE: 'Service momentanément indisponible. Réessaie.',
   INTERNAL: 'Une erreur est survenue. Réessaie.',
+  EMAIL_NOT_VERIFIED: 'Confirme ton email pour continuer.',
+  INVALID_CODE: 'Code incorrect.',
+  TOO_MANY_ATTEMPTS: 'Trop de tentatives. Demande un nouveau code.',
 };
 
 /** Libellé lisible d'un champ pour les messages de validation. */
@@ -55,6 +58,9 @@ const FIELD_LABELS: Record<string, string> = {
   currentPassword: 'Le mot de passe actuel',
   displayName: 'Le nom complet',
   name: 'Le nom',
+  code: 'Le code',
+  verificationCode: 'Le code de vérification',
+  otp: 'Le code',
 };
 
 /**
@@ -68,6 +74,12 @@ function translateRule(field: string, rawMessage: string): string {
 
   if (field === 'email' && m.includes('email')) {
     return "L'adresse email n'est pas valide. Exemple : nom@exemple.com";
+  }
+  if (
+    (field === 'code' || field === 'verificationCode' || field === 'otp') &&
+    (m.includes('4') || m.includes('digit') || m.includes('code'))
+  ) {
+    return 'Le code doit contenir 4 chiffres.';
   }
   const min = m.match(/at least (\d+)/);
   if (min) return `${label} doit contenir au moins ${min[1]} caractères.`;
@@ -83,25 +95,46 @@ function translateRule(field: string, rawMessage: string): string {
 // Les champs internes (deviceId, refreshToken, timezone…) ne doivent JAMAIS
 // apparaître dans un message : l'utilisateur ne les connaît pas.
 const USER_FACING_FIELDS = new Set([
-  'email', 'password', 'newPassword', 'currentPassword', 'displayName', 'name', 'token',
+  'email', 'password', 'newPassword', 'currentPassword', 'displayName', 'name', 'token', 'code', 'verificationCode', 'otp',
 ]);
 
 /**
  * Construit un message PAR CHAMP à partir des détails Zod d'une VALIDATION_ERROR
- * (forme { details: { fieldErrors: { champ: [msg...] } } }). On ne nomme QUE les
- * champs saisis par l'utilisateur ; si seule une erreur sur un champ interne
- * existe (ex: deviceId), on renvoie null → message générique sûr.
+ * (forme { details: { fieldErrors: { champ: [msg...] }, formErrors: [...] } }).
+ * On ne nomme QUE les champs saisis par l'utilisateur ; si seule une erreur sur
+ * un champ interne existe (ex: deviceId), on renvoie null → message générique sûr.
  */
 function validationMessage(body: unknown): string | null {
-  const fieldErrors = (
-    body as { details?: { fieldErrors?: Record<string, string[]> } } | undefined
-  )?.details?.fieldErrors;
-  if (!fieldErrors) return null;
-  for (const [field, msgs] of Object.entries(fieldErrors)) {
-    if (USER_FACING_FIELDS.has(field) && msgs && msgs.length) {
-      return translateRule(field, msgs[0]);
+  const details = (
+    body as { details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] } } | undefined
+  )?.details;
+  if (!details) return null;
+
+  // 1. Erreurs par champ — on ne prend QUE les champs user-facing.
+  const { fieldErrors, formErrors } = details;
+  if (fieldErrors) {
+    for (const [field, msgs] of Object.entries(fieldErrors)) {
+      if (USER_FACING_FIELDS.has(field) && msgs && msgs.length) {
+        return translateRule(field, msgs[0]);
+      }
     }
   }
+
+  // 2. Erreurs au niveau de l'objet entier (superRefine sans path, ou messages
+  //    de contexte global) — on prend le premier s'il est court et lisible.
+  //    On exclut les messages techniques de Zod/Prisma/stack et les messages
+  //    internes Zod (unrecognized key, invalid_type…) qui sont des bugs dev.
+  if (formErrors && formErrors.length) {
+    const msg = formErrors[0];
+    if (
+      msg &&
+      msg.length < 120 &&
+      !/prisma|invocation|errorCode|at \w|\n|postgres|sql|stack|unrecognized|invalid_type|received |expected /i.test(msg)
+    ) {
+      return msg;
+    }
+  }
+
   return null;
 }
 
@@ -131,6 +164,16 @@ function friendlyMessage(
   if (code === 'VALIDATION_ERROR') {
     const byField = validationMessage(body);
     if (byField) return byField;
+    // Fallback : si le message serveur est humain et court (ex: un check
+    // métier expressé via AppError.validation()), on l'affiche directement.
+    if (
+      serverMessage &&
+      serverMessage.length < 120 &&
+      serverMessage !== 'Invalid input' && // message générique Zod — sans intérêt
+      !/prisma|invocation|errorCode|at \w|\n|postgres|sql|stack/i.test(serverMessage)
+    ) {
+      return serverMessage;
+    }
     return 'Certains champs sont invalides. Vérifie tes saisies.';
   }
   if (code && FRIENDLY_BY_CODE[code]) return FRIENDLY_BY_CODE[code];
@@ -169,13 +212,29 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
 let refreshPromise: Promise<boolean> | null = null;
 
 /**
+ * Flag positionné à true quand le dernier refresh a échoué spécifiquement
+ * parce que l'email n'est pas encore vérifié (403 EMAIL_NOT_VERIFIED).
+ * Dans ce cas les tokens sont conservés (ils sont structurellement valides).
+ * Exporté pour que bootstrapSession() puisse distinguer « non vérifié »
+ * de « session expirée/invalide ».
+ */
+export let lastRefreshWasEmailNotVerified = false;
+
+/**
  * Tente de rafraîchir l'access token via le refresh token stocké.
  * Renvoie true si réussi (nouveaux tokens enregistrés), false sinon.
+ *
+ * Cas EMAIL_NOT_VERIFIED : le backend refuse le refresh avec un 403 mais
+ * les tokens restent valides structurellement. On NE les efface PAS et on
+ * lève `lastRefreshWasEmailNotVerified` pour en informer l'appelant.
  */
 async function refreshTokens(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
+    // Réinitialise le flag à chaque tentative.
+    lastRefreshWasEmailNotVerified = false;
+
     const refreshToken = await getRefreshToken();
     if (!refreshToken) return false;
     const deviceId = await getDeviceId();
@@ -186,6 +245,19 @@ async function refreshTokens(): Promise<boolean> {
         body: JSON.stringify({ refreshToken, deviceId }),
       });
       if (!res.ok) {
+        // Cas particulier : l'email n'est pas encore vérifié.
+        // Le backend renvoie 403 { error: { code: 'EMAIL_NOT_VERIFIED' } }.
+        // On PRÉSERVE les tokens (ils sont toujours valides) et on signale
+        // l'état pour que bootstrapSession() retourne 'unverified'.
+        if (res.status === 403) {
+          try {
+            const body = await res.json() as { error?: { code?: string } };
+            if (body?.error?.code === 'EMAIL_NOT_VERIFIED') {
+              lastRefreshWasEmailNotVerified = true;
+              return false; // tokens conservés intentionnellement
+            }
+          } catch { /* body non-JSON → traitement normal ci-dessous */ }
+        }
         await clearTokens(); // refresh invalide/expiré → session terminée
         return false;
       }
@@ -266,6 +338,9 @@ export async function apiFetch<T = unknown>(
         : undefined;
     const code = envelope?.code;
     const message = friendlyMessage(res.status, code, envelope?.message, envelope);
+    if (code === 'EMAIL_NOT_VERIFIED') {
+      redirectToVerifyEmail({});
+    }
     throw new ApiError(res.status, message, envelope ?? data, code);
   }
 

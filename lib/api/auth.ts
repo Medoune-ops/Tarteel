@@ -13,10 +13,12 @@ import { useUserStore } from '../../store/userStore';
 import { registerForPushNotifications, unregisterPushToken } from '../pushNotifications';
 
 interface AuthResponse {
-  user: { id: string; email: string; displayName: string; [k: string]: unknown };
+  user: { id: string; email: string; displayName: string; emailVerified?: boolean; [k: string]: unknown };
   accessToken: string;
   refreshToken: string;
   refreshExpiresAt: string;
+  /** Présent uniquement si EMAIL_VERIFICATION_ENABLED côté serveur. */
+  verificationEmailSent?: boolean;
 }
 
 export interface RegisterInput {
@@ -32,8 +34,13 @@ export interface LoginInput {
   password: string;
 }
 
-/** Crée un compte, ouvre la session et hydrate le store. */
-export async function register(input: RegisterInput): Promise<void> {
+export interface RegisterResult {
+  email: string;
+  emailVerified: boolean;
+}
+
+/** Crée un compte, ouvre la session et hydrate le store si l'email est vérifié. */
+export async function register(input: RegisterInput): Promise<RegisterResult> {
   // Le backend exige `deviceId` (lie le refresh token à cette installation).
   const deviceId = await getDeviceId();
   const data = await apiFetch<AuthResponse>('/auth/register', {
@@ -41,16 +48,43 @@ export async function register(input: RegisterInput): Promise<void> {
     auth: false,
     json: { ...input, deviceId },
   });
-  await setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-  await fetchMe();
-  // Best-effort : ne bloque jamais l'inscription si l'utilisateur refuse la
-  // permission ou si on est sur Expo Go / un simulateur.
-  registerForPushNotifications();
+
+  // Quand EMAIL_VERIFICATION_ENABLED=true, le backend n'émet PAS de tokens au
+  // register — ils arrivent après POST /auth/verify-email. On ne stocke donc
+  // les tokens QUE s'ils sont présents.
+  if (data.accessToken && data.refreshToken) {
+    await setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+  }
+
+  // Strict : seul `true` compte comme vérifié. Si le flag serveur est actif,
+  // `emailVerified` est false et `verificationEmailSent` est présent.
+  const emailVerified =
+    data.user.emailVerified === true && data.verificationEmailSent === undefined;
+
+  if (emailVerified) {
+    await fetchMe();
+    registerForPushNotifications();
+  } else {
+    // Pas de GET /me possible — on stocke a minima l'email et le nom pour
+    // l'écran de vérification. Le flag pendingEmailVerification permet à
+    // bootstrapSession() de retrouver cet état après un redémarrage.
+    useUserStore.setState({
+      email: data.user.email,
+      name: typeof data.user.displayName === 'string' ? data.user.displayName : '',
+      pendingEmailVerification: true,
+    });
+  }
+
+  return { email: data.user.email, emailVerified };
 }
+
 
 /** Connexion : stocke les jetons et hydrate le store. */
 export async function login(input: LoginInput): Promise<void> {
   const deviceId = await getDeviceId();
+  // Email en store AVANT login : si EMAIL_NOT_VERIFIED, le filet de redirection
+  // a besoin de l'adresse pour ouvrir l'écran code.
+  useUserStore.setState({ email: input.email });
   const data = await apiFetch<AuthResponse>('/auth/login', {
     method: 'POST',
     auth: false,

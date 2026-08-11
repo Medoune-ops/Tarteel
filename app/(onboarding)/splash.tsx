@@ -7,6 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Otter from '../../components/Otter';
 import { bootstrapSession } from '../../lib/api';
+import { useUserStore } from '../../store/userStore';
 import { useT } from '../../lib/i18n';
 
 export default function SplashScreen() {
@@ -20,13 +21,21 @@ export default function SplashScreen() {
     let cancelled = false;
     // En parallèle de l'animation : tente de restaurer la session (token stocké).
     (async () => {
-      const connected = await bootstrapSession().catch(() => false);
+      const status = await bootstrapSession().catch(() => 'none' as const);
       if (cancelled) return;
       // On laisse l'animation se voir un minimum (~1.6s) avant de router.
       setTimeout(() => {
         if (cancelled) return;
-        if (connected) router.replace('/(app)/(tabs)/parcours');
-        else router.replace('/(onboarding)/onboarding-1');
+        if (status === 'connected') router.replace('/(app)/(tabs)/parcours');
+        else if (status === 'unverified') {
+          router.replace({
+            pathname: '/(onboarding)/verify-email',
+            params: {
+              email: useUserStore.getState().email,
+              forceSetup: useUserStore.getState().onboardingDone ? '0' : '1',
+            },
+          });
+        } else router.replace('/(onboarding)/onboarding-1');
       }, 1600);
     })();
 

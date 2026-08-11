@@ -58,6 +58,13 @@ interface UserState {
   /** Numéros (1–114) des sourates déjà mémorisées, cochées à l'onboarding.
    *  Transmis à saveOnboarding pour personnaliser le point de départ. */
   memorizedSourates: number[];
+  /**
+   * true après un register() quand EMAIL_VERIFICATION_ENABLED=true et que
+   * l'email n'a pas encore été confirmé. Permet à bootstrapSession() de
+   * retrouver l'écran de vérification après un redémarrage même sans tokens.
+   * Remis à false après verifyEmailCode() réussi.
+   */
+  pendingEmailVerification: boolean;
 
   /** Met à jour le profil local (nom/avatar) — ex: après PATCH /me. */
   setProfile: (p: { name?: string; avatar?: string | null }) => void;
@@ -160,6 +167,7 @@ const initialState = {
   currentLesson: 1,
   onboardingDone: false,
   memorizedSourates: [] as number[],
+  pendingEmailVerification: false,
 };
 
 /**

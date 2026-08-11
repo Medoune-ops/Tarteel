@@ -8,8 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
-import { useAppConfigStore } from '../../store/appConfigStore';
 import { login, register, ApiError } from '../../lib/api';
+import { redirectToVerifyEmail } from '../../lib/emailVerificationRedirect';
 import { useT } from '../../lib/i18n';
 
 type Mode = 'login' | 'signup';
@@ -130,31 +130,32 @@ export default function SignupScreen() {
     setLoading(true);
     try {
       if (isSignup) {
-        await register({
+        const result = await register({
           email: email.trim(),
           password,
           displayName: fullName.trim(),
           username: pseudo,
         });
+        // Compte non vérifié → rester sur l'écran code (pas d'entrée dans l'app).
+        if (!result.emailVerified) {
+          router.replace({
+            pathname: '/(onboarding)/verify-email',
+            params: { email: result.email, forceSetup: '1' },
+          });
+          return;
+        }
       } else {
         await login({ email: email.trim(), password });
-      }
-
-      // Vérification d'email : DÉSACTIVÉE par défaut (voir GET /config côté
-      // serveur). N'y va que si le flag est explicitement actif — sinon
-      // comportement inchangé (routage direct comme avant cette fonctionnalité).
-      if (isSignup && useAppConfigStore.getState().emailVerificationEnabled) {
-        router.replace({
-          pathname: '/(onboarding)/verify-email',
-          params: { email: email.trim(), forceSetup: '1' },
-        });
-        return;
       }
 
       // Inscription → toujours la config sur mesure (niveau → objectif → temps → plan).
       // Connexion → la config seulement si le profil n'a pas encore été configuré.
       routeAfterAuth(isSignup);
     } catch (e) {
+      if (e instanceof ApiError && e.code === 'EMAIL_NOT_VERIFIED') {
+        redirectToVerifyEmail({ email: email.trim(), forceSetup: '0' });
+        return;
+      }
       // Le client API produit déjà un message précis (champ + raison) à partir
       // de l'erreur backend. On l'affiche tel quel.
       setError(e instanceof ApiError ? e.message : tr('signup.errGeneric'));

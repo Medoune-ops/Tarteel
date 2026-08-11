@@ -2,7 +2,7 @@
 export { API_URL, API_TIMEOUT_MS } from './config';
 export { apiFetch, ApiError } from './client';
 export { register, login, logout } from './auth';
-export type { RegisterInput, LoginInput } from './auth';
+export type { RegisterInput, LoginInput, RegisterResult } from './auth';
 export { fetchMe, updateProfile, updateSettings, fetchActivity, fetchLearnedSourates, saveOnboarding, deleteAccount } from './me';
 export { fetchNotificationPrefs, updateNotificationPrefs } from './notifications';
 export type { NotificationPrefs } from './notifications';
@@ -35,6 +35,7 @@ export type {
 export { requestPasswordReset, confirmPasswordReset, changePassword } from './password';
 export { verifyEmailCode, resendVerificationCode } from './emailVerification';
 export { bootstrapSession } from './session';
+export type { SessionStatus } from './session';
 export { getDeviceId } from './tokens';
 export {
   fetchHousehold, createHousehold, deleteHousehold, leaveHousehold, transferHousehold,
