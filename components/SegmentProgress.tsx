@@ -12,7 +12,7 @@ export default function SegmentProgress({ total, filled }: SegmentProgressProps)
       {Array.from({ length: total }).map((_, i) => (
         <View
           key={i}
-          style={[styles.seg, { backgroundColor: i < filled ? '#34C724' : '#DDE0E6' }]}
+          style={[styles.seg, { backgroundColor: i < filled ? color : '#34C724' : '#DDE0E6' }]}
         />
       ))}
     </View>
