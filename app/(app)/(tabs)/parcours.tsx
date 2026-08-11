@@ -168,7 +168,21 @@ function SectionSkeleton({ theme }: { theme: ThemeColors }) {
   );
 }
 
-function CompletedNode({ align, icon, onPress }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen'; onPress: () => void }) {
+function CompletedNode({
+  align,
+  icon,
+  onPress,
+  color,
+  colorDark,
+}: {
+  align: 'left' | 'right' | 'center';
+  icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen';
+  onPress: () => void;
+  /** Couleur d'accent de la section (section.couleur). Retombe sur le vert par défaut si absente. */
+  color?: string;
+  /** Teinte foncée assortie, utilisée pour la bordure/l'ombre (section.degrade[1]). */
+  colorDark?: string;
+}) {
   const renderIcon = () => {
     if (icon === 'star') return <IconStar size={52} />;
     if (icon === 'book') return <IconBook size={52} />;
@@ -176,9 +190,23 @@ function CompletedNode({ align, icon, onPress }: { align: 'left' | 'right' | 'ce
     if (icon === 'mosque') return <MosqueIcon size={78} />;
     return <Text style={styles.kaabaEmoji}>🕋</Text>;
   };
+  const fill = color ?? '#34C724';
+  const dark = colorDark ?? '#1E7A15';
   return (
     <Pressable onPress={onPress} style={[styles.nodeRow, alignStyle(align)]}>
-      <View style={styles.completed}>{renderIcon()}</View>
+      <View
+        style={[
+          styles.completed,
+          {
+            backgroundColor: fill,
+            borderColor: dark,
+            borderBottomColor: dark,
+            shadowColor: dark,
+          },
+        ]}
+      >
+        {renderIcon()}
+      </View>
     </Pressable>
   );
 }
@@ -204,7 +232,19 @@ function LockedNode({ align, icon = 'kaaba', theme }: { align: 'left' | 'right' 
   );
 }
 
-function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?: string }) {
+function ActiveNode({
+  onPress,
+  label = 'Leçon',
+  color,
+  colorDark,
+}: {
+  onPress: () => void;
+  label?: string;
+  /** Couleur d'accent de la section (section.couleur). Retombe sur le vert par défaut si absente. */
+  color?: string;
+  /** Teinte foncée assortie, utilisée pour la bordure/l'ombre/le label (section.degrade[1]). */
+  colorDark?: string;
+}) {
   const scale = useSharedValue(1);
   useEffect(() => {
     scale.value = withRepeat(
@@ -217,18 +257,39 @@ function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?
   }, []);
   const ringStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
+  const fill = color ?? '#34C724';
+  const dark = colorDark ?? '#1E7A15';
+  const ring = withAlpha(fill, 0.15);
+  const ringBorder = withAlpha(fill, 0.35);
+
   return (
     <Pressable onPress={onPress} style={[styles.nodeRow, { marginRight: 30 }]}>
       <View style={{ alignItems: 'center' }}>
-        <Animated.View style={[styles.activeRing, ringStyle]}>
-          <View style={styles.activeInner}>
+        <Animated.View
+          style={[styles.activeRing, { backgroundColor: ring, borderColor: ringBorder }, ringStyle]}
+        >
+          <View
+            style={[
+              styles.activeInner,
+              { backgroundColor: fill, borderColor: dark, borderBottomColor: dark, shadowColor: dark },
+            ]}
+          >
             <MosqueIcon size={76} />
           </View>
         </Animated.View>
-        <Text style={styles.activeLabel}>{label}</Text>
+        <Text style={[styles.activeLabel, { color: dark }]}>{label}</Text>
       </View>
     </Pressable>
   );
+}
+
+/** Applique une opacité à une couleur hex (#RRGGBB) → rgba(). */
+function withAlpha(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Teintes d'étoiles dorées éclatantes — cyclées sur les croissants/étoiles/
@@ -1031,10 +1092,32 @@ function alignStyle(align: 'left' | 'right' | 'center') {
 }
 
 /** Dispatcher : rend le bon nœud selon son état (completed / active / locked). */
-function RenderNode({ node, onPress, theme }: { node: ParcoursNode; onPress: () => void; theme: ThemeColors }) {
-  if (node.state === 'active') return <ActiveNode label={node.label} onPress={onPress} />;
+function RenderNode({
+  node,
+  onPress,
+  theme,
+  color,
+  colorDark,
+}: {
+  node: ParcoursNode;
+  onPress: () => void;
+  theme: ThemeColors;
+  /** Couleur d'accent de la section courante (section.couleur). */
+  color?: string;
+  /** Teinte foncée assortie (section.degrade[1]). */
+  colorDark?: string;
+}) {
+  if (node.state === 'active') return <ActiveNode label={node.label} onPress={onPress} color={color} colorDark={colorDark} />;
   if (node.state === 'completed') {
-    return <CompletedNode align={node.align} icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'} onPress={onPress} />;
+    return (
+      <CompletedNode
+        align={node.align}
+        icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'}
+        onPress={onPress}
+        color={color}
+        colorDark={colorDark}
+      />
+    );
   }
   return <LockedNode align={node.align} icon={node.icon as 'note' | 'moon' | 'trophy' | 'kaaba' | 'crescent' | 'mosque'} theme={theme} />;
 }
@@ -1117,7 +1200,13 @@ const SectionBlock = memo(function SectionBlock({
                 : undefined
             }
           >
-            <RenderNode node={node} onPress={() => onLessonPress(node)} theme={theme} />
+            <RenderNode
+              node={node}
+              onPress={() => onLessonPress(node)}
+              theme={theme}
+              color={section.couleur}
+              colorDark={section.degrade[1]}
+            />
             {i < section.nodes.length - 1 && <Dashed color={theme.dashedLine} />}
           </View>
         ))}
