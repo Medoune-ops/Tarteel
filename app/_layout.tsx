@@ -18,6 +18,7 @@ import {
 import { preloadSounds } from '../constants/sounds';
 import { useTheme } from '../utils/useTheme';
 import { useAppConfigStore } from '../store/appConfigStore';
+import { useAudioDownloadStore } from '../store/audioDownloadStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -79,6 +80,12 @@ export default function RootLayout() {
   useEffect(() => {
     preloadSounds();
     useAppConfigStore.getState().load();
+    // Pré-téléchargement automatique du récitateur Sudais (mode Tajwid
+    // hors-ligne) — fire-and-forget, ne bloque jamais le démarrage de l'app.
+    const audioStore = useAudioDownloadStore.getState();
+    if (!audioStore.sudaisReady && !audioStore.isDownloading) {
+      audioStore.startDownload();
+    }
   }, []);
 
   useRefreshAppConfigOnForeground();
