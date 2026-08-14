@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
-import { login, register, ApiError } from '../../lib/api';
+import { login, register, resendVerificationCode, ApiError } from '../../lib/api';
 import { redirectToVerifyEmail } from '../../lib/emailVerificationRedirect';
 import { useT } from '../../lib/i18n';
 
@@ -102,14 +102,12 @@ export default function SignupScreen() {
       setError(tr('signup.errNameRequired'));
       return;
     }
-    // Pseudo public (affiché dans les ligues) : 3–20 caractères, lettres,
-    // chiffres, point ou underscore. Mêmes règles que le backend.
+    // Pseudo public (affiché dans les ligues) : facultatif — si vide, le
+    // classement retombe sur le nom complet (voir backend league.service.ts).
+    // Rempli : 3–20 caractères, lettres, chiffres, point ou underscore, mêmes
+    // règles que le backend.
     const pseudo = username.trim().toLowerCase();
-    if (isSignup && !pseudo) {
-      setError(tr('signup.errUsernameRequired'));
-      return;
-    }
-    if (isSignup && !/^[a-z0-9._]{3,20}$/.test(pseudo)) {
+    if (isSignup && pseudo && !/^[a-z0-9._]{3,20}$/.test(pseudo)) {
       setError(tr('signup.errUsernameFormat'));
       return;
     }
@@ -134,7 +132,7 @@ export default function SignupScreen() {
           email: email.trim(),
           password,
           displayName: fullName.trim(),
-          username: pseudo,
+          username: pseudo || undefined,
         });
         // Compte non vérifié → rester sur l'écran code (pas d'entrée dans l'app).
         if (!result.emailVerified) {
@@ -153,8 +151,33 @@ export default function SignupScreen() {
       routeAfterAuth(isSignup);
     } catch (e) {
       if (e instanceof ApiError && e.code === 'EMAIL_NOT_VERIFIED') {
-        redirectToVerifyEmail({ email: email.trim(), forceSetup: '0' });
+        redirectToVerifyEmail({ email: mail, forceSetup: '0' });
         return;
+      }
+      // Inscription interrompue à l'étape vérification : le compte existe déjà
+      // mais l'email n'est pas confirmé. On tente une connexion pour le détecter
+      // et renvoyer l'utilisateur sur l'écran code au lieu d'afficher « email pris ».
+      if (e instanceof ApiError && e.code === 'EMAIL_TAKEN' && isSignup) {
+        try {
+          await login({ email: mail, password });
+          routeAfterAuth(true);
+          return;
+        } catch (loginErr) {
+          if (loginErr instanceof ApiError && loginErr.code === 'EMAIL_NOT_VERIFIED') {
+            useUserStore.setState({
+              email: mail,
+              name: fullName.trim(),
+              pendingEmailVerification: true,
+            });
+            try {
+              await resendVerificationCode(mail);
+            } catch {
+              // Rate limit ou erreur réseau : l'utilisateur peut redemander sur l'écran code.
+            }
+            redirectToVerifyEmail({ email: mail, forceSetup: '1' });
+            return;
+          }
+        }
       }
       // Le client API produit déjà un message précis (champ + raison) à partir
       // de l'erreur backend. On l'affiche tel quel.
