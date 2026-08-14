@@ -48,6 +48,10 @@ export const audioControls = {
   skipToPrevious: () => { TrackPlayer?.skipToPrevious?.()?.catch?.(() => {}); },
   setRate: (r: number) => { TrackPlayer?.setRate?.(r)?.catch?.(() => {}); },
   setRepeatMode: (m: number) => { TrackPlayer?.setRepeatMode?.(m)?.catch?.(() => {}); },
+  stop: () => {
+    currentSourates = [];
+    TrackPlayer?.reset?.()?.catch?.(() => {});
+  },
 };
 
 // File en cours (mémorisée pour changer de récitateur sans perdre la position).
