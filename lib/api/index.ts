@@ -47,3 +47,5 @@ export type {
 } from './household';
 export { fetchAppConfig } from './appConfig';
 export type { AppConfig, AppConfigPricing } from './appConfig';
+export { fetchSudaisManifest, sudaisFileUrl } from './audio';
+export type { SudaisManifest, SudaisManifestEntry } from './audio';
