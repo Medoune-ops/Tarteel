@@ -1,17 +1,21 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView, Alert, useWindowDimensions } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import NetInfo from '@react-native-community/netinfo';
 import HeaderPattern from '../../components/HeaderPattern';
 import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/reciters';
-import { playSurates, AUDIO_AVAILABLE } from '../../constants/trackPlayer';
+import { playSurates, AUDIO_AVAILABLE, refreshLocalSudaisCache } from '../../constants/trackPlayer';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
+import { useAudioDownloadStore } from '../../store/audioDownloadStore';
 import { useT } from '../../lib/i18n';
+
+const ALL_SOURATE_NUMBERS = Array.from({ length: 114 }, (_, i) => i + 1);
 
 // « Écoute du Coran » (badge Tajwid) — catalogue des 114 sourates en audio
 // complet. On choisit un récitateur puis une sourate : la lecture démarre et se
@@ -27,6 +31,8 @@ export default function TajwidScreen() {
   const [error, setError] = useState(false);
   const [reciterId, setReciterId] = useState(DEFAULT_RECITER_ID);
   const [starting, setStarting] = useState<number | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const sudaisReady = useAudioDownloadStore((s) => s.sudaisReady);
 
   const load = useCallback(async () => {
     setError(false);
@@ -37,7 +43,28 @@ export default function TajwidScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    load();
+    if (sudaisReady) refreshLocalSudaisCache(ALL_SOURATE_NUMBERS);
+  }, [load, sudaisReady]));
+
+  // Détection réseau : hors-ligne, seul Sudais (déjà téléchargé) est jouable.
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(state.isConnected === false || state.isInternetReachable === false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Force Sudais hors-ligne ; le choix normal des 4 récitateurs revient dès
+  // que la connexion est détectée à nouveau (pas de dép. reciterId : on ne
+  // veut pas re-déclencher ce forçage à chaque changement manuel de l'utilisateur).
+  useEffect(() => {
+    if (isOffline && sudaisReady && reciterId !== 'sudais') {
+      setReciterId('sudais');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOffline, sudaisReady]);
 
   // Ordre d'affichage : Al-Fatiha en tête, puis décroissant (114 → 2).
   const ordered = useMemo(() => (sourates ? fatihaFirstThenDesc(sourates) : []), [sourates]);
@@ -136,15 +163,19 @@ export default function TajwidScreen() {
             </View>
           )}
 
-          {/* Choix du récitateur */}
+          {/* Choix du récitateur — hors-ligne, seul Sudais (pré-téléchargé)
+              est proposé ; le choix complet revient dès que la connexion est
+              détectée à nouveau. */}
           <View style={styles.reciterWrap}>
-            <Text style={[styles.reciterLabel, { color: T.textSecondary }]}>{tr('tajwid.reciter')}</Text>
+            <Text style={[styles.reciterLabel, { color: T.textSecondary }]}>
+              {isOffline ? tr('tajwid.offlineReciter') : tr('tajwid.reciter')}
+            </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.reciterRow}
             >
-              {RECITERS.map((r) => {
+              {(isOffline ? RECITERS.filter((r) => r.id === 'sudais') : RECITERS).map((r) => {
                 const active = r.id === reciterId;
                 return (
                   <Pressable

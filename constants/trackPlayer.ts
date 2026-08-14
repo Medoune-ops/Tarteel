@@ -7,7 +7,9 @@
  * `AUDIO_AVAILABLE` vaut alors false et les écrans affichent « dev build requis »
  * au lieu de crasher toute l'app. Tous les accès à RNTP passent par ce module.
  */
+import * as FileSystem from 'expo-file-system/legacy';
 import { surahAudioUrl, DEFAULT_RECITER_ID, type Reciter } from './reciters';
+import { localSudaisPath } from './audioDownload';
 
 export interface SourateLite { numero: number; nom: string; nomArabe: string }
 export interface QueueTrack { id: string; url: string; title: string; artist: string; album: string }
@@ -95,15 +97,35 @@ export async function setupTrackPlayer(): Promise<void> {
   isSetup = true;
 }
 
+// Cache mémoire des sourates Sudais confirmées présentes en local (mode
+// hors-ligne). Rempli de façon asynchrone par refreshLocalSudaisCache() —
+// buildQueue reste synchrone (pas de coût I/O par sourate à chaque appel).
+let localSudaisAvailable = new Set<number>();
+
+/** À appeler après un téléchargement réussi et au focus de l'écran Tajwid. */
+export async function refreshLocalSudaisCache(sourateNumbers: number[]): Promise<void> {
+  const checks = await Promise.all(
+    sourateNumbers.map(async (n) => {
+      const info = await FileSystem.getInfoAsync(localSudaisPath(n));
+      return info.exists ? n : null;
+    }),
+  );
+  localSudaisAvailable = new Set(checks.filter((n): n is number => n != null));
+}
+
 /** Construit la file d'attente (les sourates fournies) pour un récitateur. */
 export function buildQueue(sourates: SourateLite[], reciter: Reciter): QueueTrack[] {
-  return sourates.map((s) => ({
-    id: String(s.numero),
-    url: surahAudioUrl(reciter.baseUrl, s.numero),
-    title: `${s.numero}. ${s.nom}`,
-    artist: reciter.nom,
-    album: 'Coran',
-  }));
+  return sourates.map((s) => {
+    const useLocal = reciter.id === 'sudais' && localSudaisAvailable.has(s.numero);
+    const url = useLocal ? `file://${localSudaisPath(s.numero)}` : surahAudioUrl(reciter.baseUrl, s.numero);
+    return {
+      id: String(s.numero),
+      url,
+      title: `${s.numero}. ${s.nom}`,
+      artist: reciter.nom,
+      album: 'Coran',
+    };
+  });
 }
 
 /** Charge toutes les `sourates` (récitateur `reciter`) et démarre à `startIndex`. */
