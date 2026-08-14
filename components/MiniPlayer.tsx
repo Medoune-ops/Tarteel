@@ -53,6 +53,9 @@ export default function MiniPlayer() {
         <Pressable hitSlop={10} onPress={(e) => { e.stopPropagation(); audioControls.skipToNext(); }}>
           <Feather name="skip-forward" size={20} color={T.text} />
         </Pressable>
+        <Pressable hitSlop={10} onPress={(e) => { e.stopPropagation(); audioControls.stop(); }}>
+          <Feather name="x" size={20} color={T.textSecondary} />
+        </Pressable>
       </View>
     </Pressable>
   );
