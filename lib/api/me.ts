@@ -41,6 +41,9 @@ export interface MeResponse {
   xpGained?: number;
   /** true si le boost ×2 XP (100 gemmes) était actif pendant CETTE complétion. */
   doubleXpWasActive?: boolean;
+  /** Id de la prochaine leçon du parcours (cuid), ou null si c'était la
+   *  dernière. Présent uniquement sur POST /lesson/complete. */
+  nextLessonId?: string | null;
 }
 
 export interface OnboardingInput {
