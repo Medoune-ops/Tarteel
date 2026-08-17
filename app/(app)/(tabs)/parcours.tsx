@@ -142,6 +142,17 @@ function Dashed({ color }: { color: string }) {
   return <View style={[styles.dashed, { borderColor: color }]} />;
 }
 
+/** Assombrit (percent < 0) ou éclaircit (percent > 0) un hex de la couleur de section,
+ *  pour dériver les bordures 3D (bord + ombre) des badges à partir d'une seule teinte. */
+function shadeColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const r = Math.min(255, Math.max(0, (num >> 16) + amt));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + amt));
+  const b = Math.min(255, Math.max(0, (num & 0x0000ff) + amt));
+  return `#${(0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)}`;
+}
+
 /** Carte grise animée (pulsation) affichée pendant le chargement du parcours. */
 function SectionSkeleton({ theme }: { theme: ThemeColors }) {
   const opacity = useSharedValue(0.5);
@@ -168,7 +179,7 @@ function SectionSkeleton({ theme }: { theme: ThemeColors }) {
   );
 }
 
-function CompletedNode({ align, icon, onPress }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen'; onPress: () => void }) {
+function CompletedNode({ align, icon, onPress, color }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen'; onPress: () => void; color: string }) {
   const renderIcon = () => {
     if (icon === 'star') return <IconStar size={52} />;
     if (icon === 'book') return <IconBook size={52} />;
@@ -178,7 +189,12 @@ function CompletedNode({ align, icon, onPress }: { align: 'left' | 'right' | 'ce
   };
   return (
     <Pressable onPress={onPress} style={[styles.nodeRow, alignStyle(align)]}>
-      <View style={styles.completed}>{renderIcon()}</View>
+      <View style={[styles.completed, {
+        backgroundColor: color,
+        borderColor: shadeColor(color, -18),
+        borderBottomColor: shadeColor(color, -35),
+        shadowColor: shadeColor(color, -35),
+      }]}>{renderIcon()}</View>
     </Pressable>
   );
 }
@@ -204,7 +220,7 @@ function LockedNode({ align, icon = 'kaaba', theme }: { align: 'left' | 'right' 
   );
 }
 
-function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?: string }) {
+function ActiveNode({ onPress, label = 'Leçon', color }: { onPress: () => void; label?: string; color: string }) {
   const scale = useSharedValue(1);
   useEffect(() => {
     scale.value = withRepeat(
@@ -220,12 +236,20 @@ function ActiveNode({ onPress, label = 'Leçon' }: { onPress: () => void; label?
   return (
     <Pressable onPress={onPress} style={[styles.nodeRow, { marginRight: 30 }]}>
       <View style={{ alignItems: 'center' }}>
-        <Animated.View style={[styles.activeRing, ringStyle]}>
-          <View style={styles.activeInner}>
+        <Animated.View style={[styles.activeRing, ringStyle, {
+          backgroundColor: `${color}26`,
+          borderColor: `${color}59`,
+        }]}>
+          <View style={[styles.activeInner, {
+            backgroundColor: color,
+            borderColor: shadeColor(color, -18),
+            borderBottomColor: shadeColor(color, -35),
+            shadowColor: shadeColor(color, -35),
+          }]}>
             <MosqueIcon size={76} />
           </View>
         </Animated.View>
-        <Text style={styles.activeLabel}>{label}</Text>
+        <Text style={[styles.activeLabel, { color: shadeColor(color, -35) }]}>{label}</Text>
       </View>
     </Pressable>
   );
@@ -1030,11 +1054,12 @@ function alignStyle(align: 'left' | 'right' | 'center') {
   return {};
 }
 
-/** Dispatcher : rend le bon nœud selon son état (completed / active / locked). */
-function RenderNode({ node, onPress, theme }: { node: ParcoursNode; onPress: () => void; theme: ThemeColors }) {
-  if (node.state === 'active') return <ActiveNode label={node.label} onPress={onPress} />;
+/** Dispatcher : rend le bon nœud selon son état (completed / active / locked).
+ *  `color` = couleur de la section parente, reprise par les badges completed/active. */
+function RenderNode({ node, onPress, theme, color }: { node: ParcoursNode; onPress: () => void; theme: ThemeColors; color: string }) {
+  if (node.state === 'active') return <ActiveNode label={node.label} onPress={onPress} color={color} />;
   if (node.state === 'completed') {
-    return <CompletedNode align={node.align} icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'} onPress={onPress} />;
+    return <CompletedNode align={node.align} icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'} onPress={onPress} color={color} />;
   }
   return <LockedNode align={node.align} icon={node.icon as 'note' | 'moon' | 'trophy' | 'kaaba' | 'crescent' | 'mosque'} theme={theme} />;
 }
@@ -1117,7 +1142,7 @@ const SectionBlock = memo(function SectionBlock({
                 : undefined
             }
           >
-            <RenderNode node={node} onPress={() => onLessonPress(node)} theme={theme} />
+            <RenderNode node={node} onPress={() => onLessonPress(node)} theme={theme} color={section.couleur} />
             {i < section.nodes.length - 1 && <Dashed color={theme.dashedLine} />}
           </View>
         ))}
@@ -1522,11 +1547,11 @@ const styles = StyleSheet.create({
   path: { alignItems: 'center', paddingVertical: 40, width: '100%' },
   nodeRow: { alignItems: 'center' },
   completed: {
-    width: 96, height: 96, borderRadius: 48, backgroundColor: '#34C724',
+    width: 96, height: 96, borderRadius: 48,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: '#2A9E1C',
-    borderBottomWidth: 8, borderBottomColor: '#1E7A15',
-    shadowColor: '#1E7A15', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 0, elevation: 6,
+    borderWidth: 3,
+    borderBottomWidth: 8,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 0, elevation: 6,
   },
   locked: {
     width: 88, height: 88, borderRadius: 44, backgroundColor: '#D5D8DF',
@@ -1535,18 +1560,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 8, borderBottomColor: '#9EA3AC',
   },
   activeRing: {
-    width: 122, height: 122, borderRadius: 61, backgroundColor: 'rgba(52,199,36,0.15)',
+    width: 122, height: 122, borderRadius: 61,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: 'rgba(52,199,36,0.35)',
+    borderWidth: 3,
   },
   activeInner: {
-    width: 96, height: 96, borderRadius: 48, backgroundColor: '#34C724',
+    width: 96, height: 96, borderRadius: 48,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: '#2A9E1C',
-    borderBottomWidth: 8, borderBottomColor: '#1E7A15',
-    shadowColor: '#1E7A15', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 0, elevation: 6,
+    borderWidth: 3,
+    borderBottomWidth: 8,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 0, elevation: 6,
   },
-  activeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#2A9E1C', marginTop: 8 },
+  activeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, marginTop: 8 },
   kaabaEmoji: { fontSize: 46 },
   kaabaEmojiLocked: { fontSize: 44, opacity: 0.45 },
   dashed: {
