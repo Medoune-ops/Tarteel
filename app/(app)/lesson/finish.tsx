@@ -38,6 +38,8 @@ export default function FinishScreen() {
   // Valeurs affichées : par défaut, l'état courant du store (déjà hydraté).
   const streak = useUserStore((s) => s.streak);
   const precision = useUserStore((s) => s.precision);
+  const isPremium = useUserStore((s) => s.isPremium);
+  const hearts = useUserStore((s) => s.hearts);
 
   const total = Number(params.total) || 0;
   const correct = Number(params.correct) || 0;
@@ -50,6 +52,10 @@ export default function FinishScreen() {
   // actif, une info qu'un simple diff avant/après ne peut pas donner.
   const [xpGained, setXpGained] = useState<number | null>(null);
   const [doubleXpWasActive, setDoubleXpWasActive] = useState(false);
+  // Prochaine leçon du parcours (renvoyée par le serveur) — permet d'enchaîner
+  // directement sans repasser par l'écran parcours. null = dernière leçon /
+  // pas encore connue (avant réponse serveur) / échec de complétion.
+  const [nextLessonId, setNextLessonId] = useState<string | null>(null);
   // Évite un double appel (StrictMode / re-render).
   const completedRef = useRef(false);
 
@@ -67,6 +73,7 @@ export default function FinishScreen() {
         console.log('[finish] completeLesson OK', data);
         setXpGained(data.xpGained ?? 0);
         setDoubleXpWasActive(!!data.doubleXpWasActive);
+        setNextLessonId(data.nextLessonId ?? null);
         // Leçon validée → parcours, classement et calendrier d'activité ont
         // changé : forcer un vrai re-fetch au prochain affichage.
         invalidate('sections');
@@ -78,6 +85,17 @@ export default function FinishScreen() {
         /* hors-ligne : la progression reste locale, resync au prochain /me */
       });
   }, []);
+
+  // Enchaîne sur la leçon suivante si elle existe et que l'utilisateur peut
+  // encore jouer (Premium ou cœurs restants) — sinon, comportement historique
+  // (retour au parcours, qui gère lui-même l'écran "plus de cœurs").
+  const goNext = () => {
+    if (nextLessonId && (isPremium || hearts > 0)) {
+      router.replace({ pathname: '/(app)/lesson/play', params: { lessonId: nextLessonId } });
+    } else {
+      router.replace('/(app)/(tabs)/parcours');
+    }
+  };
 
   const otterScale = useSharedValue(0);
   const otterY     = useSharedValue(0);
@@ -203,7 +221,7 @@ export default function FinishScreen() {
       <View style={{ flex: 1 }} />
 
       <Animated.View entering={FadeInDown.delay(1300).springify()} style={{ width: '100%' }}>
-        <Pressable style={styles.cta} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
+        <Pressable style={styles.cta} onPress={goNext}>
           <Text style={styles.ctaLabel}>{tr('finish.continue')}</Text>
         </Pressable>
       </Animated.View>
