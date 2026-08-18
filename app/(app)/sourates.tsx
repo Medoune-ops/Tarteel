@@ -2,8 +2,15 @@ import { useState, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { fetchLearnedSourates, type SourateListItem } from '../../lib/api';
 import { useT } from '../../lib/i18n';
+
+// Couleurs par défaut (vert) quand la sourate n'a pas de couleur de section
+// (comptes anciens / contenu legacy sans leçon taguée — voir learnedSourates.ts
+// côté backend).
+const FALLBACK_COLOR = '#2A9E1C';
+const FALLBACK_GRADIENT: [string, string] = ['#E2F5E1', '#E2F5E1'];
 
 // Badge « Sourates apprises » (profil) — LECTURE SEULE : liste uniquement les
 // sourates que l'utilisateur a apprises en intégralité dans le parcours (toutes
@@ -84,18 +91,27 @@ export default function SouratesScreen() {
 
           {/* Liste (lecture seule — non cliquable) */}
           <View style={styles.list}>
-            {sourates.map((s, i) => (
-              <View key={s.numero} style={[styles.row, i > 0 && styles.divider]}>
-                <View style={styles.numBadge}>
-                  <Text style={styles.numText}>{s.numero}</Text>
+            {sourates.map((s, i) => {
+              const gradient = s.degrade ?? FALLBACK_GRADIENT;
+              const textColor = s.couleur ?? FALLBACK_COLOR;
+              return (
+                <View key={s.numero} style={[styles.row, i > 0 && styles.divider]}>
+                  <LinearGradient
+                    colors={gradient}
+                    style={styles.numBadge}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Text style={[styles.numText, { color: textColor }]}>{s.numero}</Text>
+                  </LinearGradient>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.nom}>{s.nom}</Text>
+                    <Text style={styles.versets}>{tr('sourates.versetsCount', { n: s.nombreVersets })}</Text>
+                  </View>
+                  <Text style={styles.arabe}>{s.nomArabe}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.nom}>{s.nom}</Text>
-                  <Text style={styles.versets}>{tr('sourates.versetsCount', { n: s.nombreVersets })}</Text>
-                </View>
-                <Text style={styles.arabe}>{s.nomArabe}</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
 
           <Text style={styles.note}>
@@ -140,7 +156,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14 },
   divider: { borderTopWidth: 1, borderTopColor: '#F0F1F4' },
   numBadge: {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: '#E2F5E1',
+    width: 40, height: 40, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
   numText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, color: '#2A9E1C' },
