@@ -15,17 +15,9 @@
       "bundleIdentifier": "com.tarteel.app",
       "infoPlist": {
         "UIBackgroundModes": [
-          "audio",
           "audio"
         ],
         "LSApplicationQueriesSchemes": [
-          "wave",
-          "orangemoney",
-          "orange-money",
-          "mtnmomo",
-          "moovmoney",
-          "freemoney",
-          "wizall",
           "wave",
           "orangemoney",
           "orange-money",
@@ -43,7 +35,6 @@
       },
       "entitlements": {
         "com.apple.security.application-groups": [
-          "group.com.tarteel.app",
           "group.com.tarteel.app"
         ]
       }
@@ -148,6 +139,12 @@
         "projectId": "cff220aa-194a-4aa9-8133-09d153db68d1"
       }
     },
-    "owner": "medouness-team"
+    "owner": "medouness-team",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cff220aa-194a-4aa9-8133-09d153db68d1"
+    }
   }
 }
