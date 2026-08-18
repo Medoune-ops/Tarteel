@@ -41,6 +41,13 @@ export async function bootstrapSession(): Promise<SessionStatus> {
     // false → fetchMe() échoue avec UNAUTHENTICATED. On distingue ce cas
     // grâce au flag exporté par client.ts.
     if (lastRefreshWasEmailNotVerified) return 'unverified';
+    // Cas 3 : HORS-LIGNE (status 0 = fetch n'a jamais joint le serveur, cf.
+    // client.ts). Ce n'est PAS une session invalide : les tokens sont intacts
+    // (refreshTokens() ne les efface jamais sur erreur réseau) et le store est
+    // persisté (AsyncStorage). Renvoyer 'none' ici déconnectait visuellement un
+    // utilisateur déjà connecté dès qu'il ouvrait l'app sans réseau. On le
+    // laisse entrer avec son état en cache ; /me resyncera au retour du réseau.
+    if (e instanceof ApiError && e.status === 0) return 'connected';
     return 'none'; // session invalide/expirée → rester sur l'onboarding
   }
 }
