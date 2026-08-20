@@ -7,9 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "tarteel",
-    "splash": {
-      "backgroundColor": "#6B4DFF"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.tarteel.app",
@@ -106,6 +103,15 @@
         }
       ],
       "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#6B4DFF"
+        }
+      ],
       [
         "expo-alternate-app-icons",
         [
