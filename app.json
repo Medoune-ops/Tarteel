@@ -116,6 +116,30 @@
               "foregroundImage": "./assets/android-icon-foreground.png",
               "backgroundImage": "./assets/android-icon-background-sun.png"
             }
+          },
+          {
+            "name": "Duo",
+            "ios": "./assets/icon-duo.png",
+            "android": {
+              "foregroundImage": "./assets/android-icon-foreground-duo.png",
+              "backgroundImage": "./assets/android-icon-background-duo.png"
+            }
+          },
+          {
+            "name": "Fille",
+            "ios": "./assets/icon-fille.png",
+            "android": {
+              "foregroundImage": "./assets/android-icon-foreground-fille.png",
+              "backgroundImage": "./assets/android-icon-background-fille.png"
+            }
+          },
+          {
+            "name": "Garcon",
+            "ios": "./assets/icon-garcon.png",
+            "android": {
+              "foregroundImage": "./assets/android-icon-foreground-garcon.png",
+              "backgroundImage": "./assets/android-icon-background-garcon.png"
+            }
           }
         ]
       ]
