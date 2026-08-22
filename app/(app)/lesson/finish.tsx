@@ -38,8 +38,6 @@ export default function FinishScreen() {
   // Valeurs affichées : par défaut, l'état courant du store (déjà hydraté).
   const streak = useUserStore((s) => s.streak);
   const precision = useUserStore((s) => s.precision);
-  const isPremium = useUserStore((s) => s.isPremium);
-  const hearts = useUserStore((s) => s.hearts);
 
   const total = Number(params.total) || 0;
   const correct = Number(params.correct) || 0;
@@ -52,10 +50,6 @@ export default function FinishScreen() {
   // actif, une info qu'un simple diff avant/après ne peut pas donner.
   const [xpGained, setXpGained] = useState<number | null>(null);
   const [doubleXpWasActive, setDoubleXpWasActive] = useState(false);
-  // Prochaine leçon du parcours (renvoyée par le serveur) — permet d'enchaîner
-  // directement sans repasser par l'écran parcours. null = dernière leçon /
-  // pas encore connue (avant réponse serveur) / échec de complétion.
-  const [nextLessonId, setNextLessonId] = useState<string | null>(null);
   // Évite un double appel (StrictMode / re-render).
   const completedRef = useRef(false);
 
@@ -73,10 +67,14 @@ export default function FinishScreen() {
         console.log('[finish] completeLesson OK', data);
         setXpGained(data.xpGained ?? 0);
         setDoubleXpWasActive(!!data.doubleXpWasActive);
-        setNextLessonId(data.nextLessonId ?? null);
         // Leçon validée → parcours, classement et calendrier d'activité ont
         // changé : forcer un vrai re-fetch au prochain affichage.
-        invalidate('sections');
+        // ⚠️ La clé du parcours inclut la langue (`sections:fr`, cf.
+        // parcours.tsx#loadSections) et `invalidate` fait une correspondance
+        // EXACTE : invalider 'sections' ne supprimait rien, et le parcours
+        // pouvait resservir jusqu'à 30 s de cache — donc afficher encore la
+        // leçon qu'on vient de terminer comme étant l'active.
+        invalidate(`sections:${useUserStore.getState().language}`);
         invalidate('league');
         invalidate(`activity:${new Date().toISOString().slice(0, 7)}`);
       })
@@ -86,15 +84,13 @@ export default function FinishScreen() {
       });
   }, []);
 
-  // Enchaîne sur la leçon suivante si elle existe et que l'utilisateur peut
-  // encore jouer (Premium ou cœurs restants) — sinon, comportement historique
-  // (retour au parcours, qui gère lui-même l'écran "plus de cœurs").
+  // « Continuer » ramène au PARCOURS, jamais directement dans la leçon
+  // suivante : l'utilisateur voit sa progression et décide lui-même quand
+  // enchaîner. Le parcours se recentre tout seul sur le nœud `active` (la
+  // leçon suivante, puisque celle-ci vient d'être complétée côté serveur et
+  // que le cache `sections` a été invalidé ci-dessus).
   const goNext = () => {
-    if (nextLessonId && (isPremium || hearts > 0)) {
-      router.replace({ pathname: '/(app)/lesson/play', params: { lessonId: nextLessonId } });
-    } else {
-      router.replace('/(app)/(tabs)/parcours');
-    }
+    router.replace('/(app)/(tabs)/parcours');
   };
 
   const otterScale = useSharedValue(0);
