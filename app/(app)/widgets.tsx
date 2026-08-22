@@ -33,10 +33,13 @@ try {
 // android.adaptiveIcon), 'Sun' = alternative déclarée via le plugin
 // expo-alternate-app-icons (voir app.json → plugins). Le nom DOIT correspondre
 // exactement (PascalCase) à celui déclaré dans la config du plugin.
-type AppIconChoice = { key: string; name: string | null; source: number; labelKey: 'widgets.icon.night' | 'widgets.icon.sun' };
+type AppIconChoice = { key: string; name: string | null; source: number; labelKey: 'widgets.icon.night' | 'widgets.icon.sun' | 'widgets.icon.duo' | 'widgets.icon.fille' | 'widgets.icon.garcon' };
 const APP_ICON_CHOICES: AppIconChoice[] = [
   { key: 'night', name: null, source: require('../../assets/icon.png'), labelKey: 'widgets.icon.night' },
   { key: 'sun', name: 'Sun', source: require('../../assets/icon-sun.png'), labelKey: 'widgets.icon.sun' },
+  { key: 'duo', name: 'Duo', source: require('../../assets/icon-duo.png'), labelKey: 'widgets.icon.duo' },
+  { key: 'fille', name: 'Fille', source: require('../../assets/icon-fille.png'), labelKey: 'widgets.icon.fille' },
+  { key: 'garcon', name: 'Garcon', source: require('../../assets/icon-garcon.png'), labelKey: 'widgets.icon.garcon' },
 ];
 
 /** Sélecteur d'icône d'app (Nuit/Soleil) — natif iOS/Android, hors Expo Go. */
