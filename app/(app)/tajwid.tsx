@@ -9,6 +9,7 @@ import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
+import { readPersisted, writePersisted } from '../../lib/api/persistentCache';
 import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/reciters';
 import { playSurates, AUDIO_AVAILABLE, refreshLocalSudaisCache } from '../../constants/trackPlayer';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
@@ -16,6 +17,9 @@ import { useAudioDownloadStore } from '../../store/audioDownloadStore';
 import { useT } from '../../lib/i18n';
 
 const ALL_SOURATE_NUMBERS = Array.from({ length: 114 }, (_, i) => i + 1);
+
+/** Clé du cache disque de la liste des 114 sourates (contenu quasi-immuable). */
+const SOURATES_CACHE_KEY = 'sourates:all';
 
 // « Écoute du Coran » (badge Tajwid) — catalogue des 114 sourates en audio
 // complet. On choisit un récitateur puis une sourate : la lecture démarre et se
@@ -37,9 +41,21 @@ export default function TajwidScreen() {
   const load = useCallback(async () => {
     setError(false);
     try {
-      setSourates(await swrFetch('sourates:all', fetchSourates, setSourates));
+      const fresh = await swrFetch('sourates:all', fetchSourates, (list) => {
+        setSourates(list);
+        writePersisted(SOURATES_CACHE_KEY, list);
+      });
+      setSourates(fresh);
+      // Les 114 sourates ne changent jamais : on les garde sur le disque pour
+      // pouvoir rouvrir cet écran sans réseau.
+      writePersisted(SOURATES_CACHE_KEY, fresh);
     } catch {
-      setError(true);
+      // Hors-ligne : le cache mémoire (swr.ts) est vide après un redémarrage,
+      // mais le disque, lui, a survécu — c'est ce qui rend les récitations
+      // déjà téléchargées réellement écoutables sans connexion.
+      const cached = await readPersisted<SourateListItem[]>(SOURATES_CACHE_KEY);
+      if (cached && cached.length > 0) setSourates(cached);
+      else setError(true);
     }
   }, []);
 
@@ -87,7 +103,10 @@ export default function TajwidScreen() {
       await playSurates(lite, reciterById(reciterId), index);
       router.push('/(app)/coran-player');
     } catch {
-      setError(true);
+      // Un échec de lecture ne doit PAS remplacer la liste par l'écran
+      // d'erreur : hors-ligne, les sourates déjà téléchargées restent
+      // écoutables, et masquer la liste rendrait l'écran inutilisable.
+      Alert.alert(tr('tajwid.audioAlertTitle'), tr('tajwid.playError'));
     } finally {
       setStarting(null);
     }
@@ -159,6 +178,18 @@ export default function TajwidScreen() {
               <Feather name="info" size={16} color="#8A5CF0" />
               <Text style={styles.noticeText}>
                 {tr('tajwid.previewNotice')}
+              </Text>
+            </View>
+          )}
+
+          {/* Hors-ligne : la liste vient du cache disque, mais seules les
+              sourates réellement téléchargées démarreront. On le dit, sinon
+              l'utilisateur tape au hasard et ne comprend pas les échecs. */}
+          {isOffline && (
+            <View style={styles.notice}>
+              <Feather name="wifi-off" size={16} color="#8A5CF0" />
+              <Text style={styles.noticeText}>
+                {tr('tajwid.offlineNotice')}
               </Text>
             </View>
           )}
