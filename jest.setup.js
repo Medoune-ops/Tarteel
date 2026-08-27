@@ -27,3 +27,17 @@ jest.mock('react-native-webview', () => {
   const { View } = require('react-native');
   return { WebView: View };
 });
+
+// NetInfo sonde le réseau au montage ; sans module natif il plante sur
+// `undefined.isInternetReachable` et fait tomber toute la suite (Tajwid,
+// Hearts, Streak, Gems). On simule un appareil EN LIGNE par défaut ; un test
+// qui veut l'état hors-ligne surcharge `addEventListener` localement.
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    addEventListener: jest.fn(() => jest.fn()), // renvoie l'unsubscribe
+    fetch: jest.fn(() => Promise.resolve({ isConnected: true, isInternetReachable: true })),
+  },
+  addEventListener: jest.fn(() => jest.fn()),
+  fetch: jest.fn(() => Promise.resolve({ isConnected: true, isInternetReachable: true })),
+}));

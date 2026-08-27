@@ -868,6 +868,8 @@ const fr = {
   "tajwid.previewNotice": "Aperçu · l'écoute audio nécessite un development build",
   "tajwid.reciter": "Récitateur",
   "tajwid.offlineReciter": "Hors-ligne · Cheikh Sudais uniquement",
+  "tajwid.playError": "Lecture impossible. Hors-ligne, seules les sourates déjà téléchargées sont écoutables.",
+  "tajwid.offlineNotice": "Hors-ligne · seules les sourates téléchargées sont écoutables",
   // --- Batch: gamification (fr) ---
   "gems.errorInsufficient": "Tu n'as pas assez de gemmes pour ça.",
   "gems.errorGeneric": "Action impossible pour l'instant. Réessaie.",
@@ -1964,6 +1966,8 @@ const en: Dict = {
   "tajwid.previewNotice": "Preview · audio playback requires a development build",
   "tajwid.reciter": "Reciter",
   "tajwid.offlineReciter": "Offline · Sheikh Sudais only",
+  "tajwid.playError": "Can't play this. Offline, only already-downloaded surahs are available.",
+  "tajwid.offlineNotice": "Offline · only downloaded surahs can be played",
   // --- Batch: gamification (en) ---
   "gems.errorInsufficient": "You don't have enough gems for that.",
   "gems.errorGeneric": "Action unavailable right now. Try again.",
