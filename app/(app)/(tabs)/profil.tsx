@@ -7,7 +7,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
 } from 'react-native-reanimated';
 import Otter from '../../../components/Otter';
-import ProgressBar from '../../../components/ProgressBar';
+import PrayerCard from '../../../components/PrayerCard';
 import { useUserStore } from '../../../store/userStore';
 import { useTheme } from '../../../utils/useTheme';
 import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
@@ -183,25 +183,13 @@ export default function ProfilScreen() {
             })}
           </LinearGradient>
 
-          {/* Niveau — 2000 XP par niveau */}
-          {(() => {
-            const PER_LEVEL = 2000;
-            const level = Math.floor(xp / PER_LEVEL) + 1;
-            const inLevel = xp % PER_LEVEL;
-            return (
-              <>
-                <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('profil.levelProgress', { level })}</Text>
-                <View style={styles.levelRow}>
-                  <View style={{ flex: 1 }}>
-                    <ProgressBar progress={inLevel / PER_LEVEL} bgColor={T.isDark ? '#2A2940' : '#E2E4E9'} />
-                  </View>
-                  <Text style={[styles.levelText, { color: T.textSecondary }]}>
-                    {inLevel.toLocaleString(localeTag)} / {PER_LEVEL.toLocaleString(localeTag)} XP
-                  </Text>
-                </View>
-              </>
-            );
-          })()}
+          {/* Heures de prière — porte d'entrée vers l'écran complet. Remplace
+              l'ancienne barre de progression de niveau : l'XP est déjà visible
+              dans le bandeau de stats juste au-dessus, alors que la prochaine
+              prière est une information utile plusieurs fois par jour. */}
+          <View style={styles.prayerCardWrap}>
+            <PrayerCard onPress={() => router.push('/(app)/prieres')} localeTag={localeTag} />
+          </View>
 
           {/* Badges */}
           <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('profil.badgesTitle')}</Text>
@@ -307,6 +295,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 24, marginBottom: 10 },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   levelText: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
+  prayerCardWrap: { marginTop: 18 },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
   badge: {
     width: '30%', borderRadius: 18, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6,
