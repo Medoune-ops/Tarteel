@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as NativeSplashScreen from 'expo-splash-screen';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, Easing,
 } from 'react-native-reanimated';
@@ -16,6 +17,11 @@ export default function SplashScreen() {
   const loadingWidth = useSharedValue(0);
 
   useEffect(() => {
+    // Le splash natif (image statique) reste affiché jusqu'ici — voir
+    // app/_layout.tsx. On ne le masque qu'une fois CET écran (la mascotte
+    // animée) réellement monté, pour un enchaînement sans frame vide entre
+    // les deux.
+    NativeSplashScreen.hideAsync();
     loadingWidth.value = withTiming(0.62, { duration: 2000, easing: Easing.out(Easing.quad) });
 
     let cancelled = false;
