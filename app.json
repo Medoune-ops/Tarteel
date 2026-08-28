@@ -26,7 +26,8 @@
           "freemoney",
           "wizall"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Ta position sert uniquement à calculer les heures de prière sur ton appareil. Elle n'est jamais envoyée ni partagée."
       },
       "icon": {
         "light": "./assets/icon-light.png",
@@ -52,7 +53,8 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ],
       "queries": {
         "intent": [
