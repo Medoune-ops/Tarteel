@@ -90,10 +90,10 @@ export default function RootLayout() {
 
   useRefreshAppConfigOnForeground();
 
-  useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
-
+  // Le splash natif n'est PAS masqué ici dès que les polices sont prêtes :
+  // ça révélerait un frame vide avant que l'écran splash.tsx (mascotte
+  // animée) ne soit réellement monté. C'est splash.tsx lui-même qui appelle
+  // SplashScreen.hideAsync() une fois affiché, pour un enchaînement invisible.
   if (!fontsLoaded) return null;
 
   return (
