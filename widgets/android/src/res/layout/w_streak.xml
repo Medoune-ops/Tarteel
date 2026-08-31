@@ -19,7 +19,7 @@
         android:layout_height="wrap_content"
         android:text="@string/w_streak_label"
         android:textColor="@color/w_white"
-        android:textSize="12.5sp"
+        android:textSize="13sp"
         android:textStyle="bold" />
 
     <!-- Nombre de jours, en grand -->
