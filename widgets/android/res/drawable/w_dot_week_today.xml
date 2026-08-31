@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget Semaine : jour courant, blanc cerclé de violet. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/w_white" />
+    <stroke android:width="3dp" android:color="@color/w_purple" />
+</shape>

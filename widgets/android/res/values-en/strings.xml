@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textes des widgets pour un appareil en anglais. -->
+<resources>
+    <string name="w_streak_label">🔥 Streak</string>
+    <string name="w_streak_unit">days in a row</string>
+    <string name="w_continue_label">Continue</string>
+    <string name="w_lesson_prefix">Lesson</string>
+    <string name="w_week_title">My week</string>
+
+    <string name="w_day_mon">M</string>
+    <string name="w_day_tue">T</string>
+    <string name="w_day_wed">W</string>
+    <string name="w_day_thu">T</string>
+    <string name="w_day_fri">F</string>
+    <string name="w_day_sat">S</string>
+    <string name="w_day_sun">S</string>
+
+    <string name="w_desc_streak">Your day streak</string>
+    <string name="w_desc_continue">Resume your current lesson</string>
+    <string name="w_desc_week">Your learning week</string>
+</resources>

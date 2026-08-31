@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget Série : 2x2. updatePeriodMillis=0 : l'app pousse elle-même les
+     mises à jour (via widgetData.ts), pas de réveil périodique inutile. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="140dp"
+    android:minHeight="140dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/w_streak"
+    android:description="@string/w_desc_streak"
+    android:previewLayout="@layout/w_streak"
+    android:resizeMode="none"
+    android:widgetCategory="home_screen" />
