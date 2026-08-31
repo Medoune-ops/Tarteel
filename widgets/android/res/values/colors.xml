@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Couleurs des widgets Android — reprises à l'identique des widgets iOS
+  (widgets/ios/TarteelWidgets/*.swift) pour que les deux plateformes se
+  ressemblent.
+-->
+<resources>
+    <!-- Série : dégradé orange -->
+    <color name="w_streak_start">#FF9A3D</color>
+    <color name="w_streak_mid">#F5731F</color>
+    <color name="w_streak_end">#E0560E</color>
+    <color name="w_streak_dot_active">#FFE08A</color>
+
+    <!-- Reprendre : dégradé violet + vert du bouton -->
+    <color name="w_continue_start">#7E62F2</color>
+    <color name="w_continue_mid">#6244DE</color>
+    <color name="w_continue_end">#4E32C4</color>
+    <color name="w_green_start">#4BDD38</color>
+    <color name="w_green_end">#33C022</color>
+    <color name="w_flame_soft">#FFC56B</color>
+
+    <!-- Semaine : panneau clair -->
+    <color name="w_panel_start">#FFFFFF</color>
+    <color name="w_panel_end">#F6F4FC</color>
+    <color name="w_text_dark">#1B2333</color>
+    <color name="w_purple">#6B4DFF</color>
+    <color name="w_purple_soft">#EFEBFF</color>
+    <color name="w_grey_dot">#EFECF7</color>
+    <color name="w_grey_dot_inner">#C8C3DC</color>
+    <color name="w_grey_label">#9AA0AA</color>
+    <color name="w_grey_label_future">#C2C6CE</color>
+    <color name="w_motivation_bg">#FFF2E6</color>
+    <color name="w_motivation_text">#B5571A</color>
+
+    <color name="w_white">#FFFFFF</color>
+    <color name="w_white_16">#29FFFFFF</color>
+    <color name="w_white_22">#38FFFFFF</color>
+    <color name="w_white_32">#52FFFFFF</color>
+</resources>

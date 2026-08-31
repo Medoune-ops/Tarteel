@@ -158,6 +158,23 @@
             "src": "./widgets/ios/TarteelWidgets",
             "appGroupIdentifier": "group.com.tarteel.app",
             "devTeam": "XJ6GTF5K9C"
+          },
+          "android": {
+            "src": "./widgets/android",
+            "widgets": [
+              {
+                "name": "StreakWidgetProvider",
+                "resourceName": "@xml/w_streak_info"
+              },
+              {
+                "name": "ContinueWidgetProvider",
+                "resourceName": "@xml/w_continue_info"
+              },
+              {
+                "name": "WeekWidgetProvider",
+                "resourceName": "@xml/w_week_info"
+              }
+            ]
           }
         }
       ]
