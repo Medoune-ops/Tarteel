@@ -150,17 +150,17 @@
             }
           }
         ]
-      ]
-    ],
-    "_widgetPlugin_activateForEASBuild": [
-      "expo-widget",
-      {
-        "ios": {
-          "src": "./widgets/ios/TarteelWidgets",
-          "appGroupIdentifier": "group.com.tarteel.app",
-          "devTeam": "XXXXXXXXXX"
+      ],
+      [
+        "expo-widget",
+        {
+          "ios": {
+            "src": "./widgets/ios/TarteelWidgets",
+            "appGroupIdentifier": "group.com.tarteel.app",
+            "devTeam": "XJ6GTF5K9C"
+          }
         }
-      }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
