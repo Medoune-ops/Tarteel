@@ -15,10 +15,28 @@
  * connecté (voir app/_layout.tsx).
  */
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { apiFetch } from './api/client';
 import { getDeviceId } from './api/tokens';
+
+/**
+ * Identifiant du projet EAS, exigé par getExpoPushTokenAsync() dans un build
+ * autonome (App Store / Play Store).
+ *
+ * ⚠️ Sans lui, l'appel echoue — et comme tout est avalé par le catch plus bas,
+ * l'échec est INVISIBLE : aucun token n'atteint le serveur, donc plus aucune
+ * notification. Expo Go devinait le projet tout seul, ce qui masquait le
+ * problème tant qu'on testait avec lui.
+ */
+function easProjectId(): string | undefined {
+  return (
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    // easConfig : renseigné dans les builds EAS, absent en développement.
+    (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId
+  );
+}
 
 // Affiche les notifications reçues au premier plan (sinon iOS/Android les
 // avalent silencieusement pendant que l'app est ouverte).
@@ -59,15 +77,21 @@ export async function registerForPushNotifications(): Promise<void> {
     }
     if (status !== 'granted') return;
 
-    const { data: token } = await Notifications.getExpoPushTokenAsync();
+    const projectId = easProjectId();
+    const { data: token } = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined,
+    );
     const deviceId = await getDeviceId();
 
     await apiFetch('/me/notifications/tokens', {
       method: 'POST',
       json: { token, deviceId, platform: Platform.OS },
     });
-  } catch {
-    // Expo Go, pas de projectId configuré, refus, hors-ligne… jamais bloquant.
+  } catch (e) {
+    // Refus utilisateur, simulateur, hors-ligne… jamais bloquant. On trace
+    // quand même : cet échec est silencieux par nature et a déjà coûté toutes
+    // les notifications d'un build store sans que rien ne l'indique.
+    console.warn('[push] enregistrement du token échoué:', e);
   }
 }
 
@@ -75,7 +99,10 @@ export async function registerForPushNotifications(): Promise<void> {
 export async function unregisterPushToken(): Promise<void> {
   try {
     if (!Device.isDevice) return;
-    const { data: token } = await Notifications.getExpoPushTokenAsync();
+    const projectId = easProjectId();
+    const { data: token } = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined,
+    );
     await apiFetch('/me/notifications/tokens', { method: 'DELETE', json: { token } });
   } catch {
     // Pas grave : le token restera enregistré mais /me/notifications/tokens
