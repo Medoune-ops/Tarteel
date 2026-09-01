@@ -946,6 +946,13 @@ const fr = {
   "tajwid.previewNotice": "Aperçu · l'écoute audio nécessite un development build",
   "tajwid.reciter": "Récitateur",
   "tajwid.offlineReciter": "Hors-ligne · Cheikh Sudais uniquement",
+  // --- Téléchargement pour l'écoute hors-ligne (OfflineAudioButton) ---
+  "offlineAudio.download": "Télécharger pour le mode hors-ligne",
+  "offlineAudio.downloading": "Téléchargement… {done}/{total}",
+  "offlineAudio.ready": "Disponible hors-ligne",
+  "offlineAudio.hint": "Récitations de Cheikh Sudais, écoutables ensuite sans connexion. À faire en Wi-Fi de préférence.",
+  "offlineAudio.failed": "Le téléchargement s'est interrompu. Appuie pour reprendre là où il s'est arrêté.",
+  "offlineAudio.unavailable": "Écoute hors-ligne bientôt disponible",
   "tajwid.playError": "Lecture impossible. Hors-ligne, seules les sourates déjà téléchargées sont écoutables.",
   // --- Batch: gamification (fr) ---
   "gems.errorInsufficient": "Tu n'as pas assez de gemmes pour ça.",
@@ -2121,6 +2128,13 @@ const en: Dict = {
   "tajwid.previewNotice": "Preview · audio playback requires a development build",
   "tajwid.reciter": "Reciter",
   "tajwid.offlineReciter": "Offline · Sheikh Sudais only",
+  // --- Offline listening download (OfflineAudioButton) ---
+  "offlineAudio.download": "Download for offline use",
+  "offlineAudio.downloading": "Downloading… {done}/{total}",
+  "offlineAudio.ready": "Available offline",
+  "offlineAudio.hint": "Sheikh Sudais recitations, playable afterwards without a connection. Best done on Wi-Fi.",
+  "offlineAudio.failed": "The download stopped. Tap to resume where it left off.",
+  "offlineAudio.unavailable": "Offline listening coming soon",
   "tajwid.playError": "Can't play this. Offline, only already-downloaded surahs are available.",
   // --- Batch: gamification (en) ---
   "gems.errorInsufficient": "You don't have enough gems for that.",
