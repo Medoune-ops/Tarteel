@@ -15,6 +15,7 @@ import {
   CalculationMethod,
   Coordinates,
   PrayerTimes,
+  Qibla,
   type CalculationParameters,
 } from 'adhan';
 
@@ -91,6 +92,51 @@ export function timeUntil(target: Date, now: Date = new Date()): { hours: number
   const diffMs = Math.max(0, target.getTime() - now.getTime());
   const totalMinutes = Math.floor(diffMs / 60000);
   return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+}
+
+// ─── Qibla ───────────────────────────────────────────────────────────────────
+
+/** Coordonnées de la Kaaba — référence de la direction de prière. */
+const KAABA = { latitude: 21.4225, longitude: 39.8262 };
+
+/**
+ * Direction de la Qibla, en degrés depuis le NORD GÉOGRAPHIQUE
+ * (0 = nord, 90 = est, 180 = sud, 270 = ouest).
+ *
+ * ⚠️ Une boussole de téléphone mesure le nord MAGNÉTIQUE, qui diffère du nord
+ * géographique selon l'endroit (déclinaison magnétique). L'écart est faible au
+ * Sénégal et en Europe de l'Ouest (quelques degrés), mais l'affichage reste
+ * indicatif — c'est pourquoi l'écran le précise.
+ */
+export function qiblaDirection(latitude: number, longitude: number): number {
+  return Qibla(new Coordinates(latitude, longitude));
+}
+
+/**
+ * Distance jusqu'à La Mecque en kilomètres (formule de haversine, Terre
+ * sphérique — l'écart avec un calcul ellipsoïdal est négligeable à l'échelle
+ * d'un affichage arrondi au kilomètre).
+ */
+export function distanceToKaaba(latitude: number, longitude: number): number {
+  const R = 6371; // rayon moyen de la Terre en km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(KAABA.latitude - latitude);
+  const dLon = toRad(KAABA.longitude - longitude);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(latitude)) * Math.cos(toRad(KAABA.latitude)) * Math.sin(dLon / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(a)));
+}
+
+/** Les 8 points cardinaux, pour dire "nord-est" plutôt que "74°" seul. */
+export type CardinalKey = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
+
+/** Point cardinal le plus proche d'un cap donné. */
+export function cardinalFor(degrees: number): CardinalKey {
+  const keys: CardinalKey[] = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+  // 360/8 = 45° par secteur, décalé de 22.5° pour centrer chaque point.
+  const idx = Math.round(((degrees % 360) + 360) % 360 / 45) % 8;
+  return keys[idx]!;
 }
 
 /**
