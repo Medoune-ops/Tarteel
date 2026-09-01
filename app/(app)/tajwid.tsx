@@ -179,17 +179,6 @@ export default function TajwidScreen() {
             </View>
           )}
 
-          {/* Hors-ligne : la liste vient du cache disque, mais seules les
-              sourates réellement téléchargées démarreront. On le dit, sinon
-              l'utilisateur tape au hasard et ne comprend pas les échecs. */}
-          {isOffline && (
-            <View style={styles.notice}>
-              <Feather name="wifi-off" size={16} color="#8A5CF0" />
-              <Text style={styles.noticeText}>
-                {tr('tajwid.offlineNotice')}
-              </Text>
-            </View>
-          )}
 
           {/* Choix du récitateur — hors-ligne, seul Sudais (pré-téléchargé)
               est proposé ; le choix complet revient dès que la connexion est
