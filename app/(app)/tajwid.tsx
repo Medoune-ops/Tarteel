@@ -14,6 +14,7 @@ import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/recit
 import { playSurates, AUDIO_AVAILABLE, refreshLocalSudaisCache } from '../../constants/trackPlayer';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
 import { useAudioDownloadStore } from '../../store/audioDownloadStore';
+import OfflineAudioButton from '../../components/OfflineAudioButton';
 import { useT } from '../../lib/i18n';
 
 const ALL_SOURATE_NUMBERS = Array.from({ length: 114 }, (_, i) => i + 1);
@@ -209,6 +210,10 @@ export default function TajwidScreen() {
               })}
             </ScrollView>
           </View>
+
+          {/* Téléchargement pour l'écoute sans connexion — masqué hors-ligne,
+              où il ne pourrait de toute façon pas aboutir. */}
+          {!isOffline && <OfflineAudioButton />}
 
           <FlatList
             data={ordered}
