@@ -1,7 +1,15 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { downloadAllSudais } from '../constants/audioDownload';
+import { downloadAllSudais, NoAudioAvailableError } from '../constants/audioDownload';
+
+/** Pourquoi le téléchargement n'a pas abouti — pilote le message affiché. */
+export type DownloadError =
+  /** Le serveur n'a aucun fichier : réessayer n'y changerait rien. */
+  | 'unavailable'
+  /** Réseau coupé ou fichiers manquants : réessayer a du sens. */
+  | 'failed'
+  | null;
 
 interface AudioDownloadState {
   /** Seul champ persisté : true uniquement quand les 114 fichiers Sudais ont
@@ -11,7 +19,7 @@ interface AudioDownloadState {
   downloadedCount: number;
   totalCount: number;
   isDownloading: boolean;
-  lastError: string | null;
+  lastError: DownloadError;
   startDownload: () => Promise<void>;
 }
 
@@ -41,10 +49,13 @@ export const useAudioDownloadStore = create<AudioDownloadState>()(
           if (ok) {
             set({ sudaisReady: true, isDownloading: false });
           } else {
-            set({ isDownloading: false, lastError: 'partial download' });
+            set({ isDownloading: false, lastError: 'failed' });
           }
         } catch (e) {
-          set({ isDownloading: false, lastError: e instanceof Error ? e.message : 'download failed' });
+          set({
+            isDownloading: false,
+            lastError: e instanceof NoAudioAvailableError ? 'unavailable' : 'failed',
+          });
         }
       },
     }),

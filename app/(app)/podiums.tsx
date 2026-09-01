@@ -6,6 +6,7 @@ import { LIGUES, podiumRangLabel, podiumMedaille } from '../../constants/ligues'
 import { fetchPodiums, claimPodium, ApiError, type PodiumEntry } from '../../lib/api';
 import { playSound } from '../../constants/sounds';
 import { useT } from '../../lib/i18n';
+import OfflineState from '../../components/OfflineState';
 
 export default function PodiumsScreen() {
   const router = useRouter();
@@ -13,15 +14,15 @@ export default function PodiumsScreen() {
 
   // Historique RÉEL des podiums (GET /me/podiums). Vide = aucun trophée gagné.
   const [entries, setEntries] = useState<PodiumEntry[] | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setError(false);
+    setError(null);
     try {
       setEntries(await fetchPodiums());
-    } catch {
-      setError(true);
+    } catch (e) {
+      setError(e);
     }
   }, []);
 
@@ -66,11 +67,9 @@ export default function PodiumsScreen() {
           <Text style={styles.headerTitle}>{tr('podiums.headerTitle')}</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={styles.centerState}>
-          <Feather name="wifi-off" size={30} color="#9AA0AA" />
-          <Text style={styles.stateText}>{tr('podiums.loadError')}</Text>
-          <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>{tr('common.retry')}</Text></Pressable>
-        </View>
+        {/* L'en-tête reste affiché : l'utilisateur peut revenir en arrière,
+            inutile de lui proposer d'autres sorties. */}
+        <OfflineState error={error} onRetry={load} />
       </View>
     );
   }

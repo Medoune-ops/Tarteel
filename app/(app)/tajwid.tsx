@@ -9,17 +9,15 @@ import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
-import { readPersisted, writePersisted } from '../../lib/api/persistentCache';
+import { readPersisted, writePersisted, SOURATES_CACHE_KEY } from '../../lib/api/persistentCache';
 import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/reciters';
 import { playSurates, AUDIO_AVAILABLE, refreshLocalSudaisCache } from '../../constants/trackPlayer';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
 import { useAudioDownloadStore } from '../../store/audioDownloadStore';
+import OfflineAudioButton from '../../components/OfflineAudioButton';
 import { useT } from '../../lib/i18n';
 
 const ALL_SOURATE_NUMBERS = Array.from({ length: 114 }, (_, i) => i + 1);
-
-/** Clé du cache disque de la liste des 114 sourates (contenu quasi-immuable). */
-const SOURATES_CACHE_KEY = 'sourates:all';
 
 // « Écoute du Coran » (badge Tajwid) — catalogue des 114 sourates en audio
 // complet. On choisit un récitateur puis une sourate : la lecture démarre et se
@@ -182,17 +180,6 @@ export default function TajwidScreen() {
             </View>
           )}
 
-          {/* Hors-ligne : la liste vient du cache disque, mais seules les
-              sourates réellement téléchargées démarreront. On le dit, sinon
-              l'utilisateur tape au hasard et ne comprend pas les échecs. */}
-          {isOffline && (
-            <View style={styles.notice}>
-              <Feather name="wifi-off" size={16} color="#8A5CF0" />
-              <Text style={styles.noticeText}>
-                {tr('tajwid.offlineNotice')}
-              </Text>
-            </View>
-          )}
 
           {/* Choix du récitateur — hors-ligne, seul Sudais (pré-téléchargé)
               est proposé ; le choix complet revient dès que la connexion est
@@ -223,6 +210,10 @@ export default function TajwidScreen() {
               })}
             </ScrollView>
           </View>
+
+          {/* Téléchargement pour l'écoute sans connexion — masqué hors-ligne,
+              où il ne pourrait de toute façon pas aboutir. */}
+          {!isOffline && <OfflineAudioButton />}
 
           <FlatList
             data={ordered}
