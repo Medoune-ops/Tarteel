@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAudioRecorder, RecordingPresets } from 'expo-audio';
 import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../../../lib/audio/recorder';
 import { playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
+import OfflineState from '../../../components/OfflineState';
 
 type Reponse = 'facile' | 'difficile' | 'oublie';
 type Phase = 'pret' | 'recitation' | 'fini';
@@ -222,7 +223,7 @@ export default function FlashcardScreen() {
   const [meta, setMeta] = useState<{ nom: string; nomArabe: string } | null>(null);
   // Segment SRS ciblé (le plus urgent) — uniquement pour une sourate apprise.
   const [segment, setSegment] = useState<SegmentRevisionView | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const load = useCallback(async () => {
     if (!numero) { setLoadError(true); return; }
@@ -440,13 +441,9 @@ export default function FlashcardScreen() {
   // ── États de chargement / erreur ──
   if (loadError) {
     return (
-      <View style={[styles.screen, styles.centerState]}>
-        <Feather name="wifi-off" size={34} color="#9AA0AA" />
-        <Text style={styles.stateText}>{tr('flashcard.loadError')}</Text>
-        <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
-        </Pressable>
-        <Pressable onPress={() => router.back()}>
+      <View style={styles.screen}>
+        <OfflineState error={loadError} onRetry={load} showOfflineExits />
+        <Pressable onPress={() => router.back()} style={{ alignItems: 'center', paddingBottom: 32 }}>
           <Text style={styles.backLink}>{tr('flashcard.back')}</Text>
         </Pressable>
       </View>
