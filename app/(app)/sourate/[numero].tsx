@@ -8,6 +8,7 @@ import { swrFetch } from '../../../lib/api/swr';
 import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
 import { useT } from '../../../lib/i18n';
+import OfflineState from '../../../components/OfflineState';
 
 export default function SourateReaderScreen() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function SourateReaderScreen() {
   const language = useUserStore((s) => s.language);
 
   const [data, setData] = useState<SourateVersets | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   // Mot en cours de lecture : "versetId:position" (surlignage).
   const [playing, setPlaying] = useState<string | null>(null);
   // Lecture automatique mot par mot en cours ?
@@ -35,8 +36,8 @@ export default function SourateReaderScreen() {
       // Le texte coranique ne change jamais → cache mémoire, affichage instantané
       // quand on rouvre la même sourate dans la session.
       setData(await swrFetch(`versets:${numero}:${language}`, () => fetchVersets(numero, language)));
-    } catch {
-      setError(true);
+    } catch (e) {
+      setError(e);
     }
   }, [numero, language]);
 
@@ -113,10 +114,8 @@ export default function SourateReaderScreen() {
 
   if (error) {
     return (
-      <View style={[styles.screen, styles.center]}>
-        <Feather name="wifi-off" size={32} color="#9AA0AA" />
-        <Text style={styles.stateText}>{tr('sourateDetail.loadError')}</Text>
-        <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>{tr('sourateDetail.retry')}</Text></Pressable>
+      <View style={styles.screen}>
+        <OfflineState error={error} onRetry={load} showOfflineExits />
         <Pressable style={styles.backLink} onPress={() => router.back()}><Text style={styles.backLinkText}>{tr('sourateDetail.back')}</Text></Pressable>
       </View>
     );
@@ -225,7 +224,7 @@ const styles = StyleSheet.create({
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#7A828F', textAlign: 'center' },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#6B4DFF' },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
-  backLink: { marginTop: 4 },
+  backLink: { alignSelf: 'center', paddingBottom: 32 },
   backLinkText: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#6B4DFF' },
 
   header: { paddingTop: 54, paddingBottom: 22, paddingHorizontal: 24, alignItems: 'center' },

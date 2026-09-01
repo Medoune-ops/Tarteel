@@ -15,6 +15,7 @@ import { swrFetch } from '../../../lib/api/swr';
 import { useUserStore } from '../../../store/userStore';
 import type { ParcoursSection } from '../../../constants/parcours';
 import { useT, t } from '../../../lib/i18n';
+import OfflineState from '../../../components/OfflineState';
 
 // Couleurs par état SRS (maitrise/revoir/difficile) — même palette que le mock d'origine.
 const ETAT_COLORS: Record<SourateRevisionView['etat'], { couleur: string; couleurDark: string; bg: string }> = {
@@ -176,10 +177,10 @@ function OngletGuidee({
   const router = useRouter();
   const [numero, setNumero] = useState<number | null | undefined>(undefined); // undefined = pas encore su
   const [guided, setGuided] = useState<GuidedRevisionView | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const load = useCallback(async () => {
-    setLoadError(false);
+    setLoadError(null);
     try {
       const lang = useUserStore.getState().language;
       const sections = await swrFetch(`sections:${lang}`, () => fetchSections(lang));
@@ -188,21 +189,19 @@ function OngletGuidee({
       if (current != null) {
         setGuided(await fetchGuidedRevision(current));
       }
-    } catch {
-      setLoadError(true);
+    } catch (e) {
+      setLoadError(e);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
+  // Bloc encadré dans l'écran : les onglets restent accessibles, donc pas de
+  // raccourcis hors-ligne ici (contrairement aux écrans en cul-de-sac).
   if (loadError) {
     return (
       <View style={styles.guidedErrorBox}>
-        <Feather name="wifi-off" size={28} color="#9AA0AA" />
-        <Text style={styles.emptySub}>{tr('revisions.loadError')}</Text>
-        <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
-        </Pressable>
+        <OfflineState error={loadError} onRetry={load} />
       </View>
     );
   }
@@ -323,17 +322,17 @@ export default function RevisionsScreen() {
   const [toutes, setToutes] = useState<SourateListItem[] | null>(null);
   const [revisions, setRevisions] = useState<SourateRevisionView[] | null>(null);
   const [lettres, setLettres] = useState<LettreRevisionView[] | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const load = useCallback(async () => {
-    setLoadError(false);
+    setLoadError(null);
     try {
       const [s, r, l] = await Promise.all([fetchSourates(), fetchRevisions(), fetchLettreRevisions()]);
       setToutes(s);
       setRevisions(r);
       setLettres(l);
-    } catch {
-      setLoadError(true);
+    } catch (e) {
+      setLoadError(e);
     }
   }, []);
 
@@ -400,13 +399,9 @@ export default function RevisionsScreen() {
 
   if (loadError) {
     return (
-      <View style={[styles.screen, styles.centerState, { backgroundColor: T.pageBg }]}>
+      <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
-        <Feather name="wifi-off" size={34} color="#9AA0AA" />
-        <Text style={[styles.stateText, { color: T.text }]}>{tr('revisions.loadError')}</Text>
-        <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
-        </Pressable>
+        <OfflineState error={loadError} onRetry={load} showOfflineExits />
       </View>
     );
   }
