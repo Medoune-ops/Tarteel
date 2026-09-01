@@ -2,6 +2,8 @@ import { NativeModules, Platform } from 'react-native';
 import { t, type I18nKey } from '../lib/i18n';
 
 const APP_GROUP = 'group.com.tarteel.app';
+/** Package Android (≠ bundle iOS : com.tarteel.app était déjà pris sur le Play Store). */
+const ANDROID_PACKAGE = 'com.tarteel.sn';
 
 export interface WidgetData {
   streak: number;
@@ -62,9 +64,15 @@ export function syncWidgetData(params: {
         APP_GROUP,
       );
     } else if (Platform.OS === 'android') {
-      NativeModules.ExpoWidget?.setItem(
-        'tarteel_widget_data',
+      // Le module natif Android d'expo-widget s'appelle `ExpoWidgets` (au
+      // pluriel) et n'expose PAS `setItem` mais `setWidgetData(json,
+      // packageName)` — il écrit dans les SharedPreferences
+      // "<package>.widgetdata", que lisent les AppWidgetProvider Kotlin.
+      // L'appel précédent visait `ExpoWidget.setItem` : mauvais module ET
+      // mauvaise fonction, donc silencieusement sans effet.
+      NativeModules.ExpoWidgets?.setWidgetData(
         JSON.stringify(data),
+        ANDROID_PACKAGE,
       );
     }
   } catch (_) {

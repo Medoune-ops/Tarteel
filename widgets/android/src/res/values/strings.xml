@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Textes des widgets Android (défaut = français, comme l'app).
+  Un widget Android est rendu par le système : il ne peut pas lire l'i18n
+  JavaScript de l'app. Les libellés fixes vivent donc ici, et seuls les
+  textes dynamiques (message de motivation) viennent des données écrites
+  par l'app via utils/widgetData.ts.
+-->
+<resources>
+    <string name="w_streak_label">🔥 Série</string>
+    <string name="w_streak_unit">jours de suite</string>
+    <string name="w_continue_label">Continuer</string>
+    <string name="w_lesson_prefix">Leçon</string>
+    <string name="w_week_title">Ma semaine</string>
+
+    <string name="w_day_mon">L</string>
+    <string name="w_day_tue">M</string>
+    <string name="w_day_wed">M</string>
+    <string name="w_day_thu">J</string>
+    <string name="w_day_fri">V</string>
+    <string name="w_day_sat">S</string>
+    <string name="w_day_sun">D</string>
+
+    <string name="w_desc_streak">Ta série de jours d\'affilée</string>
+    <string name="w_desc_continue">Reprends ta leçon en cours</string>
+    <string name="w_desc_week">Ta semaine d\'apprentissage</string>
+</resources>
