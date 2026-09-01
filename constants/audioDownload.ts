@@ -56,6 +56,24 @@ export class NoAudioAvailableError extends Error {
   }
 }
 
+/**
+ * Poids total des récitations, en Mo — annoncé sur le bouton avant de lancer
+ * le téléchargement. Lu depuis le manifeste plutôt que codé en dur : le
+ * chiffre reste juste si le contenu change.
+ */
+export async function fetchSudaisTotalMb(): Promise<number | null> {
+  try {
+    const manifest = await fetchSudaisManifest();
+    if (manifest.files.length === 0) return null;
+    const bytes = manifest.files.reduce((sum, f) => sum + f.sizeBytes, 0);
+    return Math.round(bytes / 1024 / 1024);
+  } catch {
+    // Hors-ligne ou serveur muet : le bouton s'affiche sans la taille plutôt
+    // que d'attendre ou d'échouer.
+    return null;
+  }
+}
+
 export async function downloadAllSudais(
   onProgress: (done: number, total: number) => void,
 ): Promise<boolean> {

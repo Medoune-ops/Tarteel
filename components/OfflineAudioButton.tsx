@@ -10,15 +10,27 @@
  * indisponible côté serveur — ce dernier étant distingué d'un échec réseau,
  * car réessayer n'y changerait rien.
  */
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAudioDownloadStore } from '../store/audioDownloadStore';
+import { fetchSudaisTotalMb } from '../constants/audioDownload';
 import { useTheme } from '../utils/useTheme';
 import { useT } from '../lib/i18n';
 
 export default function OfflineAudioButton() {
   const T = useTheme();
   const tr = useT();
+
+  // Poids annoncé avant de lancer : engager ~600 Mo de forfait sans le savoir
+  // est le genre de surprise qui fait désinstaller une app. null tant qu'on
+  // ne l'a pas, pour ne jamais bloquer l'affichage du bouton.
+  const [totalMb, setTotalMb] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchSudaisTotalMb().then((mb) => { if (!cancelled) setTotalMb(mb); });
+    return () => { cancelled = true; };
+  }, []);
 
   const sudaisReady = useAudioDownloadStore((s) => s.sudaisReady);
   const isDownloading = useAudioDownloadStore((s) => s.isDownloading);
@@ -77,7 +89,11 @@ export default function OfflineAudioButton() {
       )}
 
       <Text style={[styles.hint, { color: T.textTertiary }]}>
-        {lastError === 'failed' ? tr('offlineAudio.failed') : tr('offlineAudio.hint')}
+        {lastError === 'failed'
+          ? tr('offlineAudio.failed')
+          : totalMb != null
+            ? tr('offlineAudio.hintWithSize', { mb: totalMb })
+            : tr('offlineAudio.hint')}
       </Text>
     </View>
   );
