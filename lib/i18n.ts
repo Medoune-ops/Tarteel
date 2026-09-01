@@ -959,7 +959,7 @@ const fr = {
   "offlineAudio.hint": "Récitations de Cheikh Sudais, écoutables ensuite sans connexion. À faire en Wi-Fi de préférence.",
   // Le bénéfice d'abord, la taille ensuite : annoncer ~600 Mo sans dire ce
   // qu'on y gagne découragerait, le cacher serait une mauvaise surprise.
-  "offlineAudio.hintWithSize": "Le Coran entier récité, écoutable partout sans connexion. {mb} Mo · en Wi-Fi de préférence.",
+  "offlineAudio.hintWithSize": "Le Coran entier récité, écoutable partout sans connexion. {mb} Mo.",
   "offlineAudio.failed": "Le téléchargement s'est interrompu. Appuie pour reprendre là où il s'est arrêté.",
   "offlineAudio.unavailable": "Écoute hors-ligne bientôt disponible",
   "tajwid.playError": "Lecture impossible. Hors-ligne, seules les sourates déjà téléchargées sont écoutables.",
@@ -2148,7 +2148,7 @@ const en: Dict = {
   "offlineAudio.downloading": "Downloading… {done}/{total}",
   "offlineAudio.ready": "Available offline",
   "offlineAudio.hint": "Sheikh Sudais recitations, playable afterwards without a connection. Best done on Wi-Fi.",
-  "offlineAudio.hintWithSize": "The whole Quran recited, playable anywhere without a connection. {mb} MB · best on Wi-Fi.",
+  "offlineAudio.hintWithSize": "The whole Quran recited, playable anywhere without a connection. {mb} MB.",
   "offlineAudio.failed": "The download stopped. Tap to resume where it left off.",
   "offlineAudio.unavailable": "Offline listening coming soon",
   "tajwid.playError": "Can't play this. Offline, only already-downloaded surahs are available.",
