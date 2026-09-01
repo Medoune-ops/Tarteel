@@ -9,6 +9,7 @@ import { swrFetch } from '../../../lib/api/swr';
 import { playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
 import { useTheme } from '../../../utils/useTheme';
 import { useT } from '../../../lib/i18n';
+import OfflineState from '../../../components/OfflineState';
 
 // Tag de verrouillage d'écran (empêche la mise en veille pendant la récitation).
 const KEEP_AWAKE_TAG = 'lecture-libre';
@@ -23,7 +24,7 @@ export default function LectureSourateScreen() {
   const { numero } = useLocalSearchParams<{ numero?: string }>();
 
   const [data, setData] = useState<SourateVersets | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   // Verset en cours de récitation (id) — surlignage + défilement.
   const [playing, setPlaying] = useState<string | null>(null);
   const [autoPlaying, setAutoPlaying] = useState(false);
@@ -39,8 +40,8 @@ export default function LectureSourateScreen() {
     try {
       // Le texte coranique ne change jamais → cache mémoire (affichage instantané).
       setData(await swrFetch(`versets:${numero}:ar`, () => fetchVersets(numero)));
-    } catch {
-      setError(true);
+    } catch (e) {
+      setError(e);
     }
   }, [numero]);
 
@@ -100,10 +101,8 @@ export default function LectureSourateScreen() {
 
   if (error) {
     return (
-      <View style={[styles.screen, styles.center, { backgroundColor: T.pageBg }]}>
-        <Feather name="wifi-off" size={32} color={T.textTertiary} />
-        <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('lectureNumero.loadError')}</Text>
-        <Pressable style={styles.retryBtn} onPress={load}><Text style={styles.retryLabel}>{tr('lectureNumero.retry')}</Text></Pressable>
+      <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
+        <OfflineState error={error} onRetry={load} showOfflineExits />
         <Pressable style={styles.backLink} onPress={() => router.back()}><Text style={styles.backLinkText}>{tr('lectureNumero.back')}</Text></Pressable>
       </View>
     );
@@ -179,7 +178,7 @@ const styles = StyleSheet.create({
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#6B4DFF' },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
-  backLink: { marginTop: 4 },
+  backLink: { alignSelf: 'center', paddingBottom: 32 },
   backLinkText: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#6B4DFF' },
 
   header: { paddingTop: 54, paddingBottom: 22, paddingHorizontal: 24, alignItems: 'center' },
