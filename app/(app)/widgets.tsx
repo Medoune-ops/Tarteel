@@ -75,7 +75,15 @@ function AppIconPicker() {
   // les options même sans pouvoir encore les activer.
   return (
     <View>
-      <View style={styles.iconRow}>
+      {/* Défilement horizontal : 5 icônes de 72 px ne tiennent pas dans la
+          largeur d'un téléphone. En rangée fixe, elles étaient serrées et les
+          dernières sortaient de l'écran — on peut maintenant les faire
+          glisser pour toutes les voir avant de choisir. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.iconRow}
+      >
         {APP_ICON_CHOICES.map((choice) => {
           const isActive = active === choice.name;
           return (
@@ -106,7 +114,7 @@ function AppIconPicker() {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
       {!supportsAlternateIcons && (
         <Text style={[styles.iconUnsupportedNote, { color: T.textSecondary }]}>
           {tr('widgets.icon.unsupported')}
@@ -359,7 +367,9 @@ const styles = StyleSheet.create({
   howToText: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, lineHeight: 22 },
 
   iconSubtitle: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: -6, marginBottom: 14 },
-  iconRow: { flexDirection: 'row', gap: 20, justifyContent: 'center' },
+  // Rangée défilante : `paddingHorizontal` remplace `justifyContent: center`,
+  // qui empêcherait le défilement de partir du bord.
+  iconRow: { flexDirection: 'row', gap: 20, paddingHorizontal: 4, paddingVertical: 2 },
   iconOption: { alignItems: 'center', gap: 8 },
   iconOptionActive: {},
   // Aperçu visible mais fonctionnalité pas encore dispo (Expo Go / iOS ancien).
