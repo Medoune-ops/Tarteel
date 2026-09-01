@@ -5,6 +5,7 @@
  * (`serializeUserFlat` côté backend = contrat de BACKEND.md), donc on la passe
  * directement à `hydrateFromBackend`.
  */
+import * as Localization from 'expo-localization';
 import { apiFetch } from './client';
 import { clearTokens } from './tokens';
 import { useUserStore } from '../../store/userStore';
@@ -145,8 +146,17 @@ export async function updateSettings(input: UpdateSettingsInput): Promise<MeResp
  */
 export async function syncTimezone(): Promise<void> {
   try {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (!timezone) return;
+    // `expo-localization` lit le fuseau réel de l'appareil. On ne se fie plus à
+    // `Intl.DateTimeFormat().resolvedOptions().timeZone` : sur Hermes (le moteur
+    // JS de React Native), il renvoie souvent "UTC" au lieu du vrai fuseau — les
+    // comptes se retrouvaient donc en UTC, et un rappel regle sur 19h partait a
+    // 19h UTC, soit 21h a Paris.
+    const timezone = Localization.getCalendars()[0]?.timeZone
+      ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // "UTC" est aussi ce que renvoie une lecture ratée. On ne l'envoie donc
+    // pas : c'est déjà le défaut côté serveur, et un utilisateur réellement en
+    // UTC (Dakar, Londres en hiver) obtient le même résultat sans requête.
+    if (!timezone || timezone === 'UTC') return;
     await apiFetch('/me', { method: 'PATCH', json: { timezone } });
   } catch {
     // hors-ligne / timezone non résolue : pas grave, on réessaiera au prochain lancement
