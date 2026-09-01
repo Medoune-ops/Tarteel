@@ -108,9 +108,6 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
           "backgroundColor": "#6B4DFF"
         }
       ],
@@ -150,17 +147,34 @@
             }
           }
         ]
-      ]
-    ],
-    "_widgetPlugin_activateForEASBuild": [
-      "expo-widget",
-      {
-        "ios": {
-          "src": "./widgets/ios/TarteelWidgets",
-          "appGroupIdentifier": "group.com.tarteel.app",
-          "devTeam": "XXXXXXXXXX"
+      ],
+      [
+        "expo-widget",
+        {
+          "ios": {
+            "src": "./widgets/ios/TarteelWidgets",
+            "appGroupIdentifier": "group.com.tarteel.app",
+            "devTeam": "XJ6GTF5K9C"
+          },
+          "android": {
+            "src": "./widgets/android",
+            "widgets": [
+              {
+                "name": "StreakWidgetProvider",
+                "resourceName": "@xml/w_streak_info"
+              },
+              {
+                "name": "ContinueWidgetProvider",
+                "resourceName": "@xml/w_continue_info"
+              },
+              {
+                "name": "WeekWidgetProvider",
+                "resourceName": "@xml/w_week_info"
+              }
+            ]
+          }
         }
-      }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

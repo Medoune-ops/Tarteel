@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import HeaderPattern from '../../components/HeaderPattern';
 import DeviceStatusBar from '../../components/StatusBar';
+import QiblaCompass from '../../components/QiblaCompass';
 import { useTheme } from '../../utils/useTheme';
 import { usePrayerStore } from '../../store/prayerStore';
 import { useUserStore } from '../../store/userStore';
@@ -231,6 +232,23 @@ export default function PrieresScreen() {
                 </Pressable>
               ))}
             </View>
+          </>
+        )}
+
+        {/* Qibla — même position, même besoin : on évite un écran séparé. */}
+        {hasLocation && (
+          <>
+            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('qibla.sectionTitle')}</Text>
+            <QiblaCompass
+              latitude={latitude}
+              longitude={longitude}
+              colors={{
+                text: T.text,
+                textSecondary: T.textSecondary,
+                textTertiary: T.textTertiary,
+                cardBg: T.cardBg,
+              }}
+            />
           </>
         )}
 
