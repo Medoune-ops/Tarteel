@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchLearnedSourates, type SourateListItem } from '../../lib/api';
 import { useT } from '../../lib/i18n';
+import OfflineState from '../../components/OfflineState';
 
 // Couleurs par défaut (vert) quand la sourate n'a pas de couleur de section
 // (comptes anciens / contenu legacy sans leçon taguée — voir learnedSourates.ts
@@ -22,14 +23,14 @@ export default function SouratesScreen() {
   const tr = useT();
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   const load = useCallback(async () => {
-    setError(false);
+    setError(null);
     try {
       setSourates(await fetchLearnedSourates());
-    } catch {
-      setError(true);
+    } catch (e) {
+      setError(e);
     }
   }, []);
 
@@ -49,13 +50,7 @@ export default function SouratesScreen() {
       </View>
 
       {error ? (
-        <View style={styles.stateBox}>
-          <Feather name="wifi-off" size={32} color="#9AA0AA" />
-          <Text style={styles.stateText}>{tr('sourates.loadError')}</Text>
-          <Pressable style={styles.retryBtn} onPress={load}>
-            <Text style={styles.retryLabel}>{tr('sourates.retry')}</Text>
-          </Pressable>
-        </View>
+        <OfflineState error={error} onRetry={load} showOfflineExits />
       ) : !sourates ? (
         <View style={styles.stateBox}>
           <ActivityIndicator size="large" color="#2A9E1C" />

@@ -9,6 +9,7 @@ import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPres
 import { getOrJoinLeague, type LeagueView, type LeagueMember } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { useT, type I18nKey } from '../../../lib/i18n';
+import OfflineState from '../../../components/OfflineState';
 
 // Style VISUEL du podium par rang (couleurs, hauteur de marche, anneau). Les
 // DONNÉES (nom, initiales, xp) viennent du backend ; seul l'habillage est ici.
@@ -105,15 +106,15 @@ export default function LiguesScreen() {
 
   // Vue de ligue chargée depuis le backend (GET /leagues/me, auto-join sinon).
   const [view, setView] = useState<LeagueView | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   const load = useCallback(async () => {
-    setError(false);
+    setError(null);
     try {
       // SWR : classement affiché immédiatement depuis le cache, refresh en fond.
       setView(await swrFetch('league', getOrJoinLeague, setView));
-    } catch {
-      setError(true);
+    } catch (e) {
+      setError(e);
     }
   }, []);
 
@@ -146,13 +147,9 @@ export default function LiguesScreen() {
   }
   if (error) {
     return (
-      <View style={[styles.screen, styles.centerState, { backgroundColor: T.pageBg }]}>
+      <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
-        <Feather name="wifi-off" size={32} color={T.textSecondary} />
-        <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('ligues.loadError')}</Text>
-        <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
-        </Pressable>
+        <OfflineState error={error} onRetry={load} showOfflineExits />
       </View>
     );
   }

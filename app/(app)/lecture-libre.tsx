@@ -11,6 +11,8 @@ import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
 import { sourateMeaning } from '../../constants/sourateMeaning';
 import { useUserStore } from '../../store/userStore';
 import { useT } from '../../lib/i18n';
+import OfflineState from '../../components/OfflineState';
+import { readPersisted, writePersisted, SOURATES_CACHE_KEY } from '../../lib/api/persistentCache';
 
 // Minuscules + suppression des accents → recherche tolérante ("fatiha" trouve
 // "Al-Fâtiha", "nas" trouve "An-Nâs"…).
@@ -30,16 +32,26 @@ export default function LectureLibreScreen() {
   const { width } = useWindowDimensions();
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
-    setError(false);
+    setError(null);
     try {
       // Le catalogue ne change jamais → SWR (affichage instantané au retour).
-      setSourates(await swrFetch('sourates:all', fetchSourates, setSourates));
-    } catch {
-      setError(true);
+      const fresh = await swrFetch('sourates:all', fetchSourates, (list) => {
+        setSourates(list);
+        writePersisted(SOURATES_CACHE_KEY, list);
+      });
+      setSourates(fresh);
+      writePersisted(SOURATES_CACHE_KEY, fresh);
+    } catch (e) {
+      // Même contenu que l'écran Tajwid (les 114 sourates, immuables) : on
+      // réutilise son cache disque plutôt que d'afficher une erreur alors
+      // que la liste a déjà été vue au moins une fois.
+      const cached = await readPersisted<SourateListItem[]>(SOURATES_CACHE_KEY);
+      if (cached && cached.length > 0) setSourates(cached);
+      else setError(e);
     }
   }, []);
 
@@ -109,13 +121,7 @@ export default function LectureLibreScreen() {
       </LinearGradient>
 
       {error ? (
-        <View style={styles.stateBox}>
-          <Feather name="wifi-off" size={32} color={T.textTertiary} />
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('lectureLibre.loadError')}</Text>
-          <Pressable style={styles.retryBtn} onPress={load}>
-            <Text style={styles.retryLabel}>{tr('lectureLibre.retry')}</Text>
-          </Pressable>
-        </View>
+        <OfflineState error={error} onRetry={load} showOfflineExits />
       ) : !sourates ? (
         <View style={styles.stateBox}>
           <ActivityIndicator size="large" color="#6B4DFF" />

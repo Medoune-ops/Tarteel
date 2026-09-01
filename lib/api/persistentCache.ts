@@ -16,6 +16,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PREFIX = 'tarteel.cache.';
 
+/**
+ * Clé du catalogue des 114 sourates. Partagée par les écrans Tajwid et
+ * Lecture libre : c'est le même contenu immuable, autant qu'une seule visite
+ * en ligne serve aux deux.
+ */
+export const SOURATES_CACHE_KEY = 'sourates:all';
+
 /** Lit une valeur du cache disque, ou null (absente / illisible). */
 export async function readPersisted<T>(key: string): Promise<T | null> {
   try {

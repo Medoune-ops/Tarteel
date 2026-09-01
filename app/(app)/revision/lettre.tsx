@@ -16,6 +16,7 @@ import { useTheme } from '../../../utils/useTheme';
 import DeviceStatusBar from '../../../components/StatusBar';
 import { useT, t } from '../../../lib/i18n';
 import { useUserStore } from '../../../store/userStore';
+import OfflineState from '../../../components/OfflineState';
 
 type Reponse = 'facile' | 'difficile' | 'oublie';
 /** État de la carte courante pendant la session vocale. */
@@ -58,7 +59,7 @@ export default function LettreRevisionScreen() {
 
   // ── Cartes = étapes discovery de la leçon (lettres/syllabes enseignées) ──
   const [cards, setCards] = useState<DiscoveryStep[] | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<CardPhase>('idle');
   const [successes, setSuccesses] = useState(0);
@@ -78,13 +79,13 @@ export default function LettreRevisionScreen() {
 
   const load = useCallback(async () => {
     if (!lessonId) { setLoadError(true); return; }
-    setLoadError(false);
+    setLoadError(null);
     try {
       const lang = useUserStore.getState().language;
       const lesson = await swrFetch(`lesson:${lessonId}:${lang}`, () => fetchLesson(lessonId, lang));
       setCards(lesson.steps.filter((s): s is DiscoveryStep => s.type === 'discovery'));
-    } catch {
-      setLoadError(true);
+    } catch (e) {
+      setLoadError(e);
     }
   }, [lessonId]);
 
@@ -201,13 +202,9 @@ export default function LettreRevisionScreen() {
   // ── États chargement / erreur ──
   if (loadError) {
     return (
-      <View style={[styles.screen, styles.center, { backgroundColor: T.pageBg }]}>
+      <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
-        <Feather name="wifi-off" size={32} color={T.textSecondary} />
-        <Text style={[styles.stateText, { color: T.text }]}>{tr('lettre.loadError')}</Text>
-        <Pressable style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryLabel}>{tr('lettre.retry')}</Text>
-        </Pressable>
+        <OfflineState error={loadError} onRetry={load} showOfflineExits />
       </View>
     );
   }

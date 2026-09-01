@@ -9,7 +9,7 @@ import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
-import { readPersisted, writePersisted } from '../../lib/api/persistentCache';
+import { readPersisted, writePersisted, SOURATES_CACHE_KEY } from '../../lib/api/persistentCache';
 import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/reciters';
 import { playSurates, AUDIO_AVAILABLE, refreshLocalSudaisCache } from '../../constants/trackPlayer';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
@@ -17,9 +17,6 @@ import { useAudioDownloadStore } from '../../store/audioDownloadStore';
 import { useT } from '../../lib/i18n';
 
 const ALL_SOURATE_NUMBERS = Array.from({ length: 114 }, (_, i) => i + 1);
-
-/** Clé du cache disque de la liste des 114 sourates (contenu quasi-immuable). */
-const SOURATES_CACHE_KEY = 'sourates:all';
 
 // « Écoute du Coran » (badge Tajwid) — catalogue des 114 sourates en audio
 // complet. On choisit un récitateur puis une sourate : la lecture démarre et se
