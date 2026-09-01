@@ -24,6 +24,7 @@ const THEMES: Theme[] = [
   { id: 'prophetes', emoji: '👤', titreKey: 'coran.theme.prophetes.titre', sousKey: 'coran.theme.prophetes.sous', route: '/(app)/docs/prophetes', c1: '#F0820C', c2: '#D96E00' },
   { id: 'ablutions', emoji: '💧', titreKey: 'coran.theme.ablutions.titre', sousKey: 'coran.theme.ablutions.sous', route: '/(app)/docs/ablutions', c1: '#0FB5C4', c2: '#0894A1' },
   { id: 'priere',    emoji: '🕌', titreKey: 'coran.theme.priere.titre',    sousKey: 'coran.theme.priere.sous',    route: '/(app)/docs/priere',    c1: '#E0387E', c2: '#C42968' },
+  { id: 'hadiths',   emoji: '📜', titreKey: 'coran.theme.hadiths.titre',   sousKey: 'coran.theme.hadiths.sous',   route: '/(app)/hadiths',        c1: '#3C8F6B', c2: '#2E7355' },
 ];
 
 export default function CoranScreen() {
