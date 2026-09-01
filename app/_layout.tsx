@@ -18,7 +18,6 @@ import {
 import { preloadSounds } from '../constants/sounds';
 import { useTheme } from '../utils/useTheme';
 import { useAppConfigStore } from '../store/appConfigStore';
-import { useAudioDownloadStore } from '../store/audioDownloadStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -80,12 +79,11 @@ export default function RootLayout() {
   useEffect(() => {
     preloadSounds();
     useAppConfigStore.getState().load();
-    // Pré-téléchargement automatique du récitateur Sudais (mode Tajwid
-    // hors-ligne) — fire-and-forget, ne bloque jamais le démarrage de l'app.
-    const audioStore = useAudioDownloadStore.getState();
-    if (!audioStore.sudaisReady && !audioStore.isDownloading) {
-      audioStore.startDownload();
-    }
+    // Le téléchargement des récitations Sudais n'est plus lancé ici : il
+    // partait automatiquement, sans rien afficher, et consommait des données
+    // mobiles à l'insu de l'utilisateur (~114 fichiers). Il est désormais
+    // déclenché par un bouton explicite dans l'écran Écoute du Coran, avec
+    // sa progression visible.
   }, []);
 
   useRefreshAppConfigOnForeground();

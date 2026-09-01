@@ -48,13 +48,24 @@ async function downloadOne(entry: SudaisManifestEntry): Promise<boolean> {
  * Télécharge les fichiers manquants par lots de CONCURRENCY, avec retry.
  * Renvoie `true` seulement si les 114 fichiers sont confirmés présents à la fin.
  */
+/** Le serveur ne propose aucun fichier : script de transcodage pas encore lancé. */
+export class NoAudioAvailableError extends Error {
+  constructor() {
+    super('no audio available on server');
+    this.name = 'NoAudioAvailableError';
+  }
+}
+
 export async function downloadAllSudais(
   onProgress: (done: number, total: number) => void,
 ): Promise<boolean> {
   await ensureDir();
   const manifest = await fetchSudaisManifest();
   const files = manifest.files;
-  if (files.length === 0) return false; // backend pas encore transcodé
+  // Distingué d'un échec de téléchargement : ici il n'y a rien à télécharger,
+  // le problème est côté serveur et réessayer n'y changerait rien. L'écran
+  // doit le dire, au lieu d'afficher une erreur qui accuse la connexion.
+  if (files.length === 0) throw new NoAudioAvailableError();
 
   let done = 0;
   let allOk = true;
