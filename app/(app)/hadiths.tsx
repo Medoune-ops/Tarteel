@@ -209,7 +209,6 @@ export default function HadithsScreen() {
             ))
           )}
 
-          <Text style={[styles.note, { color: T.textTertiary }]}>{tr('hadiths.footerNote')}</Text>
           <View style={{ height: 28 }} />
         </ScrollView>
       )}
@@ -271,9 +270,4 @@ const styles = StyleSheet.create({
   },
   hadithNum: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: '#2E7355', marginBottom: 6 },
   hadithText: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, lineHeight: 22 },
-
-  note: {
-    fontFamily: 'Nunito_600SemiBold', fontSize: 12, textAlign: 'center',
-    marginTop: 8, paddingHorizontal: 12, lineHeight: 17,
-  },
 });
