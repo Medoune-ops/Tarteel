@@ -6,7 +6,8 @@
  * Une recherche plein texte court-circuite les deux premiers niveaux.
  *
  * Les données sont des assets embarqués, chargés à l'ouverture seulement
- * (voir lib/hadiths.ts) : tout fonctionne hors-ligne.
+ * (voir lib/hadiths.ts) : tout fonctionne hors-ligne. Les recueils existent
+ * en français et en anglais ; on sert la langue de l'utilisateur.
  */
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
@@ -21,9 +22,10 @@ import DeviceStatusBar from '../../components/StatusBar';
 import { useTheme } from '../../utils/useTheme';
 import {
   COLLECTIONS, loadCollection, groupByTheme, hadithsOfChapter, searchHadiths,
+  hadithLangFor, chapterTitle,
   type Collection, type CollectionId, type Hadith, type ThemeGroup,
 } from '../../lib/hadiths';
-import { chaptersFor } from '../../constants/hadithChapters';
+import { useUserStore } from '../../store/userStore';
 import { useT } from '../../lib/i18n';
 
 export default function HadithsScreen() {
@@ -31,6 +33,8 @@ export default function HadithsScreen() {
   const T = useTheme();
   const tr = useT();
   const { width } = useWindowDimensions();
+  // Les hadiths existent en fr et en en : on sert la langue de l'app.
+  const hadithLang = hadithLangFor(useUserStore((s) => s.language));
 
   const [collectionId, setCollectionId] = useState<CollectionId>('nawawi');
   const [collection, setCollection] = useState<Collection | null>(null);
@@ -47,11 +51,11 @@ export default function HadithsScreen() {
     setError(false);
     setChapterId(null);
     setQuery('');
-    loadCollection(collectionId)
+    loadCollection(collectionId, hadithLang)
       .then((c) => { if (!cancelled) { setCollection(c); setLoading(false); } })
       .catch(() => { if (!cancelled) { setError(true); setLoading(false); } });
     return () => { cancelled = true; };
-  }, [collectionId]);
+  }, [collectionId, hadithLang]);
 
   const groups: ThemeGroup[] = useMemo(
     () => (collection ? groupByTheme(collection) : []),
@@ -69,8 +73,8 @@ export default function HadithsScreen() {
   );
 
   const chapterLabel = useCallback(
-    (id: number) => chaptersFor(collectionId)[id]?.fr ?? '',
-    [collectionId],
+    (id: number) => (collection ? chapterTitle(collection, id) : ''),
+    [collection],
   );
 
   const renderHadith = (h: Hadith) => (
@@ -198,7 +202,7 @@ export default function HadithsScreen() {
                     >
                       <View style={[styles.themeDot, { backgroundColor: g.color }]} />
                       <Text style={[styles.chapterName, { color: T.text }]} numberOfLines={2}>
-                        {c.fr}
+                        {c.title}
                       </Text>
                       <Text style={[styles.chapterCount, { color: T.textTertiary }]}>{c.count}</Text>
                       <Feather name="chevron-right" size={18} color={T.textTertiary} />

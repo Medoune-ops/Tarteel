@@ -20,12 +20,17 @@ const BASE = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions';
 const OUT_DIR = path.join(process.cwd(), 'assets', 'hadiths');
 
 /** Recueils retenus, dans l'ordre d'affichage souhaité. */
-const EDITIONS = [
-  { id: 'nawawi', file: 'fra-nawawi' },
-  { id: 'qudsi', file: 'fra-qudsi' },
-  { id: 'bukhari', file: 'fra-bukhari' },
-  { id: 'muslim', file: 'fra-muslim' },
+const COLLECTIONS = ['nawawi', 'qudsi', 'bukhari', 'muslim'];
+
+/** Langues servies : le préfixe correspond à celui des éditions source. */
+const LANGS = [
+  { lang: 'fr', prefix: 'fra' },
+  { lang: 'en', prefix: 'eng' },
 ];
+
+const EDITIONS = LANGS.flatMap(({ lang, prefix }) =>
+  COLLECTIONS.map((id) => ({ id, lang, file: `${prefix}-${id}` })),
+);
 
 async function fetchEdition(file) {
   const res = await fetch(`${BASE}/${file}.min.json`);
@@ -53,8 +58,8 @@ function sectionOf(details, num) {
 async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  for (const { id, file } of EDITIONS) {
-    process.stdout.write(`${id}… `);
+  for (const { id, lang, file } of EDITIONS) {
+    process.stdout.write(`${lang}/${id}… `);
     const raw = await fetchEdition(file);
 
     const sections = raw.metadata?.sections ?? {};
@@ -79,10 +84,11 @@ async function main() {
     // module source, ce qui inlinerait les 7,7 Mo dans le bundle et les
     // chargerait à chaque démarrage. En asset, ils sont livrés avec l'app
     // mais lus seulement à l'ouverture de l'écran (voir metro.config.js).
-    const payload = { id, name: raw.metadata?.name ?? id, chapters, hadiths };
-    fs.writeFileSync(path.join(OUT_DIR, `${id}.hadith`), JSON.stringify(payload));
+    const payload = { id, lang, name: raw.metadata?.name ?? id, chapters, hadiths };
+    const out = path.join(OUT_DIR, `${id}.${lang}.hadith`);
+    fs.writeFileSync(out, JSON.stringify(payload));
 
-    const kb = Math.round(fs.statSync(path.join(OUT_DIR, `${id}.hadith`)).size / 1024);
+    const kb = Math.round(fs.statSync(out).size / 1024);
     console.log(`${hadiths.length} hadiths, ${chapters.length} chapitres, ${kb} Ko`);
 
   }
