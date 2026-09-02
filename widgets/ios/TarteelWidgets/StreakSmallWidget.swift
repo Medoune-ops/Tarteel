@@ -97,6 +97,5 @@ struct StreakSmallView: View {
             }
             .padding(16)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 26))
     }
 }
