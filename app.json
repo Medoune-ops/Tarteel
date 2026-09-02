@@ -157,7 +157,8 @@
             "devTeam": "XJ6GTF5K9C",
             "xcode": {
               "configOverrides": {
-                "SWIFT_VERSION": "5.0"
+                "SWIFT_VERSION": "5.0",
+                "IPHONEOS_DEPLOYMENT_TARGET": "17.0"
               }
             }
           },
