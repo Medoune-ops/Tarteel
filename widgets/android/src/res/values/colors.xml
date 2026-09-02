@@ -36,4 +36,12 @@
     <color name="w_white_16">#29FFFFFF</color>
     <color name="w_white_22">#38FFFFFF</color>
     <color name="w_white_32">#52FFFFFF</color>
+
+    <!-- Mot du jour : panneau clair doré -->
+    <color name="w_gold_bg_start">#FFFFFF</color>
+    <color name="w_gold_bg_end">#FFF7EA</color>
+    <color name="w_gold_accent">#C2860C</color>
+    <color name="w_gold_translit">#8A7A5C</color>
+    <color name="w_gold_badge_bg">#FFF1D6</color>
+    <color name="w_gold_badge_text">#96660A</color>
 </resources>
