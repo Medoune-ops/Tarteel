@@ -1,7 +1,13 @@
 import { NativeModules, Platform } from 'react-native';
 import { t, type I18nKey } from '../lib/i18n';
 
-const APP_GROUP = 'group.com.tarteel.app';
+/**
+ * App Group partagé app ↔ widget iOS. Le suffixe `.expowidgets` n'est pas
+ * décoratif : expo-widget construit cet identifiant en dur
+ * (`group.${bundleIdentifier}.expowidgets`) et l'inscrit lui-même dans les
+ * entitlements et côté Apple — toute autre valeur ferait échouer la signature.
+ */
+const APP_GROUP = 'group.com.tarteel.app.expowidgets';
 /** Package Android (≠ bundle iOS : com.tarteel.app était déjà pris sur le Play Store). */
 const ANDROID_PACKAGE = 'com.tarteel.sn';
 

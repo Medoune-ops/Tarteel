@@ -1,7 +1,11 @@
 import Foundation
 import WidgetKit
 
-let APP_GROUP = "group.com.tarteel.app"
+// Doit rester identique à APP_GROUP dans utils/widgetData.ts : c'est par cet
+// App Group que l'app et le widget partagent leurs données. Le suffixe
+// `.expowidgets` est imposé par expo-widget, qui construit l'identifiant en dur
+// (`group.${bundleIdentifier}.expowidgets`) et l'inscrit dans les entitlements.
+let APP_GROUP = "group.com.tarteel.app.expowidgets"
 
 struct WidgetData: Codable {
     var streak: Int
