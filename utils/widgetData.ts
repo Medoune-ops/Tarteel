@@ -20,6 +20,9 @@ export interface WidgetData {
   /** Jours de la semaine actifs (0=lun … 6=dim) */
   activeDays: boolean[];
   motivationMsg: string;
+  /** Heure locale (0-23) du rappel quotidien — miroir de userStore.reminderHour,
+   *  affichée sur le widget "Rappel". */
+  reminderHour: number;
 }
 
 const MOTIVATION_KEYS: I18nKey[] = [
@@ -46,6 +49,8 @@ export function syncWidgetData(params: {
   streak: number;
   xp: number;
   currentLesson: number;
+  /** Heure locale (0-23) du rappel quotidien (userStore.reminderHour). */
+  reminderHour: number;
 }) {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
 
@@ -59,6 +64,7 @@ export function syncWidgetData(params: {
     lessonSection: 'Alphabet',
     activeDays,
     motivationMsg: currentMotivationMsg(),
+    reminderHour: params.reminderHour,
   };
 
   try {
