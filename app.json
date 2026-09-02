@@ -154,7 +154,12 @@
           "ios": {
             "src": "./widgets/ios/TarteelWidgets",
             "appGroupIdentifier": "group.com.tarteel.app",
-            "devTeam": "XJ6GTF5K9C"
+            "devTeam": "XJ6GTF5K9C",
+            "xcode": {
+              "configOverrides": {
+                "SWIFT_VERSION": "5.0"
+              }
+            }
           },
           "android": {
             "src": "./widgets/android",
