@@ -169,32 +169,27 @@ function StreakPreview({ streak }: { streak: number }) {
   );
 }
 
-// ─── Preview fidèle du widget natif "Reprendre" (petit) ────────────────────
-function ContinuePreview({ streak, lesson, progress }: { streak: number; lesson: number; progress: number }) {
+// ─── Preview fidèle du widget natif "Rappel" (petit) ────────────────────────
+function ContinuePreview({ streak }: { streak: number }) {
   const tr = useT();
   return (
-    <LinearGradient colors={['#7E62F2', '#6244DE', '#4E32C4']} start={{ x: 0.8, y: 0 }} end={{ x: 0.2, y: 1 }} style={pv.contBox}>
+    <LinearGradient colors={['#8A6BFF', '#6244DE', '#4A2FBE']} start={{ x: 0.22, y: 0 }} end={{ x: 0.8, y: 1 }} style={pv.contBox}>
       <View style={pv.contHeaderRow}>
-        <View style={pv.contLessonPill}>
-          <Text style={pv.contLessonText}>{tr('widgets.preview.lessonN', { n: lesson })}</Text>
+        <View style={pv.contReminderRow}>
+          <Feather name="bell" size={12} color="#FFD37A" />
+          <Text style={pv.contReminderText}>{tr('widgets.preview.reminder')}</Text>
         </View>
-        <View style={pv.contStreakRow}>
-          <Text style={pv.contFlame}>🔥</Text>
-          <Text style={pv.contStreakText}>{streak}</Text>
-        </View>
+        <Text style={pv.contTime}>21:00</Text>
       </View>
       <View style={{ flex: 1 }} />
-      <View style={pv.contOtterWrap}><Otter size={52} /></View>
-      <View style={{ flex: 1 }} />
-      <View style={pv.contProgressRow}>
-        <View style={pv.contProgressTrack}>
-          <View style={[pv.contProgressFill, { width: `${Math.min(progress, 100)}%` }]} />
-        </View>
-        <Text style={pv.contProgressPct}>{progress}%</Text>
+      <View style={pv.contMessageRow}>
+        <Otter size={40} />
+        <Text style={pv.contMessageText} numberOfLines={2}>{tr('widgets.preview.streakAwaits')}</Text>
       </View>
+      <View style={{ flex: 1 }} />
       <View style={pv.contButton}>
-        <Feather name="play" size={11} color="#fff" />
-        <Text style={pv.contButtonText}>{tr('widgets.preview.continueBtn')}</Text>
+        <Feather name="clock" size={12} color="#FFD37A" />
+        <Text style={pv.contButtonText}>{tr('widgets.preview.threeMin')}</Text>
       </View>
     </LinearGradient>
   );
@@ -264,12 +259,11 @@ export default function WidgetsScreen() {
   const { width } = useWindowDimensions();
   const streak = useUserStore((s) => s.streak);
   const xp = useUserStore((s) => s.xp);
-  const currentLesson = useUserStore((s) => s.currentLesson);
 
   const howTo = Platform.OS === 'ios' ? tr('widgets.howTo.ios') : tr('widgets.howTo.android');
 
   const WIDGET_PREVIEWS: WidgetPreview[] = [
-    { key: 'continue', size: 'S', titleKey: 'widgets.continue.title', descKey: 'widgets.continue.desc', render: () => <ContinuePreview streak={streak} lesson={currentLesson} progress={42} /> },
+    { key: 'continue', size: 'S', titleKey: 'widgets.continue.title', descKey: 'widgets.continue.desc', render: () => <ContinuePreview streak={streak} /> },
     { key: 'streak', size: 'S', titleKey: 'widgets.streak.title', descKey: 'widgets.streak.desc', render: () => <StreakPreview streak={streak} /> },
     { key: 'week', size: 'M', titleKey: 'widgets.week.title', descKey: 'widgets.week.desc', render: () => <WeekPreview streak={streak} xp={xp} motivationMsg={currentMotivationMsg()} /> },
   ];
@@ -436,30 +430,24 @@ const pv = StyleSheet.create({
   streakDayLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 8, color: 'rgba(255,255,255,0.6)' },
   streakDayLabelToday: { color: '#fff' },
 
-  // Continue (small)
+  // Rappel (small)
   contBox: {
     width: SMALL_W, height: SMALL_H, borderRadius: 26, padding: 12,
     overflow: 'hidden',
   },
   contHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  contLessonPill: {
-    backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 20,
-    paddingHorizontal: 8, paddingVertical: 3,
-  },
-  contLessonText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 9, color: '#fff' },
-  contStreakRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  contFlame: { fontSize: 11 },
-  contStreakText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: '#fff' },
+  contReminderRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  contReminderText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10.5, color: '#fff' },
+  contTime: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: 'rgba(255,255,255,0.7)' },
   contOtterWrap: { alignSelf: 'center' },
-  contProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  contProgressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden' },
-  contProgressFill: { height: 6, borderRadius: 3, backgroundColor: '#34C724' },
-  contProgressPct: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: '#fff' },
+  contMessageRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  contMessageText: { flex: 1, fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: '#fff' },
   contButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    backgroundColor: '#34C724', borderRadius: 12, paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 12, paddingVertical: 8,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
-  contButtonText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: '#fff' },
+  contButtonText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5, color: '#fff' },
 
   // Week (medium)
   weekBox: {
