@@ -29,7 +29,7 @@ struct StreakSmallWidget: Widget {
     }
 }
 
-// ─── Widget 2 : Petit · Reprendre ────────────────────────────────────────────
+// ─── Widget 2 : Petit · Rappel ───────────────────────────────────────────────
 struct ContinueSmallWidget: Widget {
     let kind = "TarteelContinueSmall"
 
@@ -38,8 +38,8 @@ struct ContinueSmallWidget: Widget {
             ContinueSmallView(data: entry.data)
                 .containerBackground(.clear, for: .widget)
         }
-        .configurationDisplayName("Reprendre")
-        .description("Continue ta leçon en cours.")
+        .configurationDisplayName("Rappel")
+        .description("Un petit rappel pour garder ta série.")
         .supportedFamilies([.systemSmall])
     }
 }
