@@ -9,9 +9,11 @@
 <resources>
     <string name="w_streak_label">🔥 Série</string>
     <string name="w_streak_unit">jours de suite</string>
-    <string name="w_continue_label">Continuer</string>
-    <string name="w_lesson_prefix">Leçon</string>
     <string name="w_week_title">Ma semaine</string>
+
+    <string name="w_reminder_label">Rappel</string>
+    <string name="w_reminder_message">Ta série t\'attend</string>
+    <string name="w_reminder_duration">3 min suffisent</string>
 
     <string name="w_day_mon">L</string>
     <string name="w_day_tue">M</string>
@@ -22,7 +24,7 @@
     <string name="w_day_sun">D</string>
 
     <string name="w_desc_streak">Ta série de jours d\'affilée</string>
-    <string name="w_desc_continue">Reprends ta leçon en cours</string>
+    <string name="w_desc_continue">Un petit rappel pour garder ta série</string>
     <string name="w_desc_week">Ta semaine d\'apprentissage</string>
 
     <string name="w_wordofday_title">Mot du jour</string>

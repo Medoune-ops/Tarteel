@@ -24,10 +24,13 @@ data class TarteelWidgetData(
     val lessonProgress: Int,
     val activeDays: List<Boolean>,
     val motivationMsg: String,
+    /** Heure locale (0-23) du rappel quotidien — miroir de userStore.reminderHour
+     *  côté app, affichée sur le widget "Rappel". */
+    val reminderHour: Int,
 ) {
     companion object {
         /** Valeurs de repli : un widget fraîchement posé, avant tout lancement de l'app. */
-        private val EMPTY = TarteelWidgetData(0, 0, 1, 0, List(7) { false }, "")
+        private val EMPTY = TarteelWidgetData(0, 0, 1, 0, List(7) { false }, "", 19)
 
         fun read(context: Context): TarteelWidgetData {
             return try {
@@ -50,6 +53,9 @@ data class TarteelWidgetData(
                     lessonProgress = json.optInt("lessonProgress", 0),
                     activeDays = days,
                     motivationMsg = json.optString("motivationMsg", ""),
+                    // Absent des données écrites par une version de l'app antérieure
+                    // à l'ajout de ce champ -> fallback 19h (même défaut que userStore.ts).
+                    reminderHour = json.optInt("reminderHour", 19),
                 )
             } catch (_: Exception) {
                 // JSON absent ou malformé : on affiche un widget vide plutôt

@@ -11,13 +11,10 @@
     <color name="w_streak_end">#E0560E</color>
     <color name="w_streak_dot_active">#FFE08A</color>
 
-    <!-- Reprendre : dégradé violet + vert du bouton -->
-    <color name="w_continue_start">#7E62F2</color>
+    <!-- Rappel : dégradé violet (aligné sur ContinueSmallWidget.swift) -->
+    <color name="w_continue_start">#8A6BFF</color>
     <color name="w_continue_mid">#6244DE</color>
-    <color name="w_continue_end">#4E32C4</color>
-    <color name="w_green_start">#4BDD38</color>
-    <color name="w_green_end">#33C022</color>
-    <color name="w_flame_soft">#FFC56B</color>
+    <color name="w_continue_end">#4A2FBE</color>
 
     <!-- Semaine : panneau clair -->
     <color name="w_panel_start">#FFFFFF</color>
@@ -36,6 +33,7 @@
     <color name="w_white_16">#29FFFFFF</color>
     <color name="w_white_22">#38FFFFFF</color>
     <color name="w_white_32">#52FFFFFF</color>
+    <color name="w_white_70">#B3FFFFFF</color>
 
     <!-- Mot du jour : panneau clair doré -->
     <color name="w_gold_bg_start">#FFFFFF</color>
