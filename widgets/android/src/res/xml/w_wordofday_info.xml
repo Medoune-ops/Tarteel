@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget Mot du jour : 2x2. updatePeriodMillis=1800000 (30 min, le minimum
+     garanti par Android) : contrairement aux autres widgets, celui-ci doit
+     changer de contenu à minuit même si l'app n'a pas été ouverte, donc il
+     ne peut pas se reposer sur un broadcast déclenché par l'app. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="140dp"
+    android:minHeight="140dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/w_wordofday"
+    android:description="@string/w_desc_wordofday"
+    android:previewLayout="@layout/w_wordofday"
+    android:resizeMode="none"
+    android:widgetCategory="home_screen" />

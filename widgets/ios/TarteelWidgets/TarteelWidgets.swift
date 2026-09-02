@@ -66,5 +66,6 @@ struct TarteelWidgetBundle: WidgetBundle {
         StreakSmallWidget()
         ContinueSmallWidget()
         WeekMediumWidget()
+        WordOfDayWidget()
     }
 }

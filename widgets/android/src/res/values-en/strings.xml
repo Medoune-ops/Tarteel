@@ -18,4 +18,9 @@
     <string name="w_desc_streak">Your day streak</string>
     <string name="w_desc_continue">Resume your current lesson</string>
     <string name="w_desc_week">Your learning week</string>
+
+    <string name="w_wordofday_title">Word of the day</string>
+    <string name="w_wordofday_badge_prefix">Name #</string>
+    <string name="w_wordofday_badge_suffix">of 99</string>
+    <string name="w_desc_wordofday">A different name of Allah every day</string>
 </resources>
