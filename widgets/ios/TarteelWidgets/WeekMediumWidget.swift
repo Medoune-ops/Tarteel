@@ -189,7 +189,5 @@ struct WeekMediumView: View {
                 )
             )
         }
-        .clipShape(RoundedRectangle(cornerRadius: 26))
-        .shadow(color: Color(hex: "#503290").opacity(0.1), radius: 10, y: 4)
     }
 }
