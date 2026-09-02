@@ -176,6 +176,10 @@
               {
                 "name": "WeekWidgetProvider",
                 "resourceName": "@xml/w_week_info"
+              },
+              {
+                "name": "WordOfDayWidgetProvider",
+                "resourceName": "@xml/w_wordofday_info"
               }
             ]
           }

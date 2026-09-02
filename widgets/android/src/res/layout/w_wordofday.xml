@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget Mot du jour (2×2) — équivalent Android de WordOfDayWidget.swift.
+  Contenu entièrement statique côté layout : le nom du jour est calculé par
+  date (AsmaData.kt) et injecté depuis WordOfDayWidgetProvider.kt, sans lire
+  les données partagées app -> widget (pas besoin, c'est un pur calcul).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/w_bg_wordofday"
+    android:padding="16dp">
+
+    <!-- En-tête -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/w_wordofday_title"
+        android:textColor="@color/w_gold_accent"
+        android:textSize="11.5sp"
+        android:textStyle="bold" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Nom arabe, translittération, traduction -->
+    <TextView
+        android:id="@+id/w_word_arabic"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:textColor="@color/w_text_dark"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:text="" />
+
+    <TextView
+        android:id="@+id/w_word_translit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textColor="@color/w_gold_translit"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:text="" />
+
+    <TextView
+        android:id="@+id/w_word_translation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/w_text_dark"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:maxLines="2"
+        android:text="" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Badge « Nom n° X sur 99 » -->
+    <TextView
+        android:id="@+id/w_word_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/w_badge_gold"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:textColor="@color/w_gold_badge_text"
+        android:textSize="10.5sp"
+        android:textStyle="bold"
+        android:text="" />
+</LinearLayout>

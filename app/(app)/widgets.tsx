@@ -9,6 +9,7 @@ import Otter from '../../components/Otter';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
 import { currentMotivationMsg } from '../../utils/widgetData';
+import { nameOfTheDay } from '../../utils/nameOfDay';
 import { useT } from '../../lib/i18n';
 
 // `expo-alternate-app-icons` est un module NATIF : dans Expo Go (pas de code
@@ -244,11 +245,36 @@ function WeekPreview({ streak, xp, motivationMsg }: { streak: number; xp: number
   );
 }
 
+// ─── Preview fidèle du widget natif "Mot du jour" (petit) ──────────────────
+function WordOfDayPreview() {
+  const tr = useT();
+  const name = nameOfTheDay();
+  return (
+    <LinearGradient colors={['#FFFFFF', '#FFF7EA']} start={{ x: 0.5, y: -0.2 }} end={{ x: 0.5, y: 1.2 }} style={pv.wodBox}>
+      <View style={pv.wodHeaderRow}>
+        <Feather name="star" size={12} color="#C2860C" />
+        <Text style={pv.wodHeaderText}>{tr('widgets.preview.wordOfDay')}</Text>
+      </View>
+      <View style={{ flex: 1 }} />
+      <View>
+        <Text style={pv.wodArabic}>{name.arabe}</Text>
+        <Text style={pv.wodTranslit}>{name.translitteration}</Text>
+        <Text style={pv.wodTranslation} numberOfLines={2}>{name.fr}</Text>
+      </View>
+      <View style={{ flex: 1 }} />
+      <View style={pv.wodBadge}>
+        <Feather name="star" size={11} color="#96660A" />
+        <Text style={pv.wodBadgeText}>{tr('widgets.preview.nameOf', { n: name.numero })}</Text>
+      </View>
+    </LinearGradient>
+  );
+}
+
 type WidgetPreview = {
   key: string;
   size: string;
-  titleKey: 'widgets.continue.title' | 'widgets.streak.title' | 'widgets.week.title';
-  descKey: 'widgets.continue.desc' | 'widgets.streak.desc' | 'widgets.week.desc';
+  titleKey: 'widgets.continue.title' | 'widgets.streak.title' | 'widgets.week.title' | 'widgets.wordOfDay.title';
+  descKey: 'widgets.continue.desc' | 'widgets.streak.desc' | 'widgets.week.desc' | 'widgets.wordOfDay.desc';
   render: () => React.ReactElement;
 };
 
@@ -267,6 +293,7 @@ export default function WidgetsScreen() {
     { key: 'continue', size: 'S', titleKey: 'widgets.continue.title', descKey: 'widgets.continue.desc', render: () => <ContinuePreview streak={streak} reminderHour={reminderHour} /> },
     { key: 'streak', size: 'S', titleKey: 'widgets.streak.title', descKey: 'widgets.streak.desc', render: () => <StreakPreview streak={streak} /> },
     { key: 'week', size: 'M', titleKey: 'widgets.week.title', descKey: 'widgets.week.desc', render: () => <WeekPreview streak={streak} xp={xp} motivationMsg={currentMotivationMsg()} /> },
+    { key: 'wordOfDay', size: 'S', titleKey: 'widgets.wordOfDay.title', descKey: 'widgets.wordOfDay.desc', render: () => <WordOfDayPreview /> },
   ];
 
   return (
@@ -489,4 +516,24 @@ const pv = StyleSheet.create({
   },
   weekQuoteFlame: { fontSize: 11 },
   weekQuoteText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 9.5, color: '#B5571A' },
+
+  // Mot du jour (small)
+  wodBox: {
+    width: SMALL_W, height: SMALL_H, borderRadius: 26, padding: 16,
+    overflow: 'hidden',
+  },
+  wodHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  wodHeaderText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5, color: '#C2860C' },
+  wodArabic: {
+    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 32, lineHeight: 38,
+    color: '#1B2333', textAlign: 'right', writingDirection: 'rtl',
+  },
+  wodTranslit: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: '#8A7A5C', marginTop: 2 },
+  wodTranslation: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, color: '#1B2333', lineHeight: 18 },
+  wodBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FFF1D6', borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 7, alignSelf: 'flex-start',
+  },
+  wodBadgeText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10.5, color: '#96660A' },
 });

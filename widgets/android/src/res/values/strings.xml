@@ -24,4 +24,9 @@
     <string name="w_desc_streak">Ta série de jours d\'affilée</string>
     <string name="w_desc_continue">Reprends ta leçon en cours</string>
     <string name="w_desc_week">Ta semaine d\'apprentissage</string>
+
+    <string name="w_wordofday_title">Mot du jour</string>
+    <string name="w_wordofday_badge_prefix">Nom n°</string>
+    <string name="w_wordofday_badge_suffix">sur 99</string>
+    <string name="w_desc_wordofday">Un nom d\'Allah différent chaque jour</string>
 </resources>

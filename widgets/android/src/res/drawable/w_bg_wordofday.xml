@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fond du widget Mot du jour (2×2) — dégradé blanc -> crème, comme la maquette. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="26dp" />
+    <gradient android:type="linear" android:angle="270"
+        android:startColor="@color/w_gold_bg_start" android:endColor="@color/w_gold_bg_end" />
+</shape>
