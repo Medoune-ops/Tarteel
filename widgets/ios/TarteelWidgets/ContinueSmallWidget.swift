@@ -118,6 +118,5 @@ struct ContinueSmallView: View {
             }
             .padding(14)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 26))
     }
 }
