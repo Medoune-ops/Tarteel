@@ -43,7 +43,7 @@ struct ContinueSmallView: View {
 
                     Spacer()
 
-                    Text("21:00")
+                    Text(String(format: "%02d:00", data.reminderHour))
                         .font(.system(size: 11, weight: .heavy))
                         .foregroundColor(.white.opacity(0.7))
                 }

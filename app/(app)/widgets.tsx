@@ -170,7 +170,7 @@ function StreakPreview({ streak }: { streak: number }) {
 }
 
 // ─── Preview fidèle du widget natif "Rappel" (petit) ────────────────────────
-function ContinuePreview({ streak }: { streak: number }) {
+function ContinuePreview({ streak, reminderHour }: { streak: number; reminderHour: number }) {
   const tr = useT();
   return (
     <LinearGradient colors={['#8A6BFF', '#6244DE', '#4A2FBE']} start={{ x: 0.22, y: 0 }} end={{ x: 0.8, y: 1 }} style={pv.contBox}>
@@ -179,7 +179,7 @@ function ContinuePreview({ streak }: { streak: number }) {
           <Feather name="bell" size={12} color="#FFD37A" />
           <Text style={pv.contReminderText}>{tr('widgets.preview.reminder')}</Text>
         </View>
-        <Text style={pv.contTime}>21:00</Text>
+        <Text style={pv.contTime}>{String(reminderHour).padStart(2, '0')}:00</Text>
       </View>
       <View style={{ flex: 1 }} />
       <View style={pv.contMessageRow}>
@@ -259,11 +259,12 @@ export default function WidgetsScreen() {
   const { width } = useWindowDimensions();
   const streak = useUserStore((s) => s.streak);
   const xp = useUserStore((s) => s.xp);
+  const reminderHour = useUserStore((s) => s.reminderHour);
 
   const howTo = Platform.OS === 'ios' ? tr('widgets.howTo.ios') : tr('widgets.howTo.android');
 
   const WIDGET_PREVIEWS: WidgetPreview[] = [
-    { key: 'continue', size: 'S', titleKey: 'widgets.continue.title', descKey: 'widgets.continue.desc', render: () => <ContinuePreview streak={streak} /> },
+    { key: 'continue', size: 'S', titleKey: 'widgets.continue.title', descKey: 'widgets.continue.desc', render: () => <ContinuePreview streak={streak} reminderHour={reminderHour} /> },
     { key: 'streak', size: 'S', titleKey: 'widgets.streak.title', descKey: 'widgets.streak.desc', render: () => <StreakPreview streak={streak} /> },
     { key: 'week', size: 'M', titleKey: 'widgets.week.title', descKey: 'widgets.week.desc', render: () => <WeekPreview streak={streak} xp={xp} motivationMsg={currentMotivationMsg()} /> },
   ];

@@ -205,7 +205,11 @@ export const useUserStore = create<UserState>()(
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
 
-      setReminderHour: (hour) => set({ reminderHour: hour }),
+      setReminderHour: (hour) => {
+        set({ reminderHour: hour });
+        const s = get();
+        syncWidgetData({ streak: s.streak, xp: s.xp, currentLesson: s.currentLesson, reminderHour: hour });
+      },
 
       setDailyMinutes: (dailyMinutes) => set({ dailyMinutes }),
       completeOnboarding: () => set({ onboardingDone: true }),
@@ -213,7 +217,7 @@ export const useUserStore = create<UserState>()(
       addXP: (amount) =>
         set((s) => {
           const xp = s.xp + (s.isPremium ? amount * 2 : amount);
-          syncWidgetData({ streak: s.streak, xp, currentLesson: s.currentLesson });
+          syncWidgetData({ streak: s.streak, xp, currentLesson: s.currentLesson, reminderHour: s.reminderHour });
           return { xp };
         }),
 
@@ -234,7 +238,7 @@ export const useUserStore = create<UserState>()(
         if (next.hearts !== s.hearts || next.lastHeartLossAt !== s.lastHeartLossAt) {
           set(next);
         }
-        syncWidgetData({ streak: s.streak, xp: s.xp, currentLesson: s.currentLesson });
+        syncWidgetData({ streak: s.streak, xp: s.xp, currentLesson: s.currentLesson, reminderHour: s.reminderHour });
       },
 
       msUntilNextHeart: () => {
@@ -252,13 +256,13 @@ export const useUserStore = create<UserState>()(
       setStreak: (streak) => {
         const s = get();
         set({ streak });
-        syncWidgetData({ streak, xp: s.xp, currentLesson: s.currentLesson });
+        syncWidgetData({ streak, xp: s.xp, currentLesson: s.currentLesson, reminderHour: s.reminderHour });
       },
 
       setCurrentLesson: (currentLesson) => {
         const s = get();
         set({ currentLesson });
-        syncWidgetData({ streak: s.streak, xp: s.xp, currentLesson });
+        syncWidgetData({ streak: s.streak, xp: s.xp, currentLesson, reminderHour: s.reminderHour });
       },
 
       hydrateFromBackend: (data) => {
@@ -293,6 +297,7 @@ export const useUserStore = create<UserState>()(
           streak: data.streak,
           xp: data.xp,
           currentLesson: data.currentLesson,
+          reminderHour: get().reminderHour,
         });
       },
 
