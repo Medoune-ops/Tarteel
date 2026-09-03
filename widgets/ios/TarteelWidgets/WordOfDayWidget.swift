@@ -122,6 +122,7 @@ struct WordOfDayWidget: Widget {
             WordOfDayView(name: nameOfTheDay(entry.date))
                 .containerBackground(Color.white, for: .widget)
         }
+        .contentMarginsDisabled()
         .configurationDisplayName("Mot du jour")
         .description("Un nom d'Allah différent chaque jour.")
         .supportedFamilies([.systemSmall])
