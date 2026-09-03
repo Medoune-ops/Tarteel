@@ -29,6 +29,7 @@ struct StreakSmallWidget: Widget {
                 // pour que la transition soit invisible.
                 .containerBackground(Color(hex: "#FF9A3D"), for: .widget)
         }
+        .contentMarginsDisabled()
         .configurationDisplayName("Série")
         .description("Ta série de jours consécutifs.")
         .supportedFamilies([.systemSmall])
@@ -44,6 +45,7 @@ struct ContinueSmallWidget: Widget {
             ContinueSmallView(data: entry.data)
                 .containerBackground(Color(hex: "#6244DE"), for: .widget)
         }
+        .contentMarginsDisabled()
         .configurationDisplayName("Rappel")
         .description("Un petit rappel pour garder ta série.")
         .supportedFamilies([.systemSmall])
@@ -57,12 +59,27 @@ struct WeekMediumWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TarteelProvider()) { entry in
             WeekMediumView(data: entry.data)
-                // La vue mêle deux fonds (colonne orange à gauche, panneau
-                // blanc à droite) : blanc reste le compromis le moins visible
-                // sur la marge système, la colonne orange étant la plus
-                // étroite des deux.
-                .containerBackground(Color.white, for: .widget)
+                // La marge "safe" ajoutée par containerBackground doit matcher
+                // ce qui touche RÉELLEMENT le bord du widget à cet endroit :
+                // à gauche c'est la colonne orange (~33,5% de la largeur), à
+                // droite le panneau blanc. Une seule couleur unie créait donc
+                // forcément un liseré visible d'un côté ou de l'autre.
+                .containerBackground(for: .widget) {
+                    LinearGradient(
+                        colors: [Color(hex: "#FF9A3D"), Color(hex: "#F5731F"), Color(hex: "#E0560E")],
+                        startPoint: UnitPoint(x: 0.72, y: 0),
+                        endPoint: UnitPoint(x: 0.2, y: 1)
+                    )
+                }
         }
+        // Supprime le padding interne par défaut que WidgetKit ajoute autour
+        // du contenu depuis iOS 17 : c'est CE padding système (pas la marge
+        // de containerBackground) qui laissait un liseré visible tout autour
+        // de la colonne orange — la vue déclare déjà elle-même son padding
+        // exact (WeekMediumWidget.swift : .padding(12) sur la colonne droite
+        // seulement, colonne gauche pleine hauteur/largeur), donc le padding
+        // système en plus était superflu et cassait l'alignement au bord.
+        .contentMarginsDisabled()
         .configurationDisplayName("Ma semaine")
         .description("Ta progression sur les 7 derniers jours.")
         .supportedFamilies([.systemMedium])
