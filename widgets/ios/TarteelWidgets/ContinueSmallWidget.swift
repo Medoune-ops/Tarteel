@@ -7,6 +7,7 @@ struct ContinueSmallView: View {
     let data: WidgetData
 
     var body: some View {
+        GeometryReader { geo in
         ZStack {
             // Fond violet
             RadialGradient(
@@ -83,6 +84,8 @@ struct ContinueSmallView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .padding(16)
+        }
+        .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 }

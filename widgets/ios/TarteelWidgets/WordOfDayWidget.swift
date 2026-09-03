@@ -30,6 +30,7 @@ struct WordOfDayView: View {
     let name: AsmaName
 
     var body: some View {
+        GeometryReader { geo in
         ZStack {
             LinearGradient(
                 colors: [Color.white, Color(hex: "#FFF7EA")],
@@ -64,14 +65,29 @@ struct WordOfDayView: View {
                         .foregroundColor(Color(hex: "#1B2333"))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .environment(\.layoutDirection, .rightToLeft)
+                        // Les 99 noms sont très inégaux en longueur : le n°85
+                        // (ذُو ٱلْجَلَالِ وَٱلْإِكْرَام) fait 28 caractères
+                        // contre 13 pour le suivant. Le facteur d'échelle doit
+                        // donc pouvoir descendre bas — il ne s'applique que
+                        // quand c'est nécessaire, les autres noms gardent
+                        // leur taille pleine.
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.4)
                     Text(name.translitteration)
                         .font(.system(size: 12, weight: .heavy))
                         .foregroundColor(Color(hex: "#8A7A5C"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     Text(name.fr)
                         .font(.system(size: 15, weight: .heavy))
                         .foregroundColor(Color(hex: "#1B2333"))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.75)
+                        // n°85 : « Le Détenteur de la majesté et de la
+                        // générosité » = 46 caractères. 2 lignes à 15pt ne
+                        // suffisent pas dans un widget small — on autorise 3
+                        // lignes et une réduction plus forte plutôt qu'une
+                        // troncature avec points de suspension.
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.6)
                 }
 
                 Spacer()
@@ -93,6 +109,8 @@ struct WordOfDayView: View {
             }
             .padding(16)
         }
+        .frame(width: geo.size.width, height: geo.size.height)
+        }
     }
 }
 
@@ -102,7 +120,7 @@ struct WordOfDayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TarteelProvider()) { entry in
             WordOfDayView(name: nameOfTheDay(entry.date))
-                .containerBackground(.clear, for: .widget)
+                .containerBackground(Color.white, for: .widget)
         }
         .configurationDisplayName("Mot du jour")
         .description("Un nom d'Allah différent chaque jour.")
