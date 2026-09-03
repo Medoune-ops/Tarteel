@@ -21,7 +21,13 @@ struct StreakSmallWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TarteelProvider()) { entry in
             StreakSmallView(data: entry.data)
-                .containerBackground(.clear, for: .widget)
+                // iOS 17+ peint cette couleur dans la marge "safe" entre le
+                // contenu et les coins arrondis du widget. En .clear, cette
+                // marge laissait voir le fond d'écran d'accueil à travers —
+                // d'où l'impression que le widget ne remplissait pas son
+                // cadre. On reprend la couleur de départ du dégradé de la vue
+                // pour que la transition soit invisible.
+                .containerBackground(Color(hex: "#FF9A3D"), for: .widget)
         }
         .configurationDisplayName("Série")
         .description("Ta série de jours consécutifs.")
@@ -36,7 +42,7 @@ struct ContinueSmallWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TarteelProvider()) { entry in
             ContinueSmallView(data: entry.data)
-                .containerBackground(.clear, for: .widget)
+                .containerBackground(Color(hex: "#6244DE"), for: .widget)
         }
         .configurationDisplayName("Rappel")
         .description("Un petit rappel pour garder ta série.")
@@ -51,7 +57,11 @@ struct WeekMediumWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TarteelProvider()) { entry in
             WeekMediumView(data: entry.data)
-                .containerBackground(.clear, for: .widget)
+                // La vue mêle deux fonds (colonne orange à gauche, panneau
+                // blanc à droite) : blanc reste le compromis le moins visible
+                // sur la marge système, la colonne orange étant la plus
+                // étroite des deux.
+                .containerBackground(Color.white, for: .widget)
         }
         .configurationDisplayName("Ma semaine")
         .description("Ta progression sur les 7 derniers jours.")

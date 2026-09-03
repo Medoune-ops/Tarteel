@@ -2,12 +2,11 @@ import { NativeModules, Platform } from 'react-native';
 import { t, type I18nKey } from '../lib/i18n';
 
 /**
- * App Group partagé app ↔ widget iOS. Le suffixe `.expowidgets` n'est pas
- * décoratif : expo-widget construit cet identifiant en dur
- * (`group.${bundleIdentifier}.expowidgets`) et l'inscrit lui-même dans les
- * entitlements et côté Apple — toute autre valeur ferait échouer la signature.
+ * iOS n'a pas besoin de l'App Group ici : c'est le module natif Swift
+ * (widgets/ios/TarteelWidgets/Module.swift) qui fixe le suite name et la clé
+ * d'écriture. Le dupliquer côté JS ferait courir le risque que les deux
+ * valeurs divergent silencieusement.
  */
-const APP_GROUP = 'group.com.tarteel.app.expowidgets';
 /** Package Android (≠ bundle iOS : com.tarteel.app était déjà pris sur le Play Store). */
 const ANDROID_PACKAGE = 'com.tarteel.sn';
 
@@ -69,12 +68,14 @@ export function syncWidgetData(params: {
 
   try {
     if (Platform.OS === 'ios') {
-      // expo-widget lit les données depuis UserDefaults (App Group)
-      NativeModules.ExpoWidget?.setItem(
-        'tarteel_widget_data',
-        JSON.stringify(data),
-        APP_GROUP,
-      );
+      // Même module natif que sur Android : `ExpoWidgets` (au pluriel),
+      // fonction `setWidgetData`. L'appel visait auparavant
+      // `ExpoWidget.setItem` — module ET fonction inexistants, donc avalé en
+      // silence par l'optional chaining : rien n'arrivait jamais dans l'App
+      // Group et les widgets restaient bloqués sur leurs valeurs par défaut.
+      // Le suite name et la clé sont fixés côté Swift (voir Module.swift),
+      // l'App Group n'a donc pas à être passé ici.
+      NativeModules.ExpoWidgets?.setWidgetData(JSON.stringify(data));
     } else if (Platform.OS === 'android') {
       // Le module natif Android d'expo-widget s'appelle `ExpoWidgets` (au
       // pluriel) et n'expose PAS `setItem` mais `setWidgetData(json,
