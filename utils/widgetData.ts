@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { t, type I18nKey } from '../lib/i18n';
 
 /**
@@ -9,6 +9,26 @@ import { t, type I18nKey } from '../lib/i18n';
  */
 /** Package Android (≠ bundle iOS : com.tarteel.app était déjà pris sur le Play Store). */
 const ANDROID_PACKAGE = 'com.tarteel.sn';
+
+/**
+ * `expo-widget` est un module Expo (ExpoModulesCore), PAS un module de l'ancien
+ * bridge React Native : il n'apparaît donc jamais dans `NativeModules`. Y accéder
+ * par `NativeModules.ExpoWidgets?.setWidgetData(...)` donnait `undefined`, et
+ * l'optional chaining avalait l'échec en silence — les widgets restaient bloqués
+ * sur leurs valeurs par défaut (série 0, XP 0) alors que l'app croyait écrire.
+ *
+ * On passe par l'export du package, qui fait le `requireNativeModule('ExpoWidgets')`
+ * (avec repli sur le bridge quand le debugger distant est actif). Le require est
+ * protégé : sur le web et dans Expo Go, le module natif est absent et un import
+ * statique ferait planter le chargement du fichier.
+ */
+let setWidgetDataNative: ((...args: unknown[]) => void) | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  setWidgetDataNative = require('expo-widget').setWidgetData ?? null;
+} catch {
+  /* Expo Go / web : pas de module natif, la synchro est simplement inopérante. */
+}
 
 export interface WidgetData {
   streak: number;
@@ -66,27 +86,18 @@ export function syncWidgetData(params: {
     reminderHour: params.reminderHour,
   };
 
+  if (!setWidgetDataNative) return;
+
   try {
     if (Platform.OS === 'ios') {
-      // Même module natif que sur Android : `ExpoWidgets` (au pluriel),
-      // fonction `setWidgetData`. L'appel visait auparavant
-      // `ExpoWidget.setItem` — module ET fonction inexistants, donc avalé en
-      // silence par l'optional chaining : rien n'arrivait jamais dans l'App
-      // Group et les widgets restaient bloqués sur leurs valeurs par défaut.
       // Le suite name et la clé sont fixés côté Swift (voir Module.swift),
       // l'App Group n'a donc pas à être passé ici.
-      NativeModules.ExpoWidgets?.setWidgetData(JSON.stringify(data));
+      setWidgetDataNative(JSON.stringify(data));
     } else if (Platform.OS === 'android') {
-      // Le module natif Android d'expo-widget s'appelle `ExpoWidgets` (au
-      // pluriel) et n'expose PAS `setItem` mais `setWidgetData(json,
-      // packageName)` — il écrit dans les SharedPreferences
-      // "<package>.widgetdata", que lisent les AppWidgetProvider Kotlin.
-      // L'appel précédent visait `ExpoWidget.setItem` : mauvais module ET
-      // mauvaise fonction, donc silencieusement sans effet.
-      NativeModules.ExpoWidgets?.setWidgetData(
-        JSON.stringify(data),
-        ANDROID_PACKAGE,
-      );
+      // Le module Android attend `setWidgetData(json, packageName)` : il écrit
+      // dans les SharedPreferences "<package>.widgetdata", que lisent les
+      // AppWidgetProvider Kotlin.
+      setWidgetDataNative(JSON.stringify(data), ANDROID_PACKAGE);
     }
   } catch (_) {
     // Silencieux en dev web/simulateur
