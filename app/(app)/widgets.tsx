@@ -144,9 +144,9 @@ function StreakPreview({ streak }: { streak: number }) {
   const idx = todayIndex();
   const active = weekActiveDays(streak);
   return (
-    <LinearGradient colors={['#FF9A3D', '#F5731F', '#E0560E']} start={{ x: 0.8, y: 0 }} end={{ x: 0.2, y: 1 }} style={pv.streakBox}>
+    <LinearGradient colors={['#FF9A3D', '#F5731F', '#E0560E']} start={{ x: 0.65, y: 0 }} end={{ x: 0.15, y: 0.9 }} style={pv.streakBox}>
       <Text style={pv.streakGhostFlame}>🔥</Text>
-      <View style={pv.streakOtterWrap}><Otter size={60} /></View>
+      <View style={pv.streakOtterWrap}><Otter size={64} /></View>
       <View style={pv.streakHeaderRow}>
         <Text style={pv.streakFlame}>🔥</Text>
         <Text style={pv.streakLabel}>{tr('widgets.preview.streakLabel')}</Text>
@@ -201,11 +201,13 @@ function WeekPreview({ streak, xp, motivationMsg }: { streak: number; xp: number
   const tr = useT();
   const idx = todayIndex();
   const active = weekActiveDays(streak);
+  // Ligne de connexion : orange jusqu'à aujourd'hui, gris clair après (maquette).
+  const lineProgressPct = (idx / 6) * 100;
   return (
     <View style={pv.weekBox}>
-      <LinearGradient colors={['#FF9A3D', '#F5731F', '#E0560E']} start={{ x: 0.72, y: 0 }} end={{ x: 0.2, y: 1 }} style={pv.weekHero}>
+      <LinearGradient colors={['#FF9A3D', '#F5731F', '#E0560E']} start={{ x: 0.6, y: 0 }} end={{ x: 0.15, y: 0.9 }} style={pv.weekHero}>
         <Text style={pv.weekGhostFlame}>🔥</Text>
-        <View style={pv.contOtterWrap}><Otter size={36} /></View>
+        <View style={pv.contOtterWrap}><Otter size={50} /></View>
         <Text style={pv.weekHeroNumber}>{streak}</Text>
         <Text style={pv.weekHeroSub}>{tr('widgets.preview.daysInARow')}</Text>
       </LinearGradient>
@@ -213,11 +215,14 @@ function WeekPreview({ streak, xp, motivationMsg }: { streak: number; xp: number
         <View style={pv.weekTitleRow}>
           <Text style={pv.weekTitle}>{tr('widgets.preview.weekTitle')}</Text>
           <View style={pv.weekXpPill}>
-            <Feather name="zap" size={10} color="#6B4DFF" />
+            <Feather name="zap" size={11} color="#6B4DFF" />
             <Text style={pv.weekXpText}>{xp} XP</Text>
           </View>
         </View>
         <View style={pv.weekTimelineRow}>
+          <View style={pv.weekTimelineLineTrack}>
+            <View style={[pv.weekTimelineLineFill, { width: `${lineProgressPct}%` }]} />
+          </View>
           {DAYS.map((d, i) => {
             const isToday = i === idx;
             const isActive = active[i];
@@ -227,13 +232,17 @@ function WeekPreview({ streak, xp, motivationMsg }: { streak: number; xp: number
                   pv.weekDot,
                   isToday ? pv.weekDotToday : isActive ? pv.weekDotActive : pv.weekDotInactive,
                 ]}>
-                  {isToday && <Feather name="play" size={9} color="#6B4DFF" />}
+                  {isToday && <Feather name="play" size={12} color="#6B4DFF" />}
                   {!isToday && isActive && <Text style={pv.weekDotFlame}>🔥</Text>}
                 </View>
-                <Text style={[pv.weekDayLabel, isToday && pv.weekDayLabelToday]}>{d}</Text>
               </View>
             );
           })}
+        </View>
+        <View style={pv.weekLabelsRow}>
+          {DAYS.map((d, i) => (
+            <Text key={i} style={[pv.weekDayLabel, i === idx && pv.weekDayLabelToday]}>{d}</Text>
+          ))}
         </View>
         <View style={{ flex: 1 }} />
         <View style={pv.weekQuoteBox}>
@@ -434,25 +443,26 @@ const SMALL_W = 155;
 const SMALL_H = 155;
 
 const pv = StyleSheet.create({
-  // Streak (small)
+  // Streak (small) — proportions de design_handoff_tarteel/Tarteel Widgets.dc.html
+  // (bloc 175px), mises à l'échelle sur SMALL_W/H (155px, ratio ~0.886).
   streakBox: {
-    width: SMALL_W, height: SMALL_H, borderRadius: 26, padding: 14,
+    width: SMALL_W, height: SMALL_H, borderRadius: 23, padding: 15,
     overflow: 'hidden',
   },
   streakGhostFlame: {
-    position: 'absolute', fontSize: 130, opacity: 0.18,
-    left: 40, top: 30,
+    position: 'absolute', fontSize: 124, opacity: 0.18,
+    right: -26, bottom: -23,
   },
-  streakOtterWrap: { position: 'absolute', top: 8, right: 6, opacity: 0.85 },
-  streakHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  streakFlame: { fontSize: 11 },
-  streakLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5, color: '#fff' },
-  streakNumber: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 46, color: '#fff', lineHeight: 50 },
-  streakSub: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: 'rgba(255,255,255,0.95)' },
+  streakOtterWrap: { position: 'absolute', top: 30, right: 5 },
+  streakHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  streakFlame: { fontSize: 14 },
+  streakLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: '#fff' },
+  streakNumber: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 64, color: '#fff', lineHeight: 58 },
+  streakSub: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: 'rgba(255,255,255,0.95)', marginTop: 2 },
   streakDotsRow: { flexDirection: 'row' },
   streakDotCol: { flex: 1, alignItems: 'center', gap: 3 },
   dotBase: { width: 8, height: 8, borderRadius: 4 },
-  dotToday: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
+  dotToday: { width: 11, height: 11, borderRadius: 6, backgroundColor: '#fff' },
   dotActive: { backgroundColor: '#FFE08A' },
   dotInactive: { backgroundColor: 'rgba(255,255,255,0.32)' },
   streakDayLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 8, color: 'rgba(255,255,255,0.6)' },
@@ -477,45 +487,58 @@ const pv = StyleSheet.create({
   },
   contButtonText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5, color: '#fff' },
 
-  // Week (medium)
+  // Week (medium) — proportions de design_handoff_tarteel/Tarteel Widgets.dc.html
+  // (bloc 372×175px), mises à l'échelle (ratio ~0.886).
   weekBox: {
     width: SMALL_W * 2 + 12, height: SMALL_H, borderRadius: 26,
     flexDirection: 'row', overflow: 'hidden',
   },
   weekHero: {
-    width: 108, alignItems: 'center', justifyContent: 'center', gap: 3, padding: 8,
+    width: 119, alignItems: 'center', justifyContent: 'center', gap: 2, padding: 10,
     overflow: 'hidden',
   },
   weekGhostFlame: {
-    position: 'absolute', fontSize: 100, opacity: 0.2,
-    left: 20, top: 24,
+    position: 'absolute', fontSize: 106, opacity: 0.2,
+    right: -23, bottom: -25,
   },
-  weekHeroNumber: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#fff' },
-  weekHeroSub: { fontFamily: 'Nunito_800ExtraBold', fontSize: 9, color: 'rgba(255,255,255,0.95)', textAlign: 'center' },
-  weekRight: { flex: 1, backgroundColor: '#fff', padding: 12 },
-  weekTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  weekTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 14, color: '#1B2333' },
+  weekHeroNumber: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 37, color: '#fff' },
+  weekHeroSub: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: 'rgba(255,255,255,0.95)', textAlign: 'center' },
+  weekRight: { flex: 1, backgroundColor: '#FBFAFD', padding: 13, paddingBottom: 12 },
+  weekTitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  weekTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#1B2333' },
   weekXpPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#EFEBFF', borderRadius: 20, paddingHorizontal: 7, paddingVertical: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#EFEBFF', borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3,
   },
-  weekXpText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 9, color: '#6B4DFF' },
-  weekTimelineRow: { flexDirection: 'row', alignItems: 'center' },
-  weekDotCol: { flex: 1, alignItems: 'center', gap: 3 },
-  weekDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  weekDotToday: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#6B4DFF' },
-  weekDotActive: { backgroundColor: '#F0720F' },
-  weekDotInactive: { backgroundColor: '#EFECF7' },
-  weekDotFlame: { fontSize: 9 },
-  weekDayLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 8, color: '#C2C6CE' },
-  weekDayLabelToday: { color: '#6B4DFF' },
+  weekXpText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: '#6B4DFF' },
+  weekTimelineRow: { flexDirection: 'row', alignItems: 'center', height: 34, marginTop: 4 },
+  weekTimelineLineTrack: {
+    position: 'absolute', left: 14, right: 14, height: 3, borderRadius: 2,
+    backgroundColor: '#E7E2F2',
+  },
+  weekTimelineLineFill: {
+    position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2,
+    backgroundColor: '#F0720F',
+  },
+  weekDotCol: { flex: 1, alignItems: 'center' },
+  weekDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  weekDotToday: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: '#fff', borderWidth: 3, borderColor: '#6B4DFF',
+  },
+  weekDotActive: { backgroundColor: '#F0720F', borderWidth: 3, borderColor: '#fff' },
+  weekDotInactive: { backgroundColor: '#EFECF7', borderWidth: 3, borderColor: '#fff' },
+  weekDotFlame: { fontSize: 12 },
+  weekLabelsRow: { flexDirection: 'row' },
+  weekDayLabel: { flex: 1, textAlign: 'center', fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: '#C2C6CE' },
+  weekDayLabelToday: { color: '#6B4DFF', fontFamily: 'Nunito_900Black' },
   weekQuoteBox: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#FFF2E6', borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 6, marginTop: 8,
+    backgroundColor: '#FFF2E6', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6, marginTop: 6,
   },
-  weekQuoteFlame: { fontSize: 11 },
-  weekQuoteText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 9.5, color: '#B5571A' },
+  weekQuoteFlame: { fontSize: 13 },
+  weekQuoteText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 10.5, color: '#B5571A' },
 
   // Mot du jour (small)
   wodBox: {
