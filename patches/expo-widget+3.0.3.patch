@@ -1,3 +1,27 @@
+diff --git a/node_modules/expo-widget/plugin/build/android/withModule.js b/node_modules/expo-widget/plugin/build/android/withModule.js
+index ce45081..046e773 100644
+--- a/node_modules/expo-widget/plugin/build/android/withModule.js
++++ b/node_modules/expo-widget/plugin/build/android/withModule.js
+@@ -26,10 +26,15 @@ const withModule = (config, options) => {
+             logger_1.Logging.logger.debug('moduleSourcePath: ', moduleSourcePath);
+             const moduleDestinationPath = path_1.default.join(projectRoot, 'android/app/src/main/java', packageNameAsPath, 'Module.kt');
+             if (!fs_extra_1.default.existsSync(moduleSourcePath)) {
+-                logger_1.Logging.logger.debug('No module file found. Adding template...');
+-                const contents = (0, module_template_1.getTemplate)(packageName);
+-                logger_1.Logging.logger.debug('Writing contents');
+-                fs_extra_1.default.writeFileSync(moduleDestinationPath, contents);
++                // PATCH : ne rien generer. Le template declare
++                // `expo.modules.widgets.ExpoWidgetsModule`, exactement la meme
++                // classe que celle deja compilee dans l'AAR du package npm et
++                // enregistree par l'autolinking (voir expo-module.config.json).
++                // La copie faisait donc doublon : sans minification Android le
++                // tolerait, mais R8 echoue avec
++                //   "Type expo.modules.widgets.ExpoWidgetsModule is defined multiple times".
++                // Le module du package suffit — il expose bien setWidgetData.
++                logger_1.Logging.logger.debug('No module file found. Skipping (package module is used instead).');
+             }
+             else {
+                 fs_extra_1.default.copyFileSync(moduleSourcePath, moduleDestinationPath);
 diff --git a/node_modules/expo-widget/plugin/build/ios/withPodfile.js b/node_modules/expo-widget/plugin/build/ios/withPodfile.js
 index e39bf98..f8648eb 100644
 --- a/node_modules/expo-widget/plugin/build/ios/withPodfile.js
