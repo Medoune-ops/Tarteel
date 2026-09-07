@@ -42,7 +42,9 @@ export default function ForgotPasswordScreen() {
         <Feather name="lock" size={36} color="#fff" />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
+          recouvre le champ actif sans que l'écran ne remonte. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.card}>
           <Text style={styles.title}>{tr('forgot.title')}</Text>
           <Text style={styles.sub}>{tr('forgot.sub')}</Text>

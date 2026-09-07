@@ -86,7 +86,9 @@ export default function StreakGoalScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
+          recouvre le champ actif sans que l'écran ne remonte. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Carte série actuelle */}
         <LinearGradient colors={['#FF8A4B', '#FF4B4B']} style={styles.hero}>
