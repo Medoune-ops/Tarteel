@@ -43,9 +43,6 @@ yarn-error.*
 # Doc backend interne (gardée en local, non publiée sur GitHub)
 /BACKEND.md
 
-# Code d'intégration backend (gardé en local, non publié sur GitHub)
-/lib/
-
 # generated native folders
 /ios
 /android
