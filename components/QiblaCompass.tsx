@@ -19,6 +19,7 @@ import Svg, { Path } from 'react-native-svg';
 import { Magnetometer } from 'expo-sensors';
 import { qiblaDirection, distanceToKaaba, cardinalFor } from '../constants/prayerTimes';
 import { useT } from '../lib/i18n';
+import { KaabaColorIcon } from './IslamicIcons';
 
 /**
  * Flèche dessinée à la main plutôt que l'icône Feather "navigation" : celle-ci
@@ -93,12 +94,16 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
       <View style={styles.compassWrap}>
         {/* Cadran */}
         <View style={styles.dial}>
-          <Text style={[styles.dialLabel, styles.dialN, { color: colors.textTertiary }]}>
-            {tr('qibla.north')}
-          </Text>
-
-          {/* Flèche vers la Kaaba */}
+          {/* La Kaaba se déplace à la pointe de la flèche (donc pivote avec
+              elle autour du cadran), mais reste elle-même bien droite à
+              l'écran — une contre-rotation annule celle du conteneur, sinon
+              elle apparaîtrait penchée voire à l'envers selon l'angle. Elle
+              remplace un repère nord fixe qui prêterait à confusion sur ce
+              que la flèche montre vraiment : la Kaaba, pas le nord. */}
           <View style={[styles.needle, { transform: [{ rotate: `${rotation}deg` }] }]}>
+            <View style={[styles.kaabaAtTip, { transform: [{ rotate: `${-rotation}deg` }] }]}>
+              <KaabaColorIcon size={22} color="#0F1A16" />
+            </View>
             <QiblaArrow size={54} color="#1F8A70" />
           </View>
         </View>
@@ -127,9 +132,8 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: 'rgba(31,138,112,0.25)',
     alignItems: 'center', justifyContent: 'center',
   },
-  dialLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, position: 'absolute' },
-  dialN: { top: 8 },
   needle: { alignItems: 'center', justifyContent: 'center' },
+  kaabaAtTip: { position: 'absolute', top: -14, alignItems: 'center', justifyContent: 'center' },
 
   bearing: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, marginTop: 14 },
   hint: {
