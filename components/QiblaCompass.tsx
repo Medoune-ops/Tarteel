@@ -69,12 +69,16 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
           // Téléphone tenu à plat, portrait : l'axe Y du magnétomètre pointe
           // vers le haut de l'écran (« devant soi »), l'axe X vers la droite.
           // Un cap de boussole se compte depuis le nord, dans le sens
-          // horaire — c'est atan2(x, y), PAS atan2(y, x) (qui donne l'angle
-          // en convention mathématique standard, depuis l'axe X, sens
-          // antihoraire). Cette inversion des deux arguments décalait la
-          // direction affichée de 90° : elle pointait vers le nord magnétique
-          // au lieu de suivre la vraie orientation du téléphone.
-          let angle = Math.atan2(x, y) * (180 / Math.PI);
+          // horaire — d'où atan2(x, y) plutôt que atan2(y, x) (convention
+          // mathématique standard, sens antihoraire).
+          //
+          // Le capteur renvoie la direction du champ magnétique AMBIANT, qui
+          // pointe à l'opposé du cap réel de l'appareil (le champ « rentre »
+          // par le pôle nord magnétique) : sans ce signe négatif, la flèche
+          // tournait dans le bon référentiel mais dans le mauvais sens — un
+          // virage à droite du téléphone la faisait tourner à gauche
+          // (constaté sur appareil).
+          let angle = -Math.atan2(x, y) * (180 / Math.PI);
           angle = (angle + 360) % 360;
           setHeading(angle);
         });
