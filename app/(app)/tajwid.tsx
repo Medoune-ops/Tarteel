@@ -11,7 +11,13 @@ import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { readPersisted, writePersisted, SOURATES_CACHE_KEY } from '../../lib/api/persistentCache';
 import { RECITERS, DEFAULT_RECITER_ID, reciterById } from '../../constants/reciters';
-import { playSurates, AUDIO_AVAILABLE, refreshLocalSudaisCache } from '../../constants/trackPlayer';
+import {
+  playSurates,
+  AUDIO_AVAILABLE,
+  AUDIO_UNEXPECTEDLY_MISSING,
+  AUDIO_LOAD_ERROR,
+  refreshLocalSudaisCache,
+} from '../../constants/trackPlayer';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
 import { useAudioDownloadStore } from '../../store/audioDownloadStore';
 import OfflineAudioButton from '../../components/OfflineAudioButton';
@@ -47,10 +53,13 @@ export default function TajwidScreen() {
       // Les 114 sourates ne changent jamais : on les garde sur le disque pour
       // pouvoir rouvrir cet écran sans réseau.
       writePersisted(SOURATES_CACHE_KEY, fresh);
-    } catch {
+    } catch (e) {
       // Hors-ligne : le cache mémoire (swr.ts) est vide après un redémarrage,
       // mais le disque, lui, a survécu — c'est ce qui rend les récitations
       // déjà téléchargées réellement écoutables sans connexion.
+      // Le repli sur le cache est normal hors-ligne, mais l'échec peut aussi
+      // venir d'une panne d'API : sans trace, les deux sont indiscernables.
+      console.warn('[tajwid] chargement des sourates échoué, repli sur le cache disque :', e);
       const cached = await readPersisted<SourateListItem[]>(SOURATES_CACHE_KEY);
       if (cached && cached.length > 0) setSourates(cached);
       else setError(true);
@@ -85,12 +94,17 @@ export default function TajwidScreen() {
 
   const onPlay = useCallback(async (index: number) => {
     if (ordered.length === 0 || starting != null) return;
-    // En Expo Go, le module audio natif est absent : on explique au lieu de
-    // planter, mais la page (liste + récitateurs) reste entièrement visible.
+    // Module audio natif absent : on explique au lieu de planter, la page
+    // (liste + récitateurs) reste entièrement visible.
     if (!AUDIO_AVAILABLE) {
       Alert.alert(
         tr('tajwid.audioAlertTitle'),
-        tr('tajwid.audioAlertMessage'),
+        // Hors Expo Go, parler de « development build » envoie l'utilisateur
+        // sur une fausse piste : il a deja la vraie app, c'est un bug de notre
+        // cote. On le dit, avec la cause pour le diagnostic.
+        AUDIO_UNEXPECTEDLY_MISSING
+          ? tr('tajwid.audioBrokenMessage') + (AUDIO_LOAD_ERROR ? `\n\n(${AUDIO_LOAD_ERROR})` : '')
+          : tr('tajwid.audioAlertMessage'),
       );
       return;
     }
@@ -100,10 +114,13 @@ export default function TajwidScreen() {
       const lite = ordered.map((s) => ({ numero: s.numero, nom: s.nom, nomArabe: s.nomArabe }));
       await playSurates(lite, reciterById(reciterId), index);
       router.push('/(app)/coran-player');
-    } catch {
+    } catch (e) {
       // Un échec de lecture ne doit PAS remplacer la liste par l'écran
       // d'erreur : hors-ligne, les sourates déjà téléchargées restent
       // écoutables, et masquer la liste rendrait l'écran inutilisable.
+      // En revanche l'erreur doit rester visible dans les logs : sans elle,
+      // « la lecture ne marche pas » est indiagnosticable à distance.
+      console.error('[audio] échec de lecture de la sourate', ordered[index]?.numero, e);
       Alert.alert(tr('tajwid.audioAlertTitle'), tr('tajwid.playError'));
     } finally {
       setStarting(null);
@@ -169,13 +186,16 @@ export default function TajwidScreen() {
         </View>
       ) : (
         <>
-          {/* Bannière Expo Go : la page est visible, seule l'écoute réelle
-              nécessite un development build. */}
+          {/* Bannière : la page reste visible, seule l'écoute est indisponible.
+              Le texte distingue Expo Go (limitation normale) d'un vrai build
+              où le natif manque (bug de notre côté). */}
           {!AUDIO_AVAILABLE && (
             <View style={styles.notice}>
               <Feather name="info" size={16} color="#8A5CF0" />
               <Text style={styles.noticeText}>
-                {tr('tajwid.previewNotice')}
+                {AUDIO_UNEXPECTEDLY_MISSING
+                  ? tr('tajwid.previewNoticeBroken')
+                  : tr('tajwid.previewNotice')}
               </Text>
             </View>
           )}

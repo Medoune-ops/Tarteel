@@ -950,6 +950,7 @@ const fr = {
   "lectureNumero.audioSoon": "Récitation audio bientôt disponible pour cette sourate.",
   "tajwid.audioAlertTitle": "Écoute audio",
   "tajwid.audioAlertMessage": "L'écoute du Coran nécessite un development build (npx expo run:android). Indisponible dans Expo Go.",
+  "tajwid.audioBrokenMessage": "L'écoute est momentanément indisponible sur cet appareil. Ce n'est pas normal. Réessaie après avoir redémarré l'application ; si le problème persiste, contacte-nous.",
   "tajwid.versetsCount": "{n} versets",
   "tajwid.headerTitle": "Écoute du Coran",
   "tajwid.headerSub": "Continue même écran éteint 🌙",
@@ -957,6 +958,7 @@ const fr = {
   "tajwid.retry": "Réessayer",
   "tajwid.loading": "Chargement des sourates…",
   "tajwid.previewNotice": "Aperçu · l'écoute audio nécessite un development build",
+  "tajwid.previewNoticeBroken": "Écoute momentanément indisponible sur cet appareil",
   "tajwid.reciter": "Récitateur",
   "tajwid.offlineReciter": "Hors-ligne · Cheikh Sudais uniquement",
   // --- Téléchargement pour l'écoute hors-ligne (OfflineAudioButton) ---
@@ -2148,6 +2150,7 @@ const en: Dict = {
   "lectureNumero.audioSoon": "Audio recitation coming soon for this surah.",
   "tajwid.audioAlertTitle": "Audio playback",
   "tajwid.audioAlertMessage": "Listening to the Quran requires a development build (npx expo run:android). Not available in Expo Go.",
+  "tajwid.audioBrokenMessage": "Playback is temporarily unavailable on this device. This isn't expected. Try again after restarting the app; if it persists, please contact us.",
   "tajwid.versetsCount": "{n} verses",
   "tajwid.headerTitle": "Quran listening",
   "tajwid.headerSub": "Keeps playing with the screen off 🌙",
@@ -2155,6 +2158,7 @@ const en: Dict = {
   "tajwid.retry": "Retry",
   "tajwid.loading": "Loading surahs…",
   "tajwid.previewNotice": "Preview · audio playback requires a development build",
+  "tajwid.previewNoticeBroken": "Playback temporarily unavailable on this device",
   "tajwid.reciter": "Reciter",
   "tajwid.offlineReciter": "Offline · Sheikh Sudais only",
   // --- Offline listening download (OfflineAudioButton) ---
