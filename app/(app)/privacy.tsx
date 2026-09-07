@@ -146,9 +146,11 @@ export default function PrivacyScreen() {
 
       {/* Confirmation par mot de passe avant la suppression définitive. */}
       <Modal visible={askPassword} transparent animationType="fade" onRequestClose={fermerModal}>
+        {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
+            recouvre le champ actif sans que l'écran ne remonte. */}
         <KeyboardAvoidingView
           style={styles.modalBackdrop}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <Pressable style={StyleSheet.absoluteFill} onPress={fermerModal} />
           <View style={styles.modalCard}>

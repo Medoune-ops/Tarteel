@@ -81,7 +81,9 @@ export default function ChangePasswordScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
+          recouvre le champ actif sans que l'écran ne remonte. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={[styles.label, { color: T.sectionLabel }]}>{tr('changePassword.currentLabel')}</Text>
           <PwdField value={current} onChange={setCurrent} placeholder={tr('changePassword.currentPlaceholder')} />

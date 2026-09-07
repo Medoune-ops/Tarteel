@@ -198,7 +198,10 @@ export default function SignupScreen() {
         </View>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
+          recouvre le champ actif sans que l'écran ne remonte. 'height' est
+          l'équivalent Android de 'padding' pour un écran défilable. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.appName}>Tarteel</Text>
           <Text style={styles.welcome}>{isSignup ? tr('signup.createTitle') : tr('signup.welcomeBack')}</Text>

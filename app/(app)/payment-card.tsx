@@ -71,10 +71,12 @@ export default function PaymentCardScreen() {
     }
   };
 
+  // Sur Android, `behavior={undefined}` ne fait RIEN : le clavier recouvre
+  // le champ actif sans que l'écran ne remonte.
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.screen}>
         {/* Header */}

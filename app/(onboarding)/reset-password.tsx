@@ -139,7 +139,9 @@ export default function ResetPasswordScreen() {
         <Feather name="shield" size={36} color="#fff" />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
+          recouvre le champ actif sans que l'écran ne remonte. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>{tr('reset.title')}</Text>
           <Text style={styles.sub}>{tr('reset.sub')}</Text>
