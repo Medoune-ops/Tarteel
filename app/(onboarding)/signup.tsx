@@ -151,7 +151,7 @@ export default function SignupScreen() {
       routeAfterAuth(isSignup);
     } catch (e) {
       if (e instanceof ApiError && e.code === 'EMAIL_NOT_VERIFIED') {
-        redirectToVerifyEmail({ email: mail, forceSetup: '0' });
+        redirectToVerifyEmail({ email: mail, forceSetup: false });
         return;
       }
       // Inscription interrompue à l'étape vérification : le compte existe déjà
@@ -174,7 +174,7 @@ export default function SignupScreen() {
             } catch {
               // Rate limit ou erreur réseau : l'utilisateur peut redemander sur l'écran code.
             }
-            redirectToVerifyEmail({ email: mail, forceSetup: '1' });
+            redirectToVerifyEmail({ email: mail, forceSetup: true });
             return;
           }
         }

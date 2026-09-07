@@ -121,9 +121,17 @@ export async function setupTrackPlayer(): Promise<void> {
   try {
     await TrackPlayer.setupPlayer();
   } catch (e) {
-    // Idem : « déjà initialisé » est bénin, mais une vraie panne d'init doit
-    // laisser une trace, sinon la lecture échoue plus tard sans explication.
-    console.warn('[audio] setupPlayer a échoué (déjà initialisé ?) :', e);
+    // RNTP ne distingue pas « déjà initialisé » (bénin) d'une vraie panne —
+    // les deux lèvent la même erreur générique côté JS. On ne peut donc pas
+    // savoir lequel des deux vient de se produire. Mais continuer vers
+    // updateOptions() sur un lecteur qui a VRAIMENT échoué à s'initialiser
+    // ferait planter cet appel à son tour (erreur non catchée, cette fois
+    // propagée à l'appelant), et marquer isSetup = true empêcherait à jamais
+    // une nouvelle tentative dans cette session. On s'arrête donc ici : au
+    // pire on retente inutilement au prochain appel (cas bénin), au mieux on
+    // évite un lecteur bloqué en silence pour toute la session (cas panne).
+    console.warn('[audio] setupPlayer a échoué — abandon de cette tentative :', e);
+    return;
   }
   await TrackPlayer.updateOptions({
     android: {
