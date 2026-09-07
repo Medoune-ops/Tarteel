@@ -15,10 +15,30 @@
  */
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { Magnetometer } from 'expo-sensors';
 import { qiblaDirection, distanceToKaaba, cardinalFor } from '../constants/prayerTimes';
 import { useT } from '../lib/i18n';
+
+/**
+ * Flèche dessinée à la main plutôt que l'icône Feather "navigation" : celle-ci
+ * ne pointe PAS plein nord (0°) par défaut — sa pointe est décalée vers le
+ * haut-droite — alors que `rotation` (plus bas) suppose une flèche pointant
+ * exactement vers le haut à 0°. Résultat : la Qibla s'affichait décalée vers
+ * le nord au lieu de sa direction réelle. Ce triangle est garanti pointer
+ * plein haut (nord) à 0°, quelle que soit l'icône utilisée par ailleurs dans
+ * l'app.
+ */
+function QiblaArrow({ size = 54, color = '#1F8A70' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2 L19 21 L12 16.5 L5 21 Z"
+        fill={color}
+      />
+    </Svg>
+  );
+}
 
 interface Props {
   latitude: number;
@@ -79,7 +99,7 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
 
           {/* Flèche vers la Kaaba */}
           <View style={[styles.needle, { transform: [{ rotate: `${rotation}deg` }] }]}>
-            <Feather name="navigation" size={54} color="#1F8A70" />
+            <QiblaArrow size={54} color="#1F8A70" />
           </View>
         </View>
       </View>
