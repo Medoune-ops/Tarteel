@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Platform, View, Text, Pressable, ScrollView, StyleSheet, Linking, Image, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import HeaderPattern from '../../components/HeaderPattern';
@@ -26,8 +27,20 @@ try {
   supportsAlternateIcons = mod.supportsAlternateIcons ?? false;
   setAlternateAppIcon = mod.setAlternateAppIcon;
   getAppIconName = mod.getAppIconName;
-} catch {
-  /* Expo Go / module natif absent : on garde les stubs ci-dessus. */
+} catch (e) {
+  // Dans Expo Go l'absence du natif est attendue. Dans un vrai build c'est un
+  // BUG : sans ce log, l'écran afficherait « non supporté » sans qu'on puisse
+  // jamais savoir pourquoi — c'est exactement ainsi que le module audio est
+  // resté cassé sans qu'on le voie (voir constants/trackPlayer.ts).
+  if (Constants.appOwnership === 'expo') {
+    console.warn('[app-icons] module natif absent (Expo Go) — sélecteur d’icône désactivé.');
+  } else {
+    console.error(
+      '[app-icons] expo-alternate-app-icons INTROUVABLE hors Expo Go — ' +
+      'le sélecteur d’icône est cassé alors que le natif devrait être présent. Cause :',
+      e,
+    );
+  }
 }
 
 // null = icône par défaut (Nuit, celle déclarée dans app.json → icon/ios.icon/
@@ -52,7 +65,12 @@ function AppIconPicker() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    try { setActive(getAppIconName()); } catch { setActive(null); }
+    try {
+      setActive(getAppIconName());
+    } catch (e) {
+      console.warn('[app-icons] lecture de l’icône active impossible :', e);
+      setActive(null);
+    }
   }, []);
 
   const choose = useCallback(async (choice: AppIconChoice) => {
@@ -62,7 +80,10 @@ function AppIconPicker() {
     try {
       await setAlternateAppIcon(choice.name);
       setActive(choice.name);
-    } catch {
+    } catch (e) {
+      // L'UI montre déjà l'échec, mais sans cette trace on ne saurait pas
+      // POURQUOI (nom d'icône absent du build, iOS trop ancien, autre).
+      console.error('[app-icons] changement vers', choice.name, 'échoué :', e);
       setError(true);
     } finally {
       setBusy(null);

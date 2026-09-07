@@ -1,12 +1,19 @@
 /**
  * Lecteur audio du Coran (react-native-track-player).
  *
- * ⚠️ RNTP est un module natif → nécessite un development build. On le charge de
- * façon DÉFENSIVE : dans Expo Go (ou si le natif manque), le `require` lève une
- * erreur au chargement du module (`new NativeEventEmitter()`), qu'on attrape.
- * `AUDIO_AVAILABLE` vaut alors false et les écrans affichent « dev build requis »
- * au lieu de crasher toute l'app. Tous les accès à RNTP passent par ce module.
+ * ⚠️ RNTP est un module natif → absent d'Expo Go. On le charge de façon
+ * DÉFENSIVE pour ne pas crasher toute l'app : `AUDIO_AVAILABLE` vaut alors
+ * false et les écrans affichent un message au lieu de planter. Tous les accès
+ * à RNTP passent par ce module.
+ *
+ * ⚠️ Le catch ne doit JAMAIS être silencieux. Dans Expo Go l'échec est attendu ;
+ * dans un vrai build (dev, TestFlight, store) il signale un BUG — le natif est
+ * censé être là. Un utilisateur a vu « nécessite un development build » sur
+ * l'app Android du Play Store : le natif était bien présent mais son chargement
+ * échouait, et l'erreur partait à la poubelle, rendant le diagnostic impossible.
+ * On journalise donc systématiquement, et on garde la cause pour l'affichage.
  */
+import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import { surahAudioUrl, DEFAULT_RECITER_ID, type Reciter } from './reciters';
 import { localSudaisPath } from './audioDownload';
@@ -14,18 +21,49 @@ import { localSudaisPath } from './audioDownload';
 export interface SourateLite { numero: number; nom: string; nomArabe: string }
 export interface QueueTrack { id: string; url: string; title: string; artist: string; album: string }
 
+/** true dans Expo Go, où l'absence de module natif est normale et attendue. */
+export const IS_EXPO_GO = Constants.appOwnership === 'expo';
+
 // Chargement défensif : le module RNTP lève au require quand le natif est absent.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let RNTP: any = null;
+/** Erreur de chargement du natif, conservée pour diagnostic. null si tout va bien. */
+let audioLoadError: Error | null = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   RNTP = require('react-native-track-player');
-} catch {
+} catch (e) {
   RNTP = null;
+  audioLoadError = e instanceof Error ? e : new Error(String(e));
 }
 
-/** true seulement dans un dev build où le module natif RNTP est présent. */
+/** true seulement quand le module natif RNTP est présent et utilisable. */
 export const AUDIO_AVAILABLE: boolean = RNTP != null && RNTP.default != null;
+
+/**
+ * Le natif manque alors qu'on n'est PAS dans Expo Go : c'est un bug, pas une
+ * limitation d'environnement. Les écrans s'en servent pour afficher un message
+ * honnête plutôt que « installe un development build », qui envoie l'utilisateur
+ * sur une fausse piste quand il a déjà la vraie app.
+ */
+export const AUDIO_UNEXPECTEDLY_MISSING: boolean = !AUDIO_AVAILABLE && !IS_EXPO_GO;
+
+/** Message de l'erreur de chargement, pour l'affichage de diagnostic. */
+export const AUDIO_LOAD_ERROR: string | null = audioLoadError?.message ?? null;
+
+if (!AUDIO_AVAILABLE) {
+  if (IS_EXPO_GO) {
+    console.warn('[audio] react-native-track-player absent (Expo Go) — écoute désactivée.');
+  } else {
+    // Cas anormal : on veut que ça se voie dans les logs (adb logcat, Xcode,
+    // Sentry…) au lieu de se traduire par un simple écran « indisponible ».
+    console.error(
+      '[audio] react-native-track-player INTROUVABLE hors Expo Go — ' +
+      "l'écoute est cassée alors que le module natif devrait être présent. " +
+      'Cause : ' + (audioLoadError ? audioLoadError.stack ?? audioLoadError.message : 'module chargé mais export `default` absent'),
+    );
+  }
+}
 
 const TrackPlayer = RNTP?.default ?? null;
 const Capability = RNTP?.Capability ?? {};
@@ -74,13 +112,18 @@ export async function setupTrackPlayer(): Promise<void> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     TrackPlayer.registerPlaybackService(() => require('../playbackService').default);
-  } catch {
-    // Déjà enregistré (rare) → on continue.
+  } catch (e) {
+    // Le cas normal est « déjà enregistré » et on continue. Mais ce catch
+    // absorberait tout aussi bien une VRAIE erreur d'enregistrement, laissant
+    // l'app croire que le lecteur est prêt alors que rien ne jouera. On trace.
+    console.warn('[audio] registerPlaybackService a échoué (déjà enregistré ?) :', e);
   }
   try {
     await TrackPlayer.setupPlayer();
-  } catch {
-    // Déjà initialisé → on continue.
+  } catch (e) {
+    // Idem : « déjà initialisé » est bénin, mais une vraie panne d'init doit
+    // laisser une trace, sinon la lecture échoue plus tard sans explication.
+    console.warn('[audio] setupPlayer a échoué (déjà initialisé ?) :', e);
   }
   await TrackPlayer.updateOptions({
     android: {
