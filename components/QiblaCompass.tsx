@@ -94,16 +94,16 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
       <View style={styles.compassWrap}>
         {/* Cadran */}
         <View style={styles.dial}>
-          {/* La Kaaba se déplace à la pointe de la flèche (donc pivote avec
-              elle autour du cadran), mais reste elle-même bien droite à
-              l'écran — une contre-rotation annule celle du conteneur, sinon
-              elle apparaîtrait penchée voire à l'envers selon l'angle. Elle
-              remplace un repère nord fixe qui prêterait à confusion sur ce
-              que la flèche montre vraiment : la Kaaba, pas le nord. */}
+          {/* Repère fixe : la Kaaba en haut du cadran, à la place du "N".
+              Elle ne tourne PAS — seule la flèche pivote pour l'indiquer,
+              exactement comme le nord d'une boussole classique reste fixe
+              pendant que l'aiguille bouge. */}
+          <View style={styles.kaabaFixed}>
+            <KaabaColorIcon size={22} color={colors.text} />
+          </View>
+
+          {/* Flèche vers la Kaaba */}
           <View style={[styles.needle, { transform: [{ rotate: `${rotation}deg` }] }]}>
-            <View style={[styles.kaabaAtTip, { transform: [{ rotate: `${-rotation}deg` }] }]}>
-              <KaabaColorIcon size={22} color="#0F1A16" />
-            </View>
             <QiblaArrow size={54} color="#1F8A70" />
           </View>
         </View>
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   needle: { alignItems: 'center', justifyContent: 'center' },
-  kaabaAtTip: { position: 'absolute', top: -14, alignItems: 'center', justifyContent: 'center' },
+  kaabaFixed: { position: 'absolute', top: 8, alignItems: 'center', justifyContent: 'center' },
 
   bearing: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, marginTop: 14 },
   hint: {
