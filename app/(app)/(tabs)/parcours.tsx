@@ -1387,7 +1387,11 @@ export default function ParcoursScreen() {
     [openLesson, T, activeSectionIndex, handleActiveNodeLayout],
   );
 
-  const renderHeader = () => (
+  // Mémoïsés comme renderItem juste au-dessus : sans useCallback, le FlatList
+  // reçoit une nouvelle référence à chaque render du composant et redémonte
+  // ListHeaderComponent/ListFooterComponent (au lieu de les mettre à jour en
+  // place), ce qui ajoute un coût inutile à chaque re-render de l'écran.
+  const renderHeader = useCallback(() => (
     <>
       {loadError && (
         <View style={styles.centerState}>
@@ -1401,28 +1405,40 @@ export default function ParcoursScreen() {
         </View>
       )}
     </>
-  );
+  ), [loadError, T.textSecondary, loadSections]);
 
-  const renderFooter = () => {
+  const renderFooter = useCallback(() => {
     if (!canLoadMore) return <View style={{ height: 40 }} />;
     return (
       <View style={{ paddingVertical: 20, alignItems: 'center' }}>
         <ActivityIndicator size="small" color="#6B4DFF" />
       </View>
     );
-  };
+  }, [canLoadMore]);
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
-      <MeccaSkyline
-        width={width}
-        height={height}
-        color={T.skyline}
-        shadowColor={T.skylineShadow}
-        opacity={T.isDark ? 0.3 : 0.22}
-        lit={isPremium}
-        isDark={T.isDark}
-      />
+      {/* Le ciel nocturne (mode sombre) compose ~190 nœuds SVG (dégradés,
+          lune détaillée, étoiles scintillantes en premium) contre une
+          poignée en mode clair — signalé comme lent sur Android, où
+          react-native-svg n'a pas le même moteur de rendu qu'iOS.
+          renderToHardwareTextureAndroid force Android à rasteriser ce
+          sous-arbre en une texture GPU unique plutôt que de recomposer
+          chaque forme à chaque frame/layout — no-op sur iOS. */}
+      <View
+        style={StyleSheet.absoluteFillObject}
+        renderToHardwareTextureAndroid
+      >
+        <MeccaSkyline
+          width={width}
+          height={height}
+          color={T.skyline}
+          shadowColor={T.skylineShadow}
+          opacity={T.isDark ? 0.3 : 0.22}
+          lit={isPremium}
+          isDark={T.isDark}
+        />
+      </View>
       <View style={[styles.statusWrap, { backgroundColor: T.cardBg }]}>
         <DeviceStatusBar />
       </View>
