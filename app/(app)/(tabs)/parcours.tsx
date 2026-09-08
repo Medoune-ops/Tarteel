@@ -1,9 +1,9 @@
-import { View, Text, Pressable, StyleSheet, useWindowDimensions, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, ActivityIndicator, FlatList, Platform } from 'react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming,
-  Easing, FadeInDown,
+  useSharedValue, useAnimatedStyle, useAnimatedProps, withRepeat, withSequence, withTiming,
+  withDelay, Easing, FadeInDown,
 } from 'react-native-reanimated';
 import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -311,31 +311,46 @@ const CLOUD_POSITIONS: Array<[number, number, number, number]> = [
  * pas comme un seul bloc qui pulse. Hors premium, reste fixe (opacité 1,
  * aucune animation lancée) pour ne rien changer au rendu d'origine.
  */
-function Twinkle({ transform, children }: {
+const AnimatedG = Animated.createAnimatedComponent(G);
+
+/**
+ * ⚠️ Le scintillement est désactivé sur ANDROID UNIQUEMENT.
+ *
+ * Le ciel nocturne compte 79 étoiles, chacune animée ici en boucle INFINIE
+ * (withRepeat(-1)) sur son opacité ; le ciel diurne n'en a aucune. D'où une
+ * page Apprendre fluide en mode clair et lente en mode sombre — le symptôme
+ * signalé, constaté sur Android et pas sur iOS.
+ *
+ * La différence vient du moteur de rendu : react-native-svg répercute sur
+ * Android chaque changement de prop en traversée de l'arbre de vues, là où
+ * iOS s'appuie sur Core Animation, qui encaisse ces 79 animations sans
+ * ralentissement visible.
+ *
+ * On coupe donc le mouvement là où il coûte, et on le garde là où il ne pose
+ * pas de problème : iOS conserve exactement le rendu d'origine. Sur Android
+ * les étoiles restent ALLUMÉES en permanence — teintes premium, dégradés
+ * radiaux et halo `starGlow` intacts, seul le mouvement disparaît.
+ */
+function Twinkle({ lit, delay, duration, floor = 0.15, transform, children }: {
   lit: boolean; delay: number; duration: number; floor?: number;
   transform?: string; children: React.ReactNode;
 }) {
-  // Les étoiles restent ALLUMÉES en permanence, sans scintillement.
-  //
-  // Ce composant animait auparavant l'opacité de chaque étoile en boucle
-  // infinie (withRepeat(-1)). Le ciel nocturne en compte 79 : cela faisait
-  // donc 79 animations Reanimated simultanées, chacune écrivant une prop sur
-  // un nœud SVG à chaque frame — uniquement en mode sombre (le mode clair
-  // n'a aucun Twinkle), ce qui explique exactement pourquoi la page Apprendre
-  // ramait en sombre et pas en clair.
-  //
-  // Sur Android c'était doublement coûteux : react-native-svg y répercute
-  // chaque changement de prop en traversée de l'arbre de vues, et le
-  // `renderToHardwareTextureAndroid` posé au-dessus du panorama devenait
-  // contre-productif — il demande de figer le sous-arbre en une texture GPU,
-  // texture aussitôt invalidée puisque son contenu changeait 60 fois par
-  // seconde.
-  //
-  // On garde tout l'aspect premium (teintes des étoiles, dégradés radiaux,
-  // halo `starGlow`) : seul le mouvement disparaît. Les props `lit`, `delay`,
-  // `duration` et `floor` sont conservées dans la signature pour ne pas
-  // toucher aux 79 sites d'appel, mais ne sont plus utilisées.
-  return <G transform={transform}>{children}</G>;
+  const v = useSharedValue(1);
+  const animate = lit && Platform.OS !== 'android';
+  useEffect(() => {
+    if (!animate) { v.value = 1; return; }
+    v.value = withDelay(delay, withRepeat(
+      withSequence(
+        withTiming(floor, { duration, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1, true,
+    ));
+  }, [animate, delay, duration, floor]);
+  const animatedProps = useAnimatedProps(() => ({ opacity: v.value }));
+  // Android : un <G> statique, sans pont d'animation monté du tout.
+  if (!animate) return <G transform={transform}>{children}</G>;
+  return <AnimatedG transform={transform} animatedProps={animatedProps}>{children}</AnimatedG>;
 }
 
 /** Nuage moelleux (mode clair) : plusieurs ellipses qui se chevauchent. */
@@ -1426,10 +1441,12 @@ export default function ParcoursScreen() {
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       {/* Panorama décoratif. Il était enveloppé dans une View
           `renderToHardwareTextureAndroid` pour tenter de corriger la lenteur
-          en mode sombre : inutile depuis que les étoiles ne scintillent plus
-          (voir Twinkle), et même contre-productif — figer en texture GPU un
-          contenu qui change à chaque frame ne fait que réinvalider la
-          texture. La vraie cause était les 79 animations en boucle. */}
+          en mode sombre : sans objet maintenant que les étoiles ne
+          s'animent plus sur Android (voir Twinkle), et même
+          contre-productif tant qu'elles s'animaient — figer en texture GPU
+          un contenu qui change à chaque frame ne fait que réinvalider la
+          texture. La prop était ignorée sur iOS : son retrait ne change
+          donc rien au rendu iPhone. */}
       <MeccaSkyline
         width={width}
         height={height}

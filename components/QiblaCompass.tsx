@@ -14,7 +14,7 @@
  * le dit.
  */
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Magnetometer } from 'expo-sensors';
 import { qiblaDirection, distanceToKaaba, cardinalFor } from '../constants/prayerTimes';
@@ -73,10 +73,13 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
         // permission HIGH_SAMPLING_RATE_SENSORS. Demander 120 ms sans elle
         // faisait rejeter le réglage côté natif — et comme
         // `setUpdateInterval` est une fonction ASYNCHRONE dont on ignorait la
-        // promesse, le rejet partait en unhandled rejection silencieuse.
-        // 200 ms est la cadence réellement accordée : l'aiguille bouge au
-        // lieu de rester figée, sans permission supplémentaire à demander.
-        Magnetometer.setUpdateInterval(200);
+        // promesse, le rejet partait en unhandled rejection silencieuse :
+        // l'aiguille restait figée.
+        //
+        // La contrainte est propre à Android : iOS garde donc les 120 ms
+        // d'origine (aiguille plus fluide), et seul Android descend à la
+        // cadence qu'il accorde réellement.
+        Magnetometer.setUpdateInterval(Platform.OS === 'android' ? 200 : 120);
         subscription = Magnetometer.addListener(({ x, y }) => {
           // Téléphone tenu à plat, portrait : l'axe Y du magnétomètre pointe
           // vers le haut de l'écran (« devant soi »), l'axe X vers la droite.
