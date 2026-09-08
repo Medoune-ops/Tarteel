@@ -55,17 +55,21 @@ beforeEach(() => {
   mockSetInterval.mockClear();
 });
 
-it('descend a 200 ms sur Android (plafond capteurs API 31+)', async () => {
+it('ne demande jamais 200 ms : a cette valeur le filtre natif bloque tout', async () => {
   Platform.OS = 'android';
   let r: TestRenderer.ReactTestRenderer | undefined;
   await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });
 
-  // < 200 ms serait rejete par Android sans HIGH_SAMPLING_RATE_SENSORS.
-  expect(mockSetInterval).toHaveBeenCalledWith(200);
+  // expo-sensors enregistre le capteur a SENSOR_DELAY_NORMAL (~200 ms) puis
+  // filtre avec `ecart > updateInterval`. Demander 200 ms exige donc un ecart
+  // STRICTEMENT superieur a 200 ms entre deux evenements espaces de ~200 ms :
+  // la condition echoue et l'aiguille se fige (constate sur appareil).
+  const asked = mockSetInterval.mock.calls[0]?.[0] as number;
+  expect(asked).toBeLessThan(200);
   await act(async () => { r?.unmount(); });
 });
 
-it('garde les 120 ms d origine sur iOS (aucune regression du rendu iPhone)', async () => {
+it('garde les 120 ms sur iOS (aucune regression du rendu iPhone)', async () => {
   Platform.OS = 'ios';
   let r: TestRenderer.ReactTestRenderer | undefined;
   await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });

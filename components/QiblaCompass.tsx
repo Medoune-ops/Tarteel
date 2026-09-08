@@ -14,7 +14,7 @@
  * le dit.
  */
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Magnetometer } from 'expo-sensors';
 import { qiblaDirection, distanceToKaaba, cardinalFor } from '../constants/prayerTimes';
@@ -69,17 +69,22 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
     Magnetometer.isAvailableAsync()
       .then((available) => {
         if (!available || cancelled) return;
-        // ⚠️ Android 12+ (API 31) plafonne les capteurs à 200 ms SAUF avec la
-        // permission HIGH_SAMPLING_RATE_SENSORS. Demander 120 ms sans elle
-        // faisait rejeter le réglage côté natif — et comme
-        // `setUpdateInterval` est une fonction ASYNCHRONE dont on ignorait la
-        // promesse, le rejet partait en unhandled rejection silencieuse :
-        // l'aiguille restait figée.
+        // ⚠️ NE JAMAIS mettre 200 ms ici sur Android — l'aiguille se fige.
         //
-        // La contrainte est propre à Android : iOS garde donc les 120 ms
-        // d'origine (aiguille plus fluide), et seul Android descend à la
-        // cadence qu'il accorde réellement.
-        Magnetometer.setUpdateInterval(Platform.OS === 'android' ? 200 : 120);
+        // expo-sensors n'impose pas cet intervalle au capteur : il enregistre
+        // le listener à SENSOR_DELAY_NORMAL (~200 ms) faute de la permission
+        // HIGH_SAMPLING_RATE_SENSORS, puis filtre en JS natif avec
+        //     if (currentTime - lastUpdate > updateInterval)
+        // Demander 200 ms revient donc à exiger un écart STRICTEMENT supérieur
+        // à 200 ms sur des évènements qui arrivent toutes les ~200 ms : la
+        // condition échoue quasiment à chaque fois et plus aucune mesure ne
+        // passe. C'est exactement ce qui a figé la boussole (constaté sur
+        // appareil, build 17).
+        //
+        // 120 ms laisse au contraire passer chaque évènement reçu. On ne gagne
+        // pas en fluidité au-delà de la cadence matérielle, mais on ne perd
+        // aucune mesure — et aucune permission supplémentaire n'est requise.
+        Magnetometer.setUpdateInterval(120);
         subscription = Magnetometer.addListener(({ x, y }) => {
           // Téléphone tenu à plat, portrait : l'axe Y du magnétomètre pointe
           // vers le haut de l'écran (« devant soi »), l'axe X vers la droite.
