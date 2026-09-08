@@ -13,7 +13,8 @@
  * échouait, et l'erreur partait à la poubelle, rendant le diagnostic impossible.
  * On journalise donc systématiquement, et on garde la cause pour l'affichage.
  */
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { NativeModules } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { surahAudioUrl, DEFAULT_RECITER_ID, type Reciter } from './reciters';
 import { localSudaisPath } from './audioDownload';
@@ -21,10 +22,22 @@ import { localSudaisPath } from './audioDownload';
 export interface SourateLite { numero: number; nom: string; nomArabe: string }
 export interface QueueTrack { id: string; url: string; title: string; artist: string; album: string }
 
-/** true dans Expo Go, où l'absence de module natif est normale et attendue. */
-export const IS_EXPO_GO = Constants.appOwnership === 'expo';
+/**
+ * true dans Expo Go, où l'absence de module natif est normale et attendue.
+ *
+ * ⚠️ On lit `executionEnvironment` et NON `appOwnership` : ce dernier est
+ * déprécié depuis SDK 50 et n'est pas fiable sur un build standalone Android,
+ * où il peut encore remonter 'expo'. L'app se croyait alors dans Expo Go et
+ * affichait « installe un development build » à un utilisateur qui avait déjà
+ * la vraie app du Play Store — message faux, qui masquait le vrai problème.
+ */
+export const IS_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-// Chargement défensif : le module RNTP lève au require quand le natif est absent.
+// Chargement défensif : sans natif, RNTP lève au require — il construit un
+// `new NativeEventEmitter(TrackPlayerModule)` avec un module undefined. Sans
+// ce try/catch, l'app entière tomberait. On double malgré tout la détection
+// plus bas via NativeModules : l'endroit exact où RNTP lève dépend de sa
+// version, alors que l'absence du natif, elle, est un fait stable.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let RNTP: any = null;
 /** Erreur de chargement du natif, conservée pour diagnostic. null si tout va bien. */
@@ -37,8 +50,19 @@ try {
   audioLoadError = e instanceof Error ? e : new Error(String(e));
 }
 
-/** true seulement quand le module natif RNTP est présent et utilisable. */
-export const AUDIO_AVAILABLE: boolean = RNTP != null && RNTP.default != null;
+/**
+ * true seulement quand le module natif RNTP est présent et utilisable.
+ *
+ * On teste DEUX choses : que le module JS s'est chargé, et que le pont natif
+ * existe réellement. La seconde vérification n'est pas redondante — RNTP lève
+ * aujourd'hui au require quand le natif manque, mais c'est un détail interne
+ * (l'emplacement du `new NativeEventEmitter`) qui peut changer d'une version à
+ * l'autre. `NativeModules.TrackPlayerModule` est, lui, la source de vérité
+ * stable : s'il est absent, aucune lecture ne fonctionnera, quoi qu'ait fait
+ * le require.
+ */
+const nativeModule = NativeModules?.TrackPlayerModule ?? null;
+export const AUDIO_AVAILABLE: boolean = RNTP?.default != null && nativeModule != null;
 
 /**
  * Le natif manque alors qu'on n'est PAS dans Expo Go : c'est un bug, pas une
@@ -48,8 +72,18 @@ export const AUDIO_AVAILABLE: boolean = RNTP != null && RNTP.default != null;
  */
 export const AUDIO_UNEXPECTEDLY_MISSING: boolean = !AUDIO_AVAILABLE && !IS_EXPO_GO;
 
-/** Message de l'erreur de chargement, pour l'affichage de diagnostic. */
-export const AUDIO_LOAD_ERROR: string | null = audioLoadError?.message ?? null;
+/**
+ * Message de l'erreur de chargement, pour l'affichage de diagnostic.
+ *
+ * Le repli couvre le cas où RNTP se chargerait sans lever tout en laissant le
+ * pont natif vide : l'écran afficherait sinon « indisponible » sans la moindre
+ * cause exploitable à distance.
+ */
+export const AUDIO_LOAD_ERROR: string | null =
+  audioLoadError?.message
+  ?? (RNTP?.default != null && nativeModule == null
+    ? 'NativeModules.TrackPlayerModule absent (natif non linké dans ce build)'
+    : null);
 
 if (!AUDIO_AVAILABLE) {
   if (IS_EXPO_GO) {
@@ -60,7 +94,7 @@ if (!AUDIO_AVAILABLE) {
     console.error(
       '[audio] react-native-track-player INTROUVABLE hors Expo Go — ' +
       "l'écoute est cassée alors que le module natif devrait être présent. " +
-      'Cause : ' + (audioLoadError ? audioLoadError.stack ?? audioLoadError.message : 'module chargé mais export `default` absent'),
+      'Cause : ' + (audioLoadError ? audioLoadError.stack ?? audioLoadError.message : AUDIO_LOAD_ERROR ?? 'inconnue'),
     );
   }
 }
