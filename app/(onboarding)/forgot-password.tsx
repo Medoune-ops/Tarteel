@@ -30,7 +30,14 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    // Le KeyboardAvoidingView englobe TOUT l'écran, header compris : le
+    // laisser au-dessus (dégradé 190 px + badge) empêchait cette zone de se
+    // compresser quand le clavier s'ouvre, sur les deux plateformes — le champ
+    // passait alors sous le clavier.
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <LinearGradient colors={['#8467FF', '#6B4DFF']} style={styles.headerGrad}>
         <Pressable style={styles.back} onPress={() => router.back()} hitSlop={10}>
           <Feather name="arrow-left" size={22} color="#fff" />
@@ -42,9 +49,6 @@ export default function ForgotPasswordScreen() {
         <Feather name="lock" size={36} color="#fff" />
       </View>
 
-      {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
-          recouvre le champ actif sans que l'écran ne remonte. */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.card}>
           <Text style={styles.title}>{tr('forgot.title')}</Text>
           <Text style={styles.sub}>{tr('forgot.sub')}</Text>
@@ -93,9 +97,8 @@ export default function ForgotPasswordScreen() {
           <Pressable onPress={() => router.back()} style={styles.backLink}>
             <Text style={styles.backLinkText}>{tr('forgot.rememberLogin')}</Text>
           </Pressable>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

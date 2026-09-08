@@ -188,7 +188,17 @@ export default function SignupScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    // Le KeyboardAvoidingView englobe TOUT l'écran, header compris. Il ne
+    // couvrait auparavant que la carte du formulaire, laissant au-dessus le
+    // dégradé (230 px fixes) et l'avatar — sur les DEUX plateformes, ces
+    // 230 px restaient donc en place quand le clavier s'ouvrait et écrasaient
+    // les champs, qui passaient sous le clavier. En englobant le header, toute
+    // la page se compresse (Android) ou se décale (iOS) et les champs
+    // redeviennent visibles.
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <LinearGradient colors={['#8467FF', '#6B4DFF']} style={styles.headerGrad} />
 
       {/* Avatar */}
@@ -198,10 +208,6 @@ export default function SignupScreen() {
         </View>
       </View>
 
-      {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
-          recouvre le champ actif sans que l'écran ne remonte. 'height' est
-          l'équivalent Android de 'padding' pour un écran défilable. */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.appName}>Tarteel</Text>
           <Text style={styles.welcome}>{isSignup ? tr('signup.createTitle') : tr('signup.welcomeBack')}</Text>
@@ -287,9 +293,8 @@ export default function SignupScreen() {
               <Text style={styles.switchStrong}>{isSignup ? tr('signup.login') : tr('signup.register')}</Text>
             </Text>
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
