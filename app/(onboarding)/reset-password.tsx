@@ -128,7 +128,14 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    // Le KeyboardAvoidingView englobe TOUT l'écran, header compris : le
+    // laisser au-dessus (dégradé 190 px + badge) empêchait cette zone de se
+    // compresser quand le clavier s'ouvre, sur les deux plateformes — les
+    // champs passaient alors sous le clavier.
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <LinearGradient colors={['#8467FF', '#6B4DFF']} style={styles.headerGrad}>
         <Pressable style={styles.back} onPress={() => router.back()} hitSlop={10}>
           <Feather name="arrow-left" size={22} color="#fff" />
@@ -139,9 +146,6 @@ export default function ResetPasswordScreen() {
         <Feather name="shield" size={36} color="#fff" />
       </View>
 
-      {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
-          recouvre le champ actif sans que l'écran ne remonte. */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>{tr('reset.title')}</Text>
           <Text style={styles.sub}>{tr('reset.sub')}</Text>
@@ -193,9 +197,8 @@ export default function ResetPasswordScreen() {
               )
             }
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
