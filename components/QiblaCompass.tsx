@@ -59,12 +59,24 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
 
+    // Le composant peut être démonté pendant l'await ci-dessous : sans ce
+    // drapeau, on s'abonnerait APRÈS le cleanup et l'abonnement fuiterait
+    // (aiguille figée sur un écran quitté, capteur laissé actif).
+    let cancelled = false;
+
     // Le magnétomètre est absent de certains appareils (et de la plupart des
     // émulateurs) : on retombe alors sur l'affichage du cap seul.
     Magnetometer.isAvailableAsync()
       .then((available) => {
-        if (!available) return;
-        Magnetometer.setUpdateInterval(120); // ~8 fois/s : fluide sans surcharger
+        if (!available || cancelled) return;
+        // ⚠️ Android 12+ (API 31) plafonne les capteurs à 200 ms SAUF avec la
+        // permission HIGH_SAMPLING_RATE_SENSORS. Demander 120 ms sans elle
+        // faisait rejeter le réglage côté natif — et comme
+        // `setUpdateInterval` est une fonction ASYNCHRONE dont on ignorait la
+        // promesse, le rejet partait en unhandled rejection silencieuse.
+        // 200 ms est la cadence réellement accordée : l'aiguille bouge au
+        // lieu de rester figée, sans permission supplémentaire à demander.
+        Magnetometer.setUpdateInterval(200);
         subscription = Magnetometer.addListener(({ x, y }) => {
           // Téléphone tenu à plat, portrait : l'axe Y du magnétomètre pointe
           // vers le haut de l'écran (« devant soi »), l'axe X vers la droite.
@@ -78,14 +90,29 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
           // tournait dans le bon référentiel mais dans le mauvais sens — un
           // virage à droite du téléphone la faisait tourner à gauche
           // (constaté sur appareil).
+          // Capteur pas encore calibré (fréquent au démarrage sur Android) :
+          // il émet des (0,0). `atan2(0, 0)` vaut 0, ce qui donnerait un cap
+          // « plein nord » parfaitement crédible — l'aiguille se figeait donc
+          // sur une valeur FAUSSE au lieu d'afficher « pas de capteur ». On
+          // ignore ces mesures : `heading` reste null tant qu'aucune lecture
+          // exploitable n'arrive.
+          if (x === 0 && y === 0) return;
           let angle = -Math.atan2(x, y) * (180 / Math.PI);
           angle = (angle + 360) % 360;
           setHeading(angle);
         });
       })
-      .catch(() => { /* capteur indisponible : on garde l'affichage statique */ });
+      .catch((e) => {
+        // Un catch muet ici rendait le bug indiagnosticable à distance :
+        // l'aiguille restait figée sans la moindre trace. L'affichage
+        // statique reste le comportement de repli, mais la cause est tracée.
+        console.warn('[qibla] magnétomètre indisponible — aiguille figée :', e);
+      });
 
-    return () => subscription?.remove();
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
   }, []);
 
   // Rotation à appliquer à la flèche. Sans magnétomètre, on pointe simplement
