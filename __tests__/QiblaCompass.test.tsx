@@ -11,6 +11,7 @@
  */
 import React from 'react';
 import TestRenderer, { act, type ReactTestInstance } from 'react-test-renderer';
+import { Platform } from 'react-native';
 
 let mockListener: ((m: { x: number; y: number }) => void) | null = null;
 const mockRemove = jest.fn();
@@ -44,6 +45,9 @@ function textOf(inst: ReactTestInstance | string): string {
   return (inst.children ?? []).map(textOf).join('');
 }
 
+const REAL_OS = Platform.OS;
+afterEach(() => { Platform.OS = REAL_OS; });
+
 beforeEach(() => {
   mockListener = null;
   mockAvailable = true;
@@ -51,12 +55,22 @@ beforeEach(() => {
   mockSetInterval.mockClear();
 });
 
-it('respecte le plafond de 200 ms des capteurs Android 12+', async () => {
+it('descend a 200 ms sur Android (plafond capteurs API 31+)', async () => {
+  Platform.OS = 'android';
   let r: TestRenderer.ReactTestRenderer | undefined;
   await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });
 
   // < 200 ms serait rejete par Android sans HIGH_SAMPLING_RATE_SENSORS.
   expect(mockSetInterval).toHaveBeenCalledWith(200);
+  await act(async () => { r?.unmount(); });
+});
+
+it('garde les 120 ms d origine sur iOS (aucune regression du rendu iPhone)', async () => {
+  Platform.OS = 'ios';
+  let r: TestRenderer.ReactTestRenderer | undefined;
+  await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });
+
+  expect(mockSetInterval).toHaveBeenCalledWith(120);
   await act(async () => { r?.unmount(); });
 });
 
