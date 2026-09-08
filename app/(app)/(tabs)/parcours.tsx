@@ -2,8 +2,8 @@ import { View, Text, Pressable, StyleSheet, useWindowDimensions, ActivityIndicat
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
-  useSharedValue, useAnimatedStyle, useAnimatedProps, withRepeat, withSequence, withTiming,
-  withDelay, Easing, FadeInDown,
+  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming,
+  Easing, FadeInDown,
 } from 'react-native-reanimated';
 import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -304,8 +304,6 @@ const CLOUD_POSITIONS: Array<[number, number, number, number]> = [
   [286, 220, 0.65, 0.4],
 ];
 
-const AnimatedG = Animated.createAnimatedComponent(G);
-
 /**
  * Fait s'éteindre puis se rallumer doucement un élément du ciel (courbe
  * sinusoïdale lente, jamais un clignotement brusque) — chaque étoile a son
@@ -313,23 +311,31 @@ const AnimatedG = Animated.createAnimatedComponent(G);
  * pas comme un seul bloc qui pulse. Hors premium, reste fixe (opacité 1,
  * aucune animation lancée) pour ne rien changer au rendu d'origine.
  */
-function Twinkle({ lit, delay, duration, floor = 0.15, transform, children }: {
+function Twinkle({ transform, children }: {
   lit: boolean; delay: number; duration: number; floor?: number;
   transform?: string; children: React.ReactNode;
 }) {
-  const v = useSharedValue(1);
-  useEffect(() => {
-    if (!lit) { v.value = 1; return; }
-    v.value = withDelay(delay, withRepeat(
-      withSequence(
-        withTiming(floor, { duration, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1, true,
-    ));
-  }, [lit, delay, duration, floor]);
-  const animatedProps = useAnimatedProps(() => ({ opacity: v.value }));
-  return <AnimatedG transform={transform} animatedProps={animatedProps}>{children}</AnimatedG>;
+  // Les étoiles restent ALLUMÉES en permanence, sans scintillement.
+  //
+  // Ce composant animait auparavant l'opacité de chaque étoile en boucle
+  // infinie (withRepeat(-1)). Le ciel nocturne en compte 79 : cela faisait
+  // donc 79 animations Reanimated simultanées, chacune écrivant une prop sur
+  // un nœud SVG à chaque frame — uniquement en mode sombre (le mode clair
+  // n'a aucun Twinkle), ce qui explique exactement pourquoi la page Apprendre
+  // ramait en sombre et pas en clair.
+  //
+  // Sur Android c'était doublement coûteux : react-native-svg y répercute
+  // chaque changement de prop en traversée de l'arbre de vues, et le
+  // `renderToHardwareTextureAndroid` posé au-dessus du panorama devenait
+  // contre-productif — il demande de figer le sous-arbre en une texture GPU,
+  // texture aussitôt invalidée puisque son contenu changeait 60 fois par
+  // seconde.
+  //
+  // On garde tout l'aspect premium (teintes des étoiles, dégradés radiaux,
+  // halo `starGlow`) : seul le mouvement disparaît. Les props `lit`, `delay`,
+  // `duration` et `floor` sont conservées dans la signature pour ne pas
+  // toucher aux 79 sites d'appel, mais ne sont plus utilisées.
+  return <G transform={transform}>{children}</G>;
 }
 
 /** Nuage moelleux (mode clair) : plusieurs ellipses qui se chevauchent. */
@@ -1418,27 +1424,21 @@ export default function ParcoursScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
-      {/* Le ciel nocturne (mode sombre) compose ~190 nœuds SVG (dégradés,
-          lune détaillée, étoiles scintillantes en premium) contre une
-          poignée en mode clair — signalé comme lent sur Android, où
-          react-native-svg n'a pas le même moteur de rendu qu'iOS.
-          renderToHardwareTextureAndroid force Android à rasteriser ce
-          sous-arbre en une texture GPU unique plutôt que de recomposer
-          chaque forme à chaque frame/layout — no-op sur iOS. */}
-      <View
-        style={StyleSheet.absoluteFillObject}
-        renderToHardwareTextureAndroid
-      >
-        <MeccaSkyline
-          width={width}
-          height={height}
-          color={T.skyline}
-          shadowColor={T.skylineShadow}
-          opacity={T.isDark ? 0.3 : 0.22}
-          lit={isPremium}
-          isDark={T.isDark}
-        />
-      </View>
+      {/* Panorama décoratif. Il était enveloppé dans une View
+          `renderToHardwareTextureAndroid` pour tenter de corriger la lenteur
+          en mode sombre : inutile depuis que les étoiles ne scintillent plus
+          (voir Twinkle), et même contre-productif — figer en texture GPU un
+          contenu qui change à chaque frame ne fait que réinvalider la
+          texture. La vraie cause était les 79 animations en boucle. */}
+      <MeccaSkyline
+        width={width}
+        height={height}
+        color={T.skyline}
+        shadowColor={T.skylineShadow}
+        opacity={T.isDark ? 0.3 : 0.22}
+        lit={isPremium}
+        isDark={T.isDark}
+      />
       <View style={[styles.statusWrap, { backgroundColor: T.cardBg }]}>
         <DeviceStatusBar />
       </View>
