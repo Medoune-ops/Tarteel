@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, InteractionManager, type AppStateStatus } from 'react-native';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -77,13 +77,28 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    preloadSounds();
-    useAppConfigStore.getState().load();
+    // Différé après les interactions en cours : ce useEffect se déclenche
+    // pile au moment où app/(onboarding)/splash.tsx (mascotte animée) monte
+    // pour la première fois, juste après que fontsLoaded soit devenu vrai.
+    // preloadSounds() crée 6 AudioPlayer natifs (aller-retour natif par son,
+    // plus coûteux sur Android) et entrait donc en concurrence avec le tout
+    // premier rendu — rallongeant le temps où l'utilisateur regarde encore
+    // le splash natif fixe avant que l'animation ne démarre.
+    // InteractionManager.runAfterInteractions (pas un simple setTimeout, qui
+    // resterait dans la même file de tâches) laisse le montage initial et
+    // l'animation en cours se terminer avant de lancer ce travail non
+    // critique. Aucun des deux appels n'est utile avant que l'utilisateur
+    // atteigne une vraie leçon ou un écran gated par la config serveur.
+    const task = InteractionManager.runAfterInteractions(() => {
+      preloadSounds();
+      useAppConfigStore.getState().load();
+    });
     // Le téléchargement des récitations Sudais n'est plus lancé ici : il
     // partait automatiquement, sans rien afficher, et consommait des données
     // mobiles à l'insu de l'utilisateur (~114 fichiers). Il est désormais
     // déclenché par un bouton explicite dans l'écran Écoute du Coran, avec
     // sa progression visible.
+    return () => task.cancel();
   }, []);
 
   useRefreshAppConfigOnForeground();
