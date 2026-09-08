@@ -110,8 +110,8 @@
         {
           "backgroundColor": "#6B4DFF",
           "android": {
-            "image": "./assets/android-icon-foreground.png",
-            "imageWidth": 180,
+            "image": "./assets/splash-otter.png",
+            "imageWidth": 200,
             "resizeMode": "contain",
             "backgroundColor": "#6B4DFF"
           }
