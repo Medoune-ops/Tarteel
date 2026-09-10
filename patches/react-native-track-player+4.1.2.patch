@@ -430,3 +430,55 @@ index b2409a0..23d18ed 100644
      }
 +    }
  }
+diff --git a/node_modules/react-native-track-player/lib/src/trackPlayer.js b/node_modules/react-native-track-player/lib/src/trackPlayer.js
+index 191e5de..e17d672 100644
+--- a/node_modules/react-native-track-player/lib/src/trackPlayer.js
++++ b/node_modules/react-native-track-player/lib/src/trackPlayer.js
+@@ -1,7 +1,26 @@
+ import { AppRegistry, DeviceEventEmitter, NativeEventEmitter, Platform, } from 'react-native';
+ import TrackPlayer from './TrackPlayerModule';
+ import resolveAssetSource from './resolveAssetSource';
+-const emitter = Platform.OS !== 'android'
++// PATCH — New Architecture (Expo SDK 54 / RN 0.81).
++//
++// RNTP 4.x, concu pour l'ancienne architecture, ecoute via DeviceEventEmitter
++// sur Android. Avec la New Architecture (activee par defaut en SDK 54), les
++// evenements emis par le module natif transitent par le NativeEventEmitter du
++// TurboModule : le canal DeviceEventEmitter ne les recoit plus.
++//
++// Constate sur l'appareil (Galaxy A03, build 19) : MusicService tourne et joue
++// le son, mais AUCUN evenement `playback-state` / `playback-active-track-changed`
++// n'atteint le JS. Consequence : useIsPlaying() reste indefini (le bouton
++// play/pause ne change jamais d'icone) et useActiveTrack() renvoie undefined,
++// ce qui masque entierement le mini-lecteur (MiniPlayer fait `if (!track) return null`).
++//
++// Le patch precedent avait ajoute addListener/removeListeners cote natif —
++// necessaire (la spec NativeEventEmitter les exige) mais pas suffisant : il
++// fallait aussi brancher le JS sur le bon emetteur.
++//
++// On garde DeviceEventEmitter en repli si le module natif est absent, pour ne
++// pas casser le chargement defensif du wrapper constants/trackPlayer.ts.
++const emitter = TrackPlayer
+     ? new NativeEventEmitter(TrackPlayer)
+     : DeviceEventEmitter;
+ // MARK: - Helpers
+diff --git a/node_modules/react-native-track-player/src/trackPlayer.ts b/node_modules/react-native-track-player/src/trackPlayer.ts
+index 6f6d723..a25f171 100644
+--- a/node_modules/react-native-track-player/src/trackPlayer.ts
++++ b/node_modules/react-native-track-player/src/trackPlayer.ts
+@@ -21,9 +21,13 @@ import type {
+ } from './interfaces';
+ import resolveAssetSource from './resolveAssetSource';
+ 
++// PATCH — New Architecture (Expo SDK 54 / RN 0.81). Voir lib/src/trackPlayer.js
++// pour le detail : sur Android, les evenements du TurboModule ne passent plus
++// par DeviceEventEmitter, d'ou l'interface figee (pause invisible, mini-lecteur
++// masque) alors que la lecture fonctionne.
+ const emitter =
+-  Platform.OS !== 'android'
+-    ? new NativeEventEmitter(TrackPlayer)
++  TrackPlayer
++    ? new NativeEventEmitter(TrackPlayer as never)
+     : DeviceEventEmitter;
+ 
+ // MARK: - Helpers
