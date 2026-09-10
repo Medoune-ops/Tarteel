@@ -2,7 +2,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../utils/useTheme';
-import { useActiveTrack, useProgress, useIsPlaying, audioControls, AUDIO_AVAILABLE } from '../constants/trackPlayer';
+import { useActiveTrack, useProgress, useIsPlaying, audioControls } from '../constants/trackPlayer';
 
 // Écrans avec la tab bar visible (76px + safe area) → le mini-player flotte
 // juste au-dessus. Ailleurs (écrans empilés sans tab bar), il colle au bas.
@@ -19,25 +19,7 @@ export default function MiniPlayer() {
   const { position, duration } = useProgress(500);
   const { playing } = useIsPlaying();
 
-  // DIAGNOSTIC TEMPORAIRE — le mini-lecteur ne s'affiche pas sur Android alors
-  // que le son joue. On rend visible la raison exacte au lieu de disparaître
-  // en silence : c'est ce silence qui a rendu les 2 correctifs precedents
-  // inefficaces (on corrigeait une cause supposée, jamais constatée).
-  if (pathname === '/coran-player') return null;
-  if (!track) {
-    return (
-      <View
-        style={[
-          styles.wrap,
-          { backgroundColor: T.cardBg, borderColor: T.border, bottom: TAB_ROUTES.has(pathname) ? 84 : 16, padding: 10 },
-        ]}
-      >
-        <Text style={{ color: T.text, fontSize: 11 }}>
-          [diag] mini-lecteur : useActiveTrack() = {String(track)} · AUDIO_AVAILABLE={String(AUDIO_AVAILABLE)} · route={pathname}
-        </Text>
-      </View>
-    );
-  }
+  if (!track || pathname === '/coran-player') return null;
 
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
   const hasTabBar = TAB_ROUTES.has(pathname);
