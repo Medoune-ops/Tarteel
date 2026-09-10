@@ -76,6 +76,38 @@ describe('Lecteur Coran (contrôles)', () => {
     expect(mockPrev).toHaveBeenCalled();
   });
 
+  /**
+   * Signalé sur Android : « quand on met sur pause l'affichage ne le montre
+   * pas ». Le bouton doit refléter l'état réel du lecteur, et rebasculer en
+   * lecture au second appui — sinon l'utilisateur ne sait plus où il en est.
+   */
+  it("affiche l'icône pause pendant la lecture, play à l'arrêt", () => {
+    mockPlaying = true;
+    const r1 = renderScreen();
+    const pauseIcons = r1.root.findAll(
+      (n: ReactTestInstance) => n.props?.name === 'pause',
+    );
+    expect(pauseIcons.length).toBeGreaterThan(0);
+    act(() => { r1.unmount(); });
+    current = undefined;
+
+    mockPlaying = false;
+    const r2 = renderScreen();
+    const playIcons = r2.root.findAll(
+      (n: ReactTestInstance) => n.props?.name === 'play',
+    );
+    expect(playIcons.length).toBeGreaterThan(0);
+  });
+
+  it('en cours de lecture, le bouton central met en pause (et non replay)', async () => {
+    mockPlaying = true;
+    const r = renderScreen();
+    const btns = r.root.findAll((n: ReactTestInstance) => typeof n.props?.onPress === 'function');
+    await act(async () => { for (const b of btns) { try { await b.props.onPress(); } catch { /* ignore */ } } });
+    expect(mockPause).toHaveBeenCalled();
+    expect(mockPlay).not.toHaveBeenCalled();
+  });
+
   it('changer la vitesse appelle setRate', async () => {
     const r = renderScreen();
     await press(r, '1.5×');
