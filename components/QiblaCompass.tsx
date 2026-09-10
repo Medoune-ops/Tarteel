@@ -51,6 +51,9 @@ interface Props {
 export default function QiblaCompass({ latitude, longitude, colors }: Props) {
   const tr = useT();
   const [heading, setHeading] = useState<number | null>(null);
+  // Diagnostic temporaire : la boussole reste figée sur certains Android sans
+  // qu'on sache pourquoi. On expose l'état réel du capteur à l'écran.
+  const [diag, setDiag] = useState('capteur : en attente…');
 
   const qibla = qiblaDirection(latitude, longitude);
   const distance = distanceToKaaba(latitude, longitude);
@@ -66,9 +69,11 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
 
     // Le magnétomètre est absent de certains appareils (et de la plupart des
     // émulateurs) : on retombe alors sur l'affichage du cap seul.
+    let count = 0;
     Magnetometer.isAvailableAsync()
       .then((available) => {
-        if (!available || cancelled) return;
+        if (cancelled) return;
+        if (!available) { setDiag('capteur : isAvailableAsync = false'); return; }
         // ⚠️ NE JAMAIS mettre 200 ms ici sur Android — l'aiguille se fige.
         //
         // expo-sensors n'impose pas cet intervalle au capteur : il enregistre
@@ -104,11 +109,17 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
           // sur une valeur FAUSSE au lieu d'afficher « pas de capteur ». On
           // ignore ces mesures : `heading` reste null tant qu'aucune lecture
           // exploitable n'arrive.
-          if (x === 0 && y === 0) return;
+          count++;
+          if (x === 0 && y === 0) {
+            setDiag(`capteur : ${count} mesures, toutes (0,0) — magnétomètre inactif`);
+            return;
+          }
           let angle = -Math.atan2(x, y) * (180 / Math.PI);
           angle = (angle + 360) % 360;
+          setDiag(`capteur OK : ${count} mesures · x=${x.toFixed(1)} y=${y.toFixed(1)} · cap=${Math.round(angle)}°`);
           setHeading(angle);
         });
+        setDiag('capteur : listener posé, en attente de mesures…');
       })
       .catch((e) => {
         // Un catch muet ici rendait le bug indiagnosticable à distance :
@@ -160,6 +171,11 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
 
       <Text style={[styles.hint, { color: colors.textTertiary }]}>
         {heading == null ? tr('qibla.noSensor') : tr('qibla.hint')}
+      </Text>
+
+      {/* DIAGNOSTIC TEMPORAIRE — à retirer une fois la boussole réparée */}
+      <Text style={[styles.hint, { color: colors.textTertiary, fontSize: 10, marginTop: 2 }]}>
+        {diag}
       </Text>
     </View>
   );

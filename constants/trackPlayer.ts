@@ -105,6 +105,22 @@ const AppKilledPlaybackBehavior = RNTP?.AppKilledPlaybackBehavior ?? {};
 export const RepeatMode: { Off: number; Track: number; Queue: number } =
   RNTP?.RepeatMode ?? { Off: 0, Track: 1, Queue: 2 };
 
+// ⚠️ registerPlaybackService DOIT s'exécuter au tout premier chargement du
+// bundle JS — pas dans setupTrackPlayer() (appelé seulement au moment de
+// jouer). Trop tard, la lecture démarre quand même mais RNTP ne câble jamais
+// son état interne aux hooks React : useActiveTrack()/useIsPlaying() restent
+// vides, donc le mini-lecteur ne s'affiche pas et l'état pause est invisible.
+// Ce fichier étant importé dès le démarrage (store, écrans), l'enregistrement
+// au niveau module s'exécute assez tôt. No-op si le natif est absent (Expo Go).
+if (RNTP?.default != null && nativeModule != null) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    RNTP.default.registerPlaybackService(() => require('../playbackService').default);
+  } catch (e) {
+    console.warn('[audio] registerPlaybackService (niveau module) a échoué :', e);
+  }
+}
+
 // ── Hooks (réels si natif présent, sinon stubs sûrs) ────────────────────────
 export interface ActiveTrack { id?: string; title?: string; artist?: string }
 export const useActiveTrack: () => ActiveTrack | undefined =
@@ -139,19 +155,8 @@ export function getCurrentReciterId(): string { return currentReciterId; }
 /** Initialise le lecteur (idempotent) + contrôles écran verrouillé. */
 export async function setupTrackPlayer(): Promise<void> {
   if (!AUDIO_AVAILABLE || isSetup) return;
-  // Enregistre le service de lecture (contrôles écran verrouillé / arrière-plan)
-  // À LA DEMANDE — jamais au démarrage de l'app — pour ne rien charger de natif
-  // dans Expo Go. `require` dynamique : le module n'est évalué que dans un dev
-  // build où RNTP est disponible.
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    TrackPlayer.registerPlaybackService(() => require('../playbackService').default);
-  } catch (e) {
-    // Le cas normal est « déjà enregistré » et on continue. Mais ce catch
-    // absorberait tout aussi bien une VRAIE erreur d'enregistrement, laissant
-    // l'app croire que le lecteur est prêt alors que rien ne jouera. On trace.
-    console.warn('[audio] registerPlaybackService a échoué (déjà enregistré ?) :', e);
-  }
+  // registerPlaybackService est fait au niveau module (voir plus haut), pas ici :
+  // il doit s'exécuter au démarrage du bundle, pas au premier appel de lecture.
   try {
     await TrackPlayer.setupPlayer();
   } catch (e) {

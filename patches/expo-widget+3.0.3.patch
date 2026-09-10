@@ -22,6 +22,22 @@ index ce45081..046e773 100644
              }
              else {
                  fs_extra_1.default.copyFileSync(moduleSourcePath, moduleDestinationPath);
+diff --git a/node_modules/expo-widget/plugin/build/android/withWidgetManifest.js b/node_modules/expo-widget/plugin/build/android/withWidgetManifest.js
+index 6a50519..8c717ad 100644
+--- a/node_modules/expo-widget/plugin/build/android/withWidgetManifest.js
++++ b/node_modules/expo-widget/plugin/build/android/withWidgetManifest.js
+@@ -19,7 +19,10 @@ function buildWidgetReceiver(op) {
+     return {
+         $: {
+             'android:name': `.${op.name}`,
+-            'android:exported': 'false',
++            // PATCH: un widget d'ecran d'accueil DOIT etre exported=true, sinon
++            // le launcher (autre app) ne le voit pas et il n'apparait jamais
++            // dans la liste "Ajouter un widget". Le plugin mettait 'false'.
++            'android:exported': 'true',
+         },
+         'intent-filter': [
+             {
 diff --git a/node_modules/expo-widget/plugin/build/ios/withPodfile.js b/node_modules/expo-widget/plugin/build/ios/withPodfile.js
 index e39bf98..f8648eb 100644
 --- a/node_modules/expo-widget/plugin/build/ios/withPodfile.js
