@@ -51,9 +51,6 @@ interface Props {
 export default function QiblaCompass({ latitude, longitude, colors }: Props) {
   const tr = useT();
   const [heading, setHeading] = useState<number | null>(null);
-  // Diagnostic temporaire : la boussole reste figée sur certains Android sans
-  // qu'on sache pourquoi. On expose l'état réel du capteur à l'écran.
-  const [diag, setDiag] = useState('capteur : en attente…');
 
   const qibla = qiblaDirection(latitude, longitude);
   const distance = distanceToKaaba(latitude, longitude);
@@ -67,13 +64,17 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
     // (aiguille figée sur un écran quitté, capteur laissé actif).
     let cancelled = false;
 
-    // Le magnétomètre est absent de certains appareils (et de la plupart des
-    // émulateurs) : on retombe alors sur l'affichage du cap seul.
-    let count = 0;
+    // Le magnétomètre est absent de nombreux appareils d'entrée de gamme (et
+    // de la plupart des émulateurs) : on retombe alors sur l'affichage du cap
+    // seul. Constaté par exemple sur Galaxy A03 (`dumpsys sensorservice` ne
+    // liste que accéléromètre, luminosité, proximité et podomètre — aucun
+    // capteur de champ magnétique, et `pm list features` ne déclare pas
+    // android.hardware.sensor.compass). L'aiguille figée n'est donc pas un
+    // bug : c'est le seul comportement possible sans capteur.
     Magnetometer.isAvailableAsync()
       .then((available) => {
         if (cancelled) return;
-        if (!available) { setDiag('capteur : isAvailableAsync = false'); return; }
+        if (!available) return;
         // ⚠️ NE JAMAIS mettre 200 ms ici sur Android — l'aiguille se fige.
         //
         // expo-sensors n'impose pas cet intervalle au capteur : il enregistre
@@ -109,17 +110,11 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
           // sur une valeur FAUSSE au lieu d'afficher « pas de capteur ». On
           // ignore ces mesures : `heading` reste null tant qu'aucune lecture
           // exploitable n'arrive.
-          count++;
-          if (x === 0 && y === 0) {
-            setDiag(`capteur : ${count} mesures, toutes (0,0) — magnétomètre inactif`);
-            return;
-          }
+          if (x === 0 && y === 0) return;
           let angle = -Math.atan2(x, y) * (180 / Math.PI);
           angle = (angle + 360) % 360;
-          setDiag(`capteur OK : ${count} mesures · x=${x.toFixed(1)} y=${y.toFixed(1)} · cap=${Math.round(angle)}°`);
           setHeading(angle);
         });
-        setDiag('capteur : listener posé, en attente de mesures…');
       })
       .catch((e) => {
         // Un catch muet ici rendait le bug indiagnosticable à distance :
@@ -158,9 +153,12 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
             <KaabaColorIcon size={22} color={colors.text} />
           </View>
 
-          {/* Flèche vers la Kaaba */}
+          {/* Flèche vers la Kaaba. Sans magnétomètre, elle ne peut pas suivre
+              l'appareil : elle est alors grisée pour qu'on voie tout de suite
+              qu'il s'agit d'un repère fixe (le cap absolu) et non d'une
+              aiguille bloquée — c'est ce que le texte sous le cadran explique. */}
           <View style={[styles.needle, { transform: [{ rotate: `${rotation}deg` }] }]}>
-            <QiblaArrow size={54} color="#1F8A70" />
+            <QiblaArrow size={54} color={heading == null ? '#9AA0AA' : '#1F8A70'} />
           </View>
         </View>
       </View>
@@ -171,11 +169,6 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
 
       <Text style={[styles.hint, { color: colors.textTertiary }]}>
         {heading == null ? tr('qibla.noSensor') : tr('qibla.hint')}
-      </Text>
-
-      {/* DIAGNOSTIC TEMPORAIRE — à retirer une fois la boussole réparée */}
-      <Text style={[styles.hint, { color: colors.textTertiary, fontSize: 10, marginTop: 2 }]}>
-        {diag}
       </Text>
     </View>
   );
