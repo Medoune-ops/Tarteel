@@ -21,7 +21,7 @@
         android:textSize="11.5sp"
         android:textStyle="bold" />
 
-    <View
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
@@ -57,7 +57,7 @@
         android:maxLines="2"
         android:text="" />
 
-    <View
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
