@@ -160,17 +160,30 @@ export async function setupTrackPlayer(): Promise<void> {
   try {
     await TrackPlayer.setupPlayer();
   } catch (e) {
-    // RNTP ne distingue pas « déjà initialisé » (bénin) d'une vraie panne —
-    // les deux lèvent la même erreur générique côté JS. On ne peut donc pas
-    // savoir lequel des deux vient de se produire. Mais continuer vers
-    // updateOptions() sur un lecteur qui a VRAIMENT échoué à s'initialiser
-    // ferait planter cet appel à son tour (erreur non catchée, cette fois
-    // propagée à l'appelant), et marquer isSetup = true empêcherait à jamais
-    // une nouvelle tentative dans cette session. On s'arrête donc ici : au
-    // pire on retente inutilement au prochain appel (cas bénin), au mieux on
-    // évite un lecteur bloqué en silence pour toute la session (cas panne).
-    console.warn('[audio] setupPlayer a échoué — abandon de cette tentative :', e);
-    return;
+    // RNTP lève la même erreur générique pour « déjà initialisé » (bénin, très
+    // fréquent : le lecteur survit aux remontages d'écran) et pour une vraie
+    // panne d'init. Un précédent correctif abandonnait ici par prudence —
+    // c'était pire : dans le cas BÉNIN, on sortait avant updateOptions(), donc
+    // sans progressUpdateEventInterval ni capabilities, et sans passer
+    // isSetup à true (on rejouait donc le même échec à chaque lecture).
+    // Le son sortait quand même — le lecteur natif étant bel et bien prêt —
+    // mais aucun état ne remontait : mini-lecteur absent, pause invisible.
+    //
+    // On tranche désormais sur un FAIT plutôt que sur l'erreur : si le lecteur
+    // répond à getPlaybackState(), il est utilisable et on poursuit la
+    // configuration. Sinon seulement, on abandonne cette tentative.
+    let usable = false;
+    try {
+      await TrackPlayer.getPlaybackState();
+      usable = true;
+    } catch {
+      usable = false;
+    }
+    if (!usable) {
+      console.warn('[audio] setupPlayer a échoué et le lecteur ne répond pas — abandon :', e);
+      return;
+    }
+    console.warn('[audio] setupPlayer a levé mais le lecteur répond (déjà initialisé) — on poursuit la configuration.');
   }
   await TrackPlayer.updateOptions({
     android: {
