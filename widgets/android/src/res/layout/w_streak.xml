@@ -42,11 +42,28 @@
         android:textSize="13sp"
         android:textStyle="bold" />
 
-    <!-- Espace souple : pousse les pastilles vers le bas -->
+    <!-- Espace souple : pousse XP et pastilles vers le bas -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
+
+    <!-- XP cumulés, en pilule translucide (le widget Semaine les affiche déjà,
+         celui-ci ne les montrait pas du tout). -->
+    <TextView
+        android:id="@+id/w_streak_xp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/w_pill_light"
+        android:paddingStart="9dp"
+        android:paddingEnd="9dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:text="0 XP"
+        android:textColor="@color/w_white"
+        android:textSize="12sp"
+        android:textStyle="bold" />
 
     <!-- Pastilles des 7 jours -->
     <LinearLayout

@@ -13,6 +13,7 @@ class StreakWidgetProvider : TarteelWidgetBase() {
         val views = RemoteViews(context.packageName, R.layout.w_streak)
 
         views.setTextViewText(R.id.w_streak_value, data.streak.toString())
+        views.setTextViewText(R.id.w_streak_xp, "${data.xp} XP")
 
         // Un widget Android ne sait pas boucler sur des vues : chaque pastille
         // est adressée par son id.
