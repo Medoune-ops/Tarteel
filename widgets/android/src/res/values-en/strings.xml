@@ -17,6 +17,8 @@
     <string name="w_day_sat">S</string>
     <string name="w_day_sun">S</string>
 
+    <string name="w_otter_desc">The Tarteel mascot</string>
+
     <string name="w_desc_streak">Your day streak</string>
     <string name="w_desc_continue">A little nudge to keep your streak alive</string>
     <string name="w_desc_week">Your learning week</string>

@@ -23,6 +23,8 @@
     <string name="w_day_sat">S</string>
     <string name="w_day_sun">D</string>
 
+    <string name="w_otter_desc">La mascotte de Tarteel</string>
+
     <string name="w_desc_streak">Ta série de jours d\'affilée</string>
     <string name="w_desc_continue">Un petit rappel pour garder ta série</string>
     <string name="w_desc_week">Ta semaine d\'apprentissage</string>

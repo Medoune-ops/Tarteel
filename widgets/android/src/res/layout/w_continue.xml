@@ -46,15 +46,32 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- Message -->
-    <TextView
+    <!-- Mascotte + message (comme ContinueSmallWidget.swift, qui pose l'Otter
+         à gauche du texte). -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/w_reminder_message"
-        android:textColor="@color/w_white"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:maxLines="2" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/w_continue_otter"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginEnd="11dp"
+            android:src="@drawable/w_otter"
+            android:contentDescription="@string/w_otter_desc" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/w_reminder_message"
+            android:textColor="@color/w_white"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="2" />
+    </LinearLayout>
 
     <FrameLayout
         android:layout_width="match_parent"
