@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  APERÇU du widget Mot du jour, pour le sélecteur de widgets du lanceur.
+
+  Même raison que w_week_preview.xml : dans le sélecteur, aucun code Kotlin ne
+  tourne. Or le nom arabe, la translittération, la traduction et le badge sont
+  tous posés par WordOfDayWidgetProvider — l'aperçu n'affichait donc que son
+  titre « ⭐ Mot du jour » au-dessus d'une carte vide.
+
+  Valeurs d'exemple en dur ci-dessous. Ce fichier n'est jamais affiché sur
+  l'écran d'accueil : le widget posé utilise w_wordofday.xml et le vrai nom
+  du jour, calculé par date (AsmaData.kt).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/w_bg_wordofday"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="5dp"
+            android:text="⭐"
+            android:textSize="11sp"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/w_wordofday_title"
+            android:textColor="@color/w_gold_accent"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Exemple : le 1er des 99 noms. -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:text="@string/w_preview_name_arabic"
+        android:textColor="@color/w_text_dark"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/w_preview_name_translit"
+        android:textColor="@color/w_gold_translit"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxLines="2"
+        android:text="@string/w_preview_name_translation"
+        android:textColor="@color/w_text_dark"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/w_badge_gold"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:text="@string/w_preview_name_badge"
+        android:textColor="@color/w_gold_badge_text"
+        android:textSize="10.5sp"
+        android:textStyle="bold" />
+</LinearLayout>
