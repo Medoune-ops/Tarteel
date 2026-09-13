@@ -1,105 +1,74 @@
 /**
- * RÉGRESSION (Android, build Play Store) : l'écran Tajwid affichait
- * « nécessite un development build » alors que l'utilisateur avait la vraie
- * app. Deux bugs empilés, verrouillés ici :
+ * Contrat de la façade audio (constants/trackPlayer.ts).
  *
- *  1. IS_EXPO_GO lisait `appOwnership` (déprécié SDK 50+), qui peut remonter
- *     'expo' dans un build standalone → mauvais message affiché.
- *  2. AUDIO_AVAILABLE testait `RNTP.default != null`, or l'entrée JS de RNTP
- *     est un namespace de modules JS toujours présent, même sans natif →
- *     l'audio était annoncé disponible puis crashait au premier appel.
+ * Ce fichier verrouillait auparavant la DÉTECTION du module natif
+ * react-native-track-player : deux bugs empilés faisaient afficher
+ * « nécessite un development build » à un utilisateur qui avait la vraie app
+ * du Play Store.
+ *
+ * Le moteur a depuis été remplacé par `expo-audio` (voir constants/audioPlayer.ts) :
+ * RNTP 4.x, conçu pour l'ancienne architecture, ne faisait plus remonter aucun
+ * événement au JS sous la New Architecture du SDK 54 — mini-lecteur invisible,
+ * icône pause figée, barre de progression morte.
+ *
+ * Les deux bugs d'origine ne peuvent donc plus se reproduire : il n'y a plus de
+ * module natif optionnel à détecter, et `expo-audio` est embarqué dans Expo Go.
+ * Ce qu'on protège ici est ce qui compte désormais : que la façade expose bien
+ * tout ce dont les écrans ont besoin, sous les mêmes noms qu'avant.
+ *
+ * C'est cette stabilité de noms qui a permis de remplacer entièrement le moteur
+ * audio SANS toucher une ligne de tajwid.tsx, coran-player.tsx ni MiniPlayer.tsx.
  */
 
-// Le module lit son environnement AU CHARGEMENT : chaque cas doit donc
-// réinitialiser le registre avant de le require.
-function loadWith(opts: {
-  executionEnvironment: string;
-  appOwnership: string | null;
-  nativePresent: boolean;
-}) {
-  let mod: typeof import('../constants/trackPlayer');
-  jest.isolateModules(() => {
-    jest.doMock('expo-constants', () => ({
-      __esModule: true,
-      ExecutionEnvironment: { Bare: 'bare', Standalone: 'standalone', StoreClient: 'storeClient' },
-      default: {
-        executionEnvironment: opts.executionEnvironment,
-        appOwnership: opts.appOwnership,
-      },
-    }));
-    // On garde le vrai `react-native` (des dependances transitives en ont
-    // besoin) et on ne remplace que NativeModules, seul point qui nous
-    // interesse ici.
-    jest.doMock('react-native', () => {
-      const actual = jest.requireActual('react-native');
-      // Proxy plutot que spread : l'index de react-native expose ses exports
-      // via des getters PARESSEUX (FlatList, DevMenu...). Un `...actual` les
-      // evalue tous d'un coup, ce qui plante hors runtime natif. Le proxy ne
-      // detourne que NativeModules et laisse le reste intact.
-      return new Proxy(actual, {
-        get: (target, prop, receiver) =>
-          prop === 'NativeModules'
-            ? (opts.nativePresent ? { TrackPlayerModule: {} } : {})
-            : Reflect.get(target, prop, receiver),
-      });
-    });
-    // audioDownload tire toute la couche API (et donc expo-router) : hors
-    // sujet pour ce test, et couteux a instancier.
-    jest.doMock('../constants/audioDownload', () => ({
-      localSudaisPath: (n: number) => `/tmp/${n}.mp3`,
-    }));
-    mod = require('../constants/trackPlayer');
-  });
-  return mod!;
-}
+// audioDownload tire toute la couche API (et donc expo-router) : hors sujet
+// ici, et coûteux à instancier.
+jest.mock('../constants/audioDownload', () => ({
+  localSudaisPath: (n: number) => `/tmp/${n}.mp3`,
+}));
 
-it("un build standalone Android n'est jamais pris pour Expo Go, meme si appOwnership ment", () => {
-  // Le cas exact du bug : appOwnership dit 'expo' alors qu'on est standalone.
-  const m = loadWith({
-    executionEnvironment: 'standalone',
-    appOwnership: 'expo',
-    nativePresent: false,
+import * as facade from '../constants/trackPlayer';
+
+describe('façade audio — surface exposée aux écrans', () => {
+  it('expose les hooks consommés par le lecteur et le mini-lecteur', () => {
+    // MiniPlayer.tsx et coran-player.tsx importent exactement ces trois hooks.
+    expect(typeof facade.useActiveTrack).toBe('function');
+    expect(typeof facade.useProgress).toBe('function');
+    expect(typeof facade.useIsPlaying).toBe('function');
   });
 
-  expect(m.IS_EXPO_GO).toBe(false);
-  // Donc l'ecran affiche « c'est casse chez nous », pas « installe un dev build ».
-  expect(m.AUDIO_UNEXPECTEDLY_MISSING).toBe(true);
-});
-
-it('le natif absent est detecte meme quand le module JS se charge sans erreur', () => {
-  const m = loadWith({
-    executionEnvironment: 'standalone',
-    appOwnership: null,
-    nativePresent: false,
+  it('expose les contrôles de lecture attendus par les écrans', () => {
+    // Chaque bouton de coran-player.tsx et de MiniPlayer.tsx appelle l'un
+    // d'eux : un nom manquant casserait l'interface en silence.
+    for (const nom of [
+      'play', 'pause', 'skipToNext', 'skipToPrevious',
+      'seekTo', 'setRate', 'setRepeatMode', 'stop',
+    ]) {
+      expect(typeof (facade.audioControls as Record<string, unknown>)[nom]).toBe('function');
+    }
   });
 
-  expect(m.AUDIO_AVAILABLE).toBe(false);
-  // La cause doit etre exploitable a distance, pas un null muet : c'est elle
-  // que l'ecran affiche entre parentheses sous le message d'erreur.
-  expect(m.AUDIO_LOAD_ERROR).toBeTruthy();
-});
-
-it('un build standalone avec le natif linke annonce bien l audio disponible', () => {
-  const m = loadWith({
-    executionEnvironment: 'standalone',
-    appOwnership: null,
-    nativePresent: true,
+  it('expose les fonctions de file et de récitateur utilisées par Tajwid', () => {
+    expect(typeof facade.playSurates).toBe('function');
+    expect(typeof facade.changeReciter).toBe('function');
+    expect(typeof facade.refreshLocalSudaisCache).toBe('function');
+    expect(typeof facade.getCurrentSourates).toBe('function');
+    expect(typeof facade.getCurrentReciterId).toBe('function');
   });
 
-  expect(m.AUDIO_AVAILABLE).toBe(true);
-  expect(m.AUDIO_UNEXPECTEDLY_MISSING).toBe(false);
-  expect(m.AUDIO_LOAD_ERROR).toBeNull();
-});
-
-it('dans Expo Go, le natif absent reste une limitation normale', () => {
-  const m = loadWith({
-    executionEnvironment: 'storeClient',
-    appOwnership: 'expo',
-    nativePresent: false,
+  it('conserve les trois modes de répétition, avec les mêmes valeurs qu’avant', () => {
+    // coran-player.tsx compare à RepeatMode.Track / RepeatMode.Queue : changer
+    // ces valeurs inverserait silencieusement le bouton « boucle ».
+    expect(facade.RepeatMode.Off).toBe(0);
+    expect(facade.RepeatMode.Track).toBe(1);
+    expect(facade.RepeatMode.Queue).toBe(2);
   });
 
-  expect(m.IS_EXPO_GO).toBe(true);
-  expect(m.AUDIO_AVAILABLE).toBe(false);
-  // Ici « development build » est le bon message : pas d'alerte bug.
-  expect(m.AUDIO_UNEXPECTEDLY_MISSING).toBe(false);
+  it('annonce l’audio disponible : plus de module natif optionnel à détecter', () => {
+    // Avec expo-audio (embarqué, y compris dans Expo Go), l'écoute n'est plus
+    // conditionnée à la présence d'un natif linké à part. La bannière
+    // « indisponible » de tajwid.tsx ne doit donc jamais s'afficher.
+    expect(facade.AUDIO_AVAILABLE).toBe(true);
+    expect(facade.AUDIO_UNEXPECTEDLY_MISSING).toBe(false);
+    expect(facade.AUDIO_LOAD_ERROR).toBeNull();
+  });
 });

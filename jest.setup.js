@@ -21,6 +21,53 @@ jest.mock('expo-localization', () => ({
   getCalendars: () => [{ timeZone: 'Europe/Paris' }],
 }));
 
+// expo-audio porte désormais TOUTE la lecture du Coran (constants/audioPlayer.ts,
+// derrière la façade constants/trackPlayer.ts). Son import réel échoue sous Jest :
+// ExpoAudio.ts patche `AudioModule.AudioPlayer.prototype.replace` au chargement,
+// or le module natif est absent ici — d'où un « Cannot read properties of
+// undefined (reading 'prototype') » qui fait tomber toute la suite avant le
+// premier test.
+//
+// Le faux lecteur ci-dessous expose la surface utilisée par audioPlayer.ts. Une
+// suite qui a besoin d'un comportement particulier (LessonPlayScreen, pour le
+// micro) redéclare son propre jest.mock('expo-audio'), qui l'emporte localement.
+jest.mock('expo-audio', () => {
+  const makePlayer = () => ({
+    id: 1,
+    playing: false,
+    loop: false,
+    currentTime: 0,
+    duration: 0,
+    play: jest.fn(),
+    pause: jest.fn(),
+    replace: jest.fn(),
+    seekTo: jest.fn(() => Promise.resolve()),
+    setPlaybackRate: jest.fn(),
+    setActiveForLockScreen: jest.fn(),
+    updateLockScreenMetadata: jest.fn(),
+    clearLockScreenControls: jest.fn(),
+    // Renvoie un abonnement inerte : audioPlayer.ts ne s'en sert que pour
+    // écouter `playbackStatusUpdate`, jamais pour se désabonner.
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+    remove: jest.fn(),
+  });
+
+  return {
+    createAudioPlayer: jest.fn(makePlayer),
+    useAudioPlayer: jest.fn(makePlayer),
+    useAudioPlayerStatus: jest.fn(() => ({
+      playing: false, currentTime: 0, duration: 0, didJustFinish: false, isLoaded: true,
+    })),
+    setAudioModeAsync: jest.fn(() => Promise.resolve()),
+    // Enregistrement micro : présent pour les écrans de leçon/révision qui
+    // importent expo-audio sans définir leur propre mock.
+    useAudioRecorder: jest.fn(() => ({ record: jest.fn(), stop: jest.fn(), uri: null })),
+    useAudioRecorderState: jest.fn(() => ({ isRecording: false })),
+    RecordingPresets: { HIGH_QUALITY: {} },
+    AudioModule: { requestRecordingPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true })) },
+  };
+});
+
 // react-native-webview (DexPayCheckout) charge un module natif introuvable en
 // test — un composant vide suffit, on ne teste jamais le rendu de la webview.
 jest.mock('react-native-webview', () => {
