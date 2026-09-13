@@ -1,3 +1,54 @@
+diff --git a/node_modules/expo-widget/android/src/main/java/expo/modules/expowidgets/ExpoWidgetsModule.kt b/node_modules/expo-widget/android/src/main/java/expo/modules/expowidgets/ExpoWidgetsModule.kt
+index 8a014ea..0eb9eee 100644
+--- a/node_modules/expo-widget/android/src/main/java/expo/modules/expowidgets/ExpoWidgetsModule.kt
++++ b/node_modules/expo-widget/android/src/main/java/expo/modules/expowidgets/ExpoWidgetsModule.kt
+@@ -17,7 +17,28 @@ class ExpoWidgetsModule : Module() {
+     Function("setWidgetData") { json: String, packageName: String -> 
+       getPreferences(packageName).edit().putString("widgetdata", json).commit()
+ 
+-      val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
++      // PATCH — tous les widgets poses finissaient par afficher le MEME contenu.
++      //
++      // Le code d'origine creait UN SEUL Intent hors de la boucle, puis pour
++      // chaque provider : ecrasait EXTRA_APPWIDGET_IDS et appelait
++      // sendBroadcast(intent) SANS destinataire. Deux fautes qui se combinent :
++      //
++      //   1. sans setComponent(), le broadcast part a TOUS les receivers de
++      //      l'app, pas au provider courant — `providerComponent` etait calcule
++      //      puis jamais utilise ;
++      //   2. le meme Intent etant reutilise, chaque tour ecrase les ids du
++      //      precedent.
++      //
++      // Resultat : chaque provider recevait les ids d'un AUTRE widget et
++      // redessinait ces cases avec SON propre layout. Le dernier provider de la
++      // liste gagnait. Comme « Mot du jour » est le seul a se reveiller seul
++      // (updatePeriodMillis=1800000, les autres sont a 0), c'est lui qui
++      // declenchait le plus souvent l'ecrasement — d'ou des widgets Serie et
++      // Ma semaine devenus « Mot du jour » au bout de quelques minutes
++      // (constate sur appareil, test interne).
++      //
++      // Specifique a Android : iOS passe par WidgetCenter.reloadAllTimelines(),
++      // ou chaque widget redessine le sien.
+       val widgetManager = AppWidgetManager.getInstance(context)
+       val widgetProviders = context.packageManager.queryBroadcastReceivers(
+           Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE),
+@@ -31,7 +52,15 @@ class ExpoWidgetsModule : Module() {
+                   provider.activityInfo.name
+               )
+               val widgetIds = widgetManager.getAppWidgetIds(providerComponent)
+-              intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds)
++              // Rien a redessiner pour ce provider : ne pas diffuser un tableau
++              // vide, qui ferait repasser le widget par onUpdate sans ids.
++              if (widgetIds.isEmpty()) continue
++
++              // Un Intent NEUF par provider, ADRESSE a ce provider, ne portant
++              // que SES propres ids.
++              val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
++                  .setComponent(providerComponent)
++                  .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds)
+               context.sendBroadcast(intent)
+           }
+       }
 diff --git a/node_modules/expo-widget/plugin/build/android/withModule.js b/node_modules/expo-widget/plugin/build/android/withModule.js
 index ce45081..046e773 100644
 --- a/node_modules/expo-widget/plugin/build/android/withModule.js
