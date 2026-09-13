@@ -25,11 +25,25 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- Widget Semaine : pastilles plus grandes, sur fond clair. -->
+    <!-- Widget Semaine : pastilles plus grandes, sur fond clair.
+         L'aperçu de l'app pose une emoji (🔥 / ▶) DANS la pastille : on utilise
+         donc un TextView avec la forme en fond, et non un ImageView, qu'on ne
+         pourrait pas remplir de texte. -->
     <style name="WWeekDot">
-        <item name="android:layout_width">26dp</item>
-        <item name="android:layout_height">26dp</item>
-        <item name="android:src">@drawable/w_dot_week_idle</item>
+        <item name="android:layout_width">28dp</item>
+        <item name="android:layout_height">28dp</item>
+        <item name="android:background">@drawable/w_dot_week_idle</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- Segment de la ligne reliant deux jours (widget Semaine). -->
+    <style name="WWeekLine">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">3dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">@drawable/w_week_line_todo</item>
     </style>
 
     <style name="WWeekLabel">

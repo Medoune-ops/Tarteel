@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget Semaine : segment de la ligne qui relie deux jours, partie DEJA
+  parcourue (orange). L'aperçu de l'app (app/(app)/widgets.tsx) trace une barre
+  continue dont le remplissage s'arrête à aujourd'hui ; une RemoteViews ne
+  sachant pas redimensionner une vue en pourcentage avant l'API 31 (minSdk=24
+  ici), la ligne est découpée en 6 segments fixes, montrés ou masqués un par un.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="2dp" />
+    <solid android:color="@color/w_streak_mid" />
+</shape>
