@@ -8,6 +8,6 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/w_week"
     android:description="@string/w_desc_week"
-    android:previewLayout="@layout/w_week"
+    android:previewLayout="@layout/w_week_preview"
     android:resizeMode="horizontal"
     android:widgetCategory="home_screen" />

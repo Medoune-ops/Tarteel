@@ -11,6 +11,6 @@
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/w_wordofday"
     android:description="@string/w_desc_wordofday"
-    android:previewLayout="@layout/w_wordofday"
+    android:previewLayout="@layout/w_wordofday_preview"
     android:resizeMode="none"
     android:widgetCategory="home_screen" />

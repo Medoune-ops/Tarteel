@@ -27,4 +27,13 @@
     <string name="w_wordofday_badge_prefix">Name #</string>
     <string name="w_wordofday_badge_suffix">of 99</string>
     <string name="w_desc_wordofday">A different name of Allah every day</string>
+
+    <!-- Sample values shown ONLY in the launcher's widget picker
+         (w_*_preview.xml layouts) — no Kotlin runs there, so the real content
+         cannot be injected. Never visible on the home screen. -->
+    <string name="w_preview_motivation">Every verse counts. Keep going!</string>
+    <string name="w_preview_name_arabic">الرَّحْمَٰن</string>
+    <string name="w_preview_name_translit">Ar-Raḥmān</string>
+    <string name="w_preview_name_translation">The Most Compassionate</string>
+    <string name="w_preview_name_badge">⭐ Name #1 of 99</string>
 </resources>

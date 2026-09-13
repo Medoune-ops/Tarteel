@@ -33,4 +33,15 @@
     <string name="w_wordofday_badge_prefix">Nom n°</string>
     <string name="w_wordofday_badge_suffix">sur 99</string>
     <string name="w_desc_wordofday">Un nom d\'Allah différent chaque jour</string>
+
+    <!-- Valeurs d'exemple montrées UNIQUEMENT dans le sélecteur de widgets du
+         lanceur (layouts w_*_preview.xml). Aucun code Kotlin n'y tourne, donc
+         le contenu réel ne peut pas y être injecté : sans ces chaînes, le
+         sélecteur affichait des cartes vides. Jamais visibles sur l'écran
+         d'accueil. -->
+    <string name="w_preview_motivation">Chaque verset compte. Continue !</string>
+    <string name="w_preview_name_arabic">الرَّحْمَٰن</string>
+    <string name="w_preview_name_translit">Ar-Raḥmān</string>
+    <string name="w_preview_name_translation">Le Tout Miséricordieux</string>
+    <string name="w_preview_name_badge">⭐ Nom n° 1 sur 99</string>
 </resources>

@@ -38,6 +38,24 @@
         <item name="android:includeFontPadding">false</item>
     </style>
 
+    <!-- Pastille d'un jour DANS la rangee a 7 colonnes (widget Semaine).
+         Porte elle-meme le poids, sans LinearLayout intermediaire : la forme
+         de fond est un ovale, donc la vue doit rester carree — d'ou une
+         largeur fixe impossible ici. On garde donc le poids sur la cellule et
+         on centre la pastille par gravity, la forme s'etirant sur 28dp de
+         haut. -->
+    <style name="WWeekDotCell">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">28dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">@drawable/w_dot_week_idle</item>
+        <item name="android:layout_marginStart">6dp</item>
+        <item name="android:layout_marginEnd">6dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
     <!-- Segment de la ligne reliant deux jours (widget Semaine). -->
     <style name="WWeekLine">
         <item name="android:layout_width">0dp</item>
@@ -46,9 +64,15 @@
         <item name="android:background">@drawable/w_week_line_todo</item>
     </style>
 
+    <!-- Lettre d'un jour (widget Semaine). Largeur 0dp + poids 1 : les 7
+         lettres se répartissent également et tombent chacune SOUS sa pastille.
+         En wrap_content (sans poids) elles se collaient à gauche en un bloc
+         « LMMJVSD » illisible. -->
     <style name="WWeekLabel">
-        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center_horizontal</item>
         <item name="android:layout_marginTop">4dp</item>
         <item name="android:textColor">@color/w_grey_label</item>
         <item name="android:textSize">11sp</item>

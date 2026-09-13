@@ -1,32 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget Ma semaine (4×2) — calque sur l'aperçu de l'app (app/(app)/widgets.tsx,
-  composant WeekPreview), et NON sur la version iOS : c'est cet aperçu qui fait
-  foi pour le rendu Android.
+  APERÇU du widget Ma semaine, pour le sélecteur de widgets du lanceur.
 
-  Deux écarts imposés par les RemoteViews, qui ne savent ni dessiner librement
-  ni redimensionner une vue en pourcentage avant l'API 31 (minSdk=24 ici) :
+  Pourquoi un layout séparé : dans le sélecteur, AUCUN code Kotlin ne tourne —
+  Android inflate le XML tel quel. Or tout le contenu du widget réel est posé
+  par WeekWidgetProvider (les 🔥 des jours faits, le ▶ d'aujourd'hui, la ligne
+  orange, le message de motivation). Pointer previewLayout sur le layout réel
+  donnait donc une carte vide : des pastilles grises, aucune ligne, aucun texte.
 
-  1. La ligne qui relie les 7 jours est découpée en 6 segments fixes, montrés
-     ou masqués un par un depuis le Kotlin, au lieu d'une barre unique dont on
-     ferait varier la largeur.
-  2. Les pastilles des jours sont des TextView (forme en fond + emoji au
-     centre) et non des ImageView : une RemoteViews peut changer le fond ET le
-     texte d'un TextView, ce qui permet de poser 🔥 ou ▶ dans le cercle.
+  Ce fichier reprend la même structure avec des valeurs d'exemple écrites en
+  dur. Il n'est JAMAIS affiché sur l'écran d'accueil : le widget posé utilise
+  w_week.xml et ses vraies données.
+
+  À garder aligné sur w_week.xml en cas de changement de mise en page.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/w_week_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal">
 
-    <!-- ── Colonne gauche : la série, sur dégradé orange ── -->
+    <!-- ── Colonne gauche : la série ── -->
     <FrameLayout
         android:layout_width="110dp"
         android:layout_height="match_parent"
         android:background="@drawable/w_bg_streak">
 
-        <!-- Grosse flamme fantôme en bas à droite (comme weekGhostFlame). -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -43,7 +41,6 @@
             android:gravity="center"
             android:padding="10dp">
 
-            <!-- La mascotte, absente jusqu'ici côté Android. -->
             <ImageView
                 android:layout_width="44dp"
                 android:layout_height="44dp"
@@ -52,10 +49,9 @@
                 android:contentDescription="@string/w_otter_desc" />
 
             <TextView
-                android:id="@+id/w_week_streak"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0"
+                android:text="7"
                 android:textColor="@color/w_white"
                 android:textSize="34sp"
                 android:textStyle="bold"
@@ -72,7 +68,7 @@
         </LinearLayout>
     </FrameLayout>
 
-    <!-- ── Colonne droite : la semaine, sur panneau clair ── -->
+    <!-- ── Colonne droite : la semaine ── -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
@@ -84,7 +80,6 @@
         android:paddingTop="13dp"
         android:paddingBottom="12dp">
 
-        <!-- Titre + pilule XP (avec l'éclair de l'aperçu). -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -105,7 +100,6 @@
                 android:layout_weight="1" />
 
             <TextView
-                android:id="@+id/w_week_xp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/w_pill_purple"
@@ -113,7 +107,7 @@
                 android:paddingEnd="9dp"
                 android:paddingTop="3dp"
                 android:paddingBottom="3dp"
-                android:text="⚡ 0 XP"
+                android:text="⚡ 1250 XP"
                 android:textColor="@color/w_purple"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -124,14 +118,7 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <!-- La ligne de liaison, DERRIERE les pastilles : 6 segments entre les
-             7 jours, chacun montré en orange ou en gris depuis le Kotlin.
-
-             HAUTEUR FIXE (34dp) et non wrap_content : dans un FrameLayout en
-             wrap_content, la largeur disponible n'est pas resolue avant que les
-             enfants ne se mesurent, donc les colonnes a poids s'effondraient et
-             les 7 pastilles s'empilaient VERTICALEMENT sur toute la hauteur du
-             widget (constate sur appareil, build de test interne). -->
+        <!-- Ligne + pastilles : ici en dur, 5 jours faits puis aujourd'hui. -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="34dp">
@@ -144,51 +131,42 @@
                 android:paddingStart="17dp"
                 android:paddingEnd="17dp">
 
-                <!-- FrameLayout et NON View : la balise <View> n'est pas
-                     supportée par les RemoteViews et fait échouer tout le
-                     widget avec « Impossible de charger » (cf. commit
-                     7f03bbb, qui avait déjà corrigé 9 occurrences). -->
-                <FrameLayout android:id="@+id/w_wline0" style="@style/WWeekLine" />
-                <FrameLayout android:id="@+id/w_wline1" style="@style/WWeekLine" />
-                <FrameLayout android:id="@+id/w_wline2" style="@style/WWeekLine" />
-                <FrameLayout android:id="@+id/w_wline3" style="@style/WWeekLine" />
-                <FrameLayout android:id="@+id/w_wline4" style="@style/WWeekLine" />
-                <FrameLayout android:id="@+id/w_wline5" style="@style/WWeekLine" />
+                <FrameLayout style="@style/WWeekLine" android:background="@drawable/w_week_line_done" />
+                <FrameLayout style="@style/WWeekLine" android:background="@drawable/w_week_line_done" />
+                <FrameLayout style="@style/WWeekLine" android:background="@drawable/w_week_line_done" />
+                <FrameLayout style="@style/WWeekLine" android:background="@drawable/w_week_line_done" />
+                <FrameLayout style="@style/WWeekLine" android:background="@drawable/w_week_line_done" />
+                <FrameLayout style="@style/WWeekLine" android:background="@drawable/w_week_line_todo" />
             </LinearLayout>
 
-            <!-- Les 7 pastilles, par-dessus la ligne. Chaque pastille porte
-                 directement le poids : la LinearLayout intermediaire par jour
-                 (WDayCol) a ete retiree, elle ajoutait un niveau de mesure
-                 inutile la ou une seule vue suffit. -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="34dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <TextView android:id="@+id/w_wd0" style="@style/WWeekDotCell" />
-                <TextView android:id="@+id/w_wd1" style="@style/WWeekDotCell" />
-                <TextView android:id="@+id/w_wd2" style="@style/WWeekDotCell" />
-                <TextView android:id="@+id/w_wd3" style="@style/WWeekDotCell" />
-                <TextView android:id="@+id/w_wd4" style="@style/WWeekDotCell" />
-                <TextView android:id="@+id/w_wd5" style="@style/WWeekDotCell" />
-                <TextView android:id="@+id/w_wd6" style="@style/WWeekDotCell" />
+                <TextView style="@style/WWeekDotCell" android:background="@drawable/w_dot_week_active" android:text="🔥" />
+                <TextView style="@style/WWeekDotCell" android:background="@drawable/w_dot_week_active" android:text="🔥" />
+                <TextView style="@style/WWeekDotCell" android:background="@drawable/w_dot_week_active" android:text="🔥" />
+                <TextView style="@style/WWeekDotCell" android:background="@drawable/w_dot_week_active" android:text="🔥" />
+                <TextView style="@style/WWeekDotCell" android:background="@drawable/w_dot_week_active" android:text="🔥" />
+                <TextView style="@style/WWeekDotCell" android:background="@drawable/w_dot_week_today" android:text="▶" android:textColor="@color/w_purple" />
+                <TextView style="@style/WWeekDotCell" android:background="@drawable/w_dot_week_idle" />
             </LinearLayout>
         </FrameLayout>
 
-        <!-- Lettres des jours, sous les pastilles. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-            <TextView android:id="@+id/w_wl0" style="@style/WWeekLabel" android:text="@string/w_day_mon" />
-            <TextView android:id="@+id/w_wl1" style="@style/WWeekLabel" android:text="@string/w_day_tue" />
-            <TextView android:id="@+id/w_wl2" style="@style/WWeekLabel" android:text="@string/w_day_wed" />
-            <TextView android:id="@+id/w_wl3" style="@style/WWeekLabel" android:text="@string/w_day_thu" />
-            <TextView android:id="@+id/w_wl4" style="@style/WWeekLabel" android:text="@string/w_day_fri" />
-            <TextView android:id="@+id/w_wl5" style="@style/WWeekLabel" android:text="@string/w_day_sat" />
-            <TextView android:id="@+id/w_wl6" style="@style/WWeekLabel" android:text="@string/w_day_sun" />
+            <TextView style="@style/WWeekLabel" android:text="@string/w_day_mon" />
+            <TextView style="@style/WWeekLabel" android:text="@string/w_day_tue" />
+            <TextView style="@style/WWeekLabel" android:text="@string/w_day_wed" />
+            <TextView style="@style/WWeekLabel" android:text="@string/w_day_thu" />
+            <TextView style="@style/WWeekLabel" android:text="@string/w_day_fri" />
+            <TextView style="@style/WWeekLabel" android:text="@string/w_day_sat" android:textColor="@color/w_purple" />
+            <TextView style="@style/WWeekLabel" android:text="@string/w_day_sun" />
         </LinearLayout>
 
         <FrameLayout
@@ -196,7 +174,6 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <!-- Message de motivation, précédé de la flamme (comme l'aperçu). -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -217,12 +194,12 @@
                 android:includeFontPadding="false" />
 
             <TextView
-                android:id="@+id/w_motivation"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:maxLines="1"
                 android:ellipsize="end"
+                android:text="@string/w_preview_motivation"
                 android:textColor="@color/w_motivation_text"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
