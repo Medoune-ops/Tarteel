@@ -22,6 +22,8 @@
     <color name="w_text_dark">#1B2333</color>
     <color name="w_purple">#6B4DFF</color>
     <color name="w_purple_soft">#EFEBFF</color>
+    <!-- Ligne reliant les 7 jours (widget Semaine) : portion pas encore atteinte. -->
+    <color name="w_line_todo">#E7E2F2</color>
     <color name="w_grey_dot">#EFECF7</color>
     <color name="w_grey_dot_inner">#C8C3DC</color>
     <color name="w_grey_label">#9AA0AA</color>

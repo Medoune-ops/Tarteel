@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget Semaine : segment de la ligne reliant deux jours, partie PAS ENCORE
+  atteinte (gris clair). Pendant du segment orange w_week_line_done.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="2dp" />
+    <solid android:color="@color/w_line_todo" />
+</shape>
