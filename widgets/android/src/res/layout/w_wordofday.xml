@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget Mot du jour (2×2) — équivalent Android de WordOfDayWidget.swift.
-  Contenu entièrement statique côté layout : le nom du jour est calculé par
-  date (AsmaData.kt) et injecté depuis WordOfDayWidgetProvider.kt, sans lire
-  les données partagées app -> widget (pas besoin, c'est un pur calcul).
+  Widget Mot du jour (2×2) — calqué sur l'aperçu de l'app (app/(app)/widgets.tsx,
+  composant WordOfDayPreview), et NON sur la version iOS.
+
+  Contenu calculé par date (AsmaData.kt) et injecté depuis
+  WordOfDayWidgetProvider.kt : ce widget ne lit pas les données partagées
+  app -> widget, il n'a donc pas besoin que l'app ait déjà été lancée.
+
+  L'étoile de l'en-tête et celle du badge remplacent le SF Symbol `star.fill`
+  de la version iOS, indisponible sur Android.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -12,14 +17,29 @@
     android:background="@drawable/w_bg_wordofday"
     android:padding="16dp">
 
-    <!-- En-tête -->
-    <TextView
+    <!-- En-tête : « ⭐ Mot du jour » -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/w_wordofday_title"
-        android:textColor="@color/w_gold_accent"
-        android:textSize="11.5sp"
-        android:textStyle="bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="5dp"
+            android:text="⭐"
+            android:textSize="11sp"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/w_wordofday_title"
+            android:textColor="@color/w_gold_accent"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -62,7 +82,9 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- Badge « Nom n° X sur 99 » -->
+    <!-- Badge « ⭐ Nom n° X sur 99 » : l'étoile est préfixée au texte construit
+         dans le Kotlin, un TextView de RemoteViews ne pouvant pas porter de
+         drawable composé. -->
     <TextView
         android:id="@+id/w_word_badge"
         android:layout_width="wrap_content"

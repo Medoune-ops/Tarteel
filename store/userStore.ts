@@ -311,7 +311,20 @@ export const useUserStore = create<UserState>()(
       storage: createJSONStorage(() => AsyncStorage),
       // Au rechargement de l'app, on recalcule immédiatement les cœurs régénérés.
       onRehydrateStorage: () => (state) => {
-        state?.syncHearts();
+        if (!state) return;
+        state.syncHearts();
+        // Les widgets ne sont alimentés que par les mutations du store (addXP,
+        // setStreak, hydrateFromBackend…). Un widget posé sur l'écran d'accueil
+        // d'un téléphone où aucune de ces actions n'a eu lieu depuis le dernier
+        // build lit donc des SharedPreferences vides et affiche série 0 / 0 XP.
+        // On pousse l'état persisté dès la réhydratation pour qu'il reflète les
+        // vraies valeurs sans attendre qu'une leçon soit terminée.
+        syncWidgetData({
+          streak: state.streak,
+          xp: state.xp,
+          currentLesson: state.currentLesson,
+          reminderHour: state.reminderHour,
+        });
       },
     }
   )

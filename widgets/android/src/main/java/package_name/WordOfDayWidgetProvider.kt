@@ -20,9 +20,12 @@ class WordOfDayWidgetProvider : TarteelWidgetBase() {
         views.setTextViewText(R.id.w_word_translit, name.translitteration)
         views.setTextViewText(R.id.w_word_translation, name.fr)
 
+        // L'étoile est préfixée au texte : un TextView de RemoteViews ne peut
+        // pas porter de drawable composé, contrairement au SF Symbol
+        // `star.fill` utilisé côté iOS.
         val prefix = context.getString(R.string.w_wordofday_badge_prefix)
         val suffix = context.getString(R.string.w_wordofday_badge_suffix)
-        views.setTextViewText(R.id.w_word_badge, "$prefix ${name.numero} $suffix")
+        views.setTextViewText(R.id.w_word_badge, "⭐ $prefix ${name.numero} $suffix")
 
         return views
     }
