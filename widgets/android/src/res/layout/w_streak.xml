@@ -9,7 +9,10 @@
   (w_d0 … w_d6), de même que les lettres (w_l0 … w_l6) dont la couleur change
   pour aujourd'hui.
 -->
+<!-- L'id sur la racine rend TOUTE la carte cliquable : le clic était posé sur
+     le seul nombre (w_streak_value), donc taper à côté ne faisait rien. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_streak_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/w_bg_streak">
