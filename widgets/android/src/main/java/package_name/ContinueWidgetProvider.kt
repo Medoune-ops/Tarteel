@@ -15,7 +15,13 @@ class ContinueWidgetProvider : TarteelWidgetBase() {
         views.setTextViewText(R.id.w_reminder_time, String.format("%02d:00", data.reminderHour))
 
         // Le widget entier ouvre l'app.
-        val intent = openAppIntent(context, "tarteel://lesson")
+        //
+        // Cible « tarteel:// » et NON « tarteel://lesson » : le dossier
+        // app/(app)/lesson/ ne contient pas d'index (seulement play, qcm,
+        // listen, voice…), donc ce lien ne correspondait a AUCUNE route. Une
+        // lecon se lance depuis le parcours, avec son identifiant — on ouvre
+        // donc l'accueil, comme les autres widgets.
+        val intent = openAppIntent(context, "tarteel://")
         views.setOnClickPendingIntent(R.id.w_continue_root, intent)
 
         return views
