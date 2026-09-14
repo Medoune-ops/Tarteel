@@ -48,9 +48,11 @@ class StreakWidgetProvider : TarteelWidgetBase() {
             )
         }
 
-        // Toucher le widget ouvre l'app.
+        // Toucher le widget ouvre l'app. Le clic est posé sur la RACINE : il
+        // était attaché au seul nombre, donc taper ailleurs sur la carte (les
+        // pastilles, les XP, la mascotte) ne déclenchait rien.
         views.setOnClickPendingIntent(
-            R.id.w_streak_value,
+            R.id.w_streak_root,
             openAppIntent(context, "tarteel://"),
         )
 

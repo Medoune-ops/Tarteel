@@ -27,6 +27,13 @@ class WordOfDayWidgetProvider : TarteelWidgetBase() {
         val suffix = context.getString(R.string.w_wordofday_badge_suffix)
         views.setTextViewText(R.id.w_word_badge, "⭐ $prefix ${name.numero} $suffix")
 
+        // Ce widget était le seul à n'ouvrir l'app sur aucun clic : il lui
+        // manquait entièrement le setOnClickPendingIntent.
+        views.setOnClickPendingIntent(
+            R.id.w_word_root,
+            openAppIntent(context, "tarteel://"),
+        )
+
         return views
     }
 }

@@ -10,7 +10,10 @@
   L'étoile de l'en-tête et celle du badge remplacent le SF Symbol `star.fill`
   de la version iOS, indisponible sur Android.
 -->
+<!-- L'id sur la racine rend la carte cliquable : ce widget n'ouvrait pas l'app
+     du tout, faute de setOnClickPendingIntent côté provider. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_word_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
