@@ -1,0 +1,39 @@
+/*
+  Textes des widgets iOS — français (langue de base).
+
+  Un widget iOS est rendu par le système dans un process séparé : il ne peut pas
+  lire l'i18n JavaScript de l'app. Les libellés fixes vivent donc ici, comme
+  côté Android dans res/values/strings.xml, et iOS choisit le .lproj selon la
+  langue de l'appareil. Seuls les textes dynamiques (message de motivation)
+  viennent des données écrites par l'app via utils/widgetData.ts.
+
+  Les clés reprennent celles d'Android (w_*) pour que les deux plateformes
+  restent comparables d'un coup d'œil.
+*/
+
+"w_streak_label" = "Série";
+"w_streak_unit" = "jours de suite";
+"w_week_title" = "Ma semaine";
+
+"w_reminder_label" = "Rappel";
+"w_reminder_message" = "Ta série t'attend";
+"w_reminder_duration" = "3 min suffisent";
+
+/* Initiales des jours, lundi → dimanche. */
+"w_day_mon" = "L";
+"w_day_tue" = "M";
+"w_day_wed" = "M";
+"w_day_thu" = "J";
+"w_day_fri" = "V";
+"w_day_sat" = "S";
+"w_day_sun" = "D";
+
+"w_wordofday_title" = "Mot du jour";
+/* Badge « Nom n° 42 sur 99 » — %d est le numéro du nom. */
+"w_wordofday_badge" = "Nom n° %d sur 99";
+
+/* Noms et descriptions dans la galerie de widgets (écran d'ajout). */
+"w_desc_streak" = "Ta série de jours consécutifs.";
+"w_desc_continue" = "Un petit rappel pour garder ta série.";
+"w_desc_week" = "Ta progression sur les 7 derniers jours.";
+"w_desc_wordofday" = "Un nom d'Allah différent chaque jour.";

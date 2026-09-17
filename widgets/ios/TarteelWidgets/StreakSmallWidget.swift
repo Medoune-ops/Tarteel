@@ -6,7 +6,11 @@ import WidgetKit
 
 struct StreakSmallView: View {
     let data: WidgetData
-    let days = ["L", "M", "M", "J", "V", "S", "D"]
+    // Initiales localisées (lun → dim) : en anglais M T W T F S S.
+    let days = [
+        L.t("w_day_mon"), L.t("w_day_tue"), L.t("w_day_wed"), L.t("w_day_thu"),
+        L.t("w_day_fri"), L.t("w_day_sat"), L.t("w_day_sun"),
+    ]
 
     // Indice du jour actuel (0=lun … 6=dim)
     var todayIdx: Int {
@@ -51,7 +55,7 @@ struct StreakSmallView: View {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 16))
                         .foregroundColor(Color(hex: "#FFE7B0"))
-                    Text("Série")
+                    Text(L.t("w_streak_label"))
                         .font(.system(size: 12.5, weight: .heavy))
                         .foregroundColor(.white)
                 }
@@ -65,7 +69,7 @@ struct StreakSmallView: View {
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
-                    Text("jours de suite")
+                    Text(L.t("w_streak_unit"))
                         .font(.system(size: 13.5, weight: .heavy))
                         .foregroundColor(.white.opacity(0.95))
                 }

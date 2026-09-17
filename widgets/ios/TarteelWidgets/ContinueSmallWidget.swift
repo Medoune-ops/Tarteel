@@ -37,7 +37,7 @@ struct ContinueSmallView: View {
                         Image(systemName: "bell.fill")
                             .font(.system(size: 12))
                             .foregroundColor(Color(hex: "#FFD37A"))
-                        Text("Rappel")
+                        Text(L.t("w_reminder_label"))
                             .font(.system(size: 11.5, weight: .heavy))
                     }
                     .foregroundColor(.white)
@@ -59,7 +59,7 @@ struct ContinueSmallView: View {
                         .frame(width: 46, height: 46)
                         .shadow(color: Color(hex: "#1E0A50").opacity(0.4), radius: 6, y: 4)
 
-                    Text("Ta série t'attend")
+                    Text(L.t("w_reminder_message"))
                         .font(.system(size: 13, weight: .heavy))
                         .foregroundColor(.white)
                         .lineLimit(2)
@@ -73,7 +73,7 @@ struct ContinueSmallView: View {
                     Image(systemName: "clock.fill")
                         .font(.system(size: 12))
                         .foregroundColor(Color(hex: "#FFD37A"))
-                    Text("3 min suffisent")
+                    Text(L.t("w_reminder_duration"))
                         .font(.system(size: 12.5, weight: .heavy))
                         .foregroundColor(.white)
                 }
