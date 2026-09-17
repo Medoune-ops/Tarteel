@@ -1,0 +1,30 @@
+/*
+  Textes des widgets iOS — anglais.
+  Traductions alignées sur Android (res/values-en/strings.xml) : mêmes clés,
+  mêmes formulations, pour que les deux plateformes ne divergent pas.
+*/
+
+"w_streak_label" = "Streak";
+"w_streak_unit" = "days in a row";
+"w_week_title" = "My week";
+
+"w_reminder_label" = "Reminder";
+"w_reminder_message" = "Your streak is waiting";
+"w_reminder_duration" = "3 min is enough";
+
+/* Initiales des jours, lundi → dimanche. */
+"w_day_mon" = "M";
+"w_day_tue" = "T";
+"w_day_wed" = "W";
+"w_day_thu" = "T";
+"w_day_fri" = "F";
+"w_day_sat" = "S";
+"w_day_sun" = "S";
+
+"w_wordofday_title" = "Word of the day";
+"w_wordofday_badge" = "Name #%d of 99";
+
+"w_desc_streak" = "Your day streak.";
+"w_desc_continue" = "A little nudge to keep your streak alive.";
+"w_desc_week" = "Your learning week.";
+"w_desc_wordofday" = "A different name of Allah every day.";

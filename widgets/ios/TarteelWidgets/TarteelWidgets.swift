@@ -34,8 +34,8 @@ struct StreakSmallWidget: Widget {
                 }
         }
         .contentMarginsDisabled()
-        .configurationDisplayName("Série")
-        .description("Ta série de jours consécutifs.")
+        .configurationDisplayName(L.t("w_streak_label"))
+        .description(L.t("w_desc_streak"))
         .supportedFamilies([.systemSmall])
     }
 }
@@ -50,8 +50,8 @@ struct ContinueSmallWidget: Widget {
                 .containerBackground(Color(hex: "#6244DE"), for: .widget)
         }
         .contentMarginsDisabled()
-        .configurationDisplayName("Rappel")
-        .description("Un petit rappel pour garder ta série.")
+        .configurationDisplayName(L.t("w_reminder_label"))
+        .description(L.t("w_desc_continue"))
         .supportedFamilies([.systemSmall])
     }
 }
@@ -85,8 +85,8 @@ struct WeekMediumWidget: Widget {
         // avec ses propres marges), donc le padding système en plus était
         // superflu et cassait l'alignement au bord.
         .contentMarginsDisabled()
-        .configurationDisplayName("Ma semaine")
-        .description("Ta progression sur les 7 derniers jours.")
+        .configurationDisplayName(L.t("w_week_title"))
+        .description(L.t("w_desc_week"))
         .supportedFamilies([.systemMedium])
     }
 }
