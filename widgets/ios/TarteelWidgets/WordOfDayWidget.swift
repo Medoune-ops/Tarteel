@@ -50,7 +50,7 @@ struct WordOfDayView: View {
                 HStack(spacing: 5) {
                     Image(systemName: "sparkle")
                         .font(.system(size: 12))
-                    Text("Mot du jour")
+                    Text(L.t("w_wordofday_title"))
                         .font(.system(size: 11.5, weight: .heavy))
                 }
                 .foregroundColor(Color(hex: "#C2860C"))
@@ -78,7 +78,7 @@ struct WordOfDayView: View {
                         .foregroundColor(Color(hex: "#8A7A5C"))
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                    Text(name.fr)
+                    Text(name.traduction)
                         .font(.system(size: 15, weight: .heavy))
                         .foregroundColor(Color(hex: "#1B2333"))
                         // n°85 : « Le Détenteur de la majesté et de la
@@ -95,7 +95,7 @@ struct WordOfDayView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 11))
-                    Text("Nom n° \(name.numero) sur 99")
+                    Text(L.t("w_wordofday_badge", name.numero))
                         .font(.system(size: 10.5, weight: .heavy))
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
@@ -123,8 +123,8 @@ struct WordOfDayWidget: Widget {
                 .containerBackground(Color.white, for: .widget)
         }
         .contentMarginsDisabled()
-        .configurationDisplayName("Mot du jour")
-        .description("Un nom d'Allah différent chaque jour.")
+        .configurationDisplayName(L.t("w_wordofday_title"))
+        .description(L.t("w_desc_wordofday"))
         .supportedFamilies([.systemSmall])
     }
 }

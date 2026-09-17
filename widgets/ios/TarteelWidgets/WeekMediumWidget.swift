@@ -52,7 +52,7 @@ struct WeekMediumView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
 
-                    Text("jours de suite")
+                    Text(L.t("w_streak_unit"))
                         .font(.system(size: 11.5, weight: .heavy))
                         .foregroundColor(.white.opacity(0.95))
                 }
@@ -64,7 +64,7 @@ struct WeekMediumView: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Titre + XP
                 HStack(alignment: .center) {
-                    Text("Ma semaine")
+                    Text(L.t("w_week_title"))
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .foregroundColor(Color(hex: "#1B2333"))
                         .lineLimit(1)
