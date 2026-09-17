@@ -155,18 +155,25 @@ export function QuranIcon({ size = 28, color = '#F6B100' }: { size?: number; col
   );
 }
 
-/** Croissant + étoile — badge 7 jours streak. */
+/** Croissant + étoile — badge 7 jours streak, thème Islam.
+ *
+ *  Le croissant est la différence de deux disques : l'externe r=10 centré
+ *  (13.4,14), évidé par un r=9.4 centré (17,14). Les deux points du tracé sont
+ *  leurs INTERSECTIONS réelles (16.82, 4.6) et (16.82, 23.4) — un arc SVG exige
+ *  un rayon ≥ la demi-distance entre ses extrémités (ici 9.398), sinon le
+ *  moteur l'agrandit d'office et les deux arcs se confondent : le croissant
+ *  disparaît alors complètement. L'étoile tient entière dans le creux. */
 export function CrescentStarIcon({ size = 28, color = '#F0820C' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
-      {/* croissant */}
+      {/* croissant — épaisseur 15.8 sur 28 */}
       <Path
-        d="M14 4 A10 10 0 1 0 14 24 A6 6 0 1 1 14 4 Z"
+        d="M16.82 4.6 A10 10 0 1 0 16.82 23.4 A9.4 9.4 0 0 1 16.82 4.6 Z"
         fill={color}
       />
-      {/* étoile à 5 branches */}
+      {/* étoile à 5 branches, centrée (20.6,14), rayon 4.4 */}
       <Polygon
-        points="21,8 21.9,10.7 24.8,10.7 22.5,12.4 23.4,15.1 21,13.4 18.6,15.1 19.5,12.4 17.2,10.7 20.1,10.7"
+        points="20.60,9.60 21.59,12.64 24.78,12.64 22.20,14.52 23.19,17.56 20.60,15.68 18.01,17.56 19.00,14.52 16.42,12.64 19.61,12.64"
         fill={color}
       />
     </Svg>
