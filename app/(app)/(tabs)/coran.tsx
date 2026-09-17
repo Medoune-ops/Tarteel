@@ -4,13 +4,19 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeviceStatusBar from '../../../components/StatusBar';
 import HeaderPattern from '../../../components/HeaderPattern';
+import {
+  QuranIcon, CrescentStarIcon, ProphetsIcon,
+  AblutionsIcon, MosqueIcon, HadithIcon,
+} from '../../../components/IslamicIcons';
 import { useTheme } from '../../../utils/useTheme';
 import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
 import { useT, type I18nKey } from '../../../lib/i18n';
 
+type ThemeIcon = (p: { size?: number; color?: string }) => React.ReactElement;
+
 type Theme = {
   id: string;
-  emoji: string;
+  Icon: ThemeIcon;
   titreKey: I18nKey;
   sousKey: I18nKey;
   route: string;
@@ -18,13 +24,17 @@ type Theme = {
   c2: string;
 };
 
+/** MosqueIcon est dessinée pour les nœuds du parcours (viewBox 52, prop `locked`).
+    Ici on la veut en icône monochrome blanche, comme les autres cartes. */
+const PriereIcon: ThemeIcon = ({ size = 28 }) => <MosqueIcon size={size + 12} />;
+
 const THEMES: Theme[] = [
-  { id: 'coran',     emoji: '📖', titreKey: 'coran.theme.coran.titre',     sousKey: 'coran.theme.coran.sous',     route: '/(app)/docs/coran',     c1: '#7C5CFF', c2: '#6B4DFF' },
-  { id: 'islam',     emoji: '☪️', titreKey: 'coran.theme.islam.titre',     sousKey: 'coran.theme.islam.sous',     route: '/(app)/docs/islam',     c1: '#34C724', c2: '#2A9E1C' },
-  { id: 'prophetes', emoji: '👤', titreKey: 'coran.theme.prophetes.titre', sousKey: 'coran.theme.prophetes.sous', route: '/(app)/docs/prophetes', c1: '#F0820C', c2: '#D96E00' },
-  { id: 'ablutions', emoji: '💧', titreKey: 'coran.theme.ablutions.titre', sousKey: 'coran.theme.ablutions.sous', route: '/(app)/docs/ablutions', c1: '#0FB5C4', c2: '#0894A1' },
-  { id: 'priere',    emoji: '🕌', titreKey: 'coran.theme.priere.titre',    sousKey: 'coran.theme.priere.sous',    route: '/(app)/docs/priere',    c1: '#E0387E', c2: '#C42968' },
-  { id: 'hadiths',   emoji: '📜', titreKey: 'coran.theme.hadiths.titre',   sousKey: 'coran.theme.hadiths.sous',   route: '/(app)/hadiths',        c1: '#3C8F6B', c2: '#2E7355' },
+  { id: 'coran',     Icon: QuranIcon,        titreKey: 'coran.theme.coran.titre',     sousKey: 'coran.theme.coran.sous',     route: '/(app)/docs/coran',     c1: '#7C5CFF', c2: '#6B4DFF' },
+  { id: 'islam',     Icon: CrescentStarIcon, titreKey: 'coran.theme.islam.titre',     sousKey: 'coran.theme.islam.sous',     route: '/(app)/docs/islam',     c1: '#34C724', c2: '#2A9E1C' },
+  { id: 'prophetes', Icon: ProphetsIcon,     titreKey: 'coran.theme.prophetes.titre', sousKey: 'coran.theme.prophetes.sous', route: '/(app)/docs/prophetes', c1: '#F0820C', c2: '#D96E00' },
+  { id: 'ablutions', Icon: AblutionsIcon,    titreKey: 'coran.theme.ablutions.titre', sousKey: 'coran.theme.ablutions.sous', route: '/(app)/docs/ablutions', c1: '#0FB5C4', c2: '#0894A1' },
+  { id: 'priere',    Icon: PriereIcon,       titreKey: 'coran.theme.priere.titre',    sousKey: 'coran.theme.priere.sous',    route: '/(app)/docs/priere',    c1: '#E0387E', c2: '#C42968' },
+  { id: 'hadiths',   Icon: HadithIcon,       titreKey: 'coran.theme.hadiths.titre',   sousKey: 'coran.theme.hadiths.sous',   route: '/(app)/hadiths',        c1: '#3C8F6B', c2: '#2E7355' },
 ];
 
 export default function CoranScreen() {
@@ -84,7 +94,7 @@ export default function CoranScreen() {
               onPress={() => router.push(t.route as never)}
             >
               <LinearGradient colors={[t.c1, t.c2]} style={styles.cardIcon}>
-                <Text style={styles.cardEmoji}>{t.emoji}</Text>
+                <t.Icon size={28} color="#fff" />
               </LinearGradient>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitre, { color: T.text }]}>{tr(t.titreKey)}</Text>
@@ -140,7 +150,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   cardIcon: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  cardEmoji: { fontSize: 28 },
   cardTitre: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17 },
   cardSous: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99', marginTop: 2 },
 });

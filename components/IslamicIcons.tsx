@@ -238,6 +238,61 @@ export function KaabaColorIcon({ size = 28, color = '#2A9E1C' }: { size?: number
   );
 }
 
+/** Lanterne / flambeau de guidance — thème Prophètes. */
+export function ProphetsIcon({ size = 28, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* anneau de suspension */}
+      <Path d="M12.5 4 Q14 1.5 15.5 4" stroke={color} strokeWidth={1.2} fill="none" strokeLinecap="round" />
+      {/* chapeau */}
+      <Path d="M8 8 L14 4.5 L20 8 Z" fill={color} />
+      <Rect x={7.5} y={7.6} width={13} height={1.6} rx={0.8} fill={color} />
+      {/* corps en verre */}
+      <Path d="M9 9.5 L19 9.5 L20 19 Q14 22 8 19 Z" fill={color} opacity={0.35} />
+      <Path d="M9 9.5 L19 9.5 L20 19 Q14 22 8 19 Z" stroke={color} strokeWidth={1.1} fill="none" strokeLinejoin="round" />
+      {/* flamme intérieure */}
+      <Path d="M14 12 Q16.5 14.5 14 18 Q11.5 14.5 14 12 Z" fill={color} />
+      {/* base */}
+      <Rect x={9.5} y={20.5} width={9} height={2} rx={1} fill={color} />
+      <Rect x={11} y={22.8} width={6} height={1.6} rx={0.8} fill={color} opacity={0.7} />
+    </Svg>
+  );
+}
+
+/** Goutte d'eau sur une aiguière — thème Ablutions. */
+export function AblutionsIcon({ size = 28, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* grande goutte */}
+      <Path d="M14 3 Q20.5 11 20.5 15.5 A6.5 6.5 0 1 1 7.5 15.5 Q7.5 11 14 3 Z" fill={color} />
+      {/* reflet */}
+      <Path d="M11 15.5 A3 3 0 0 1 13 12.8" stroke="#fff" strokeWidth={1.3} fill="none" strokeLinecap="round" opacity={0.55} />
+      {/* ondes sous la goutte */}
+      <Path d="M6 24 Q9 22.6 12 24 Q15 25.4 18 24" stroke={color} strokeWidth={1.3} fill="none" strokeLinecap="round" opacity={0.7} />
+      <Path d="M10 26.2 Q13 24.9 16 26.2" stroke={color} strokeWidth={1.1} fill="none" strokeLinecap="round" opacity={0.45} />
+    </Svg>
+  );
+}
+
+/** Parchemin déroulé — thème Hadiths. */
+export function HadithIcon({ size = 28, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* rouleau supérieur */}
+      <Rect x={4} y={4} width={20} height={3.2} rx={1.6} fill={color} />
+      {/* corps du parchemin */}
+      <Rect x={6} y={7} width={16} height={14} rx={1} fill={color} opacity={0.35} />
+      <Rect x={6} y={7} width={16} height={14} rx={1} stroke={color} strokeWidth={1.1} fill="none" />
+      {/* lignes de texte */}
+      <Rect x={9} y={10.5} width={10} height={1.2} rx={0.6} fill={color} opacity={0.85} />
+      <Rect x={9} y={13.4} width={10} height={1.2} rx={0.6} fill={color} opacity={0.85} />
+      <Rect x={9} y={16.3} width={6.5} height={1.2} rx={0.6} fill={color} opacity={0.85} />
+      {/* rouleau inférieur */}
+      <Rect x={4} y={20.8} width={20} height={3.2} rx={1.6} fill={color} />
+    </Svg>
+  );
+}
+
 /** Minaret élancé (style mecquois) — nœud verrouillé. */
 export function MinaretIcon({ size = 32 }: { size?: number }) {
   const c = '#9AA0AA';
