@@ -221,6 +221,20 @@ let refreshPromise: Promise<boolean> | null = null;
 export let lastRefreshWasEmailNotVerified = false;
 
 /**
+ * Flag positionné à true quand le dernier refresh a échoué pour une raison
+ * PASSAGÈRE (serveur en panne/redéploiement 5xx, 429 rate limit, 408, réseau
+ * coupé). La session n'est pas invalide : les tokens sont conservés et on
+ * réessaiera plus tard. Exporté pour que bootstrapSession() ne renvoie pas
+ * l'utilisateur à l'onboarding dans ce cas.
+ */
+export let lastRefreshFailedTransiently = false;
+
+/** Statuts du refresh qui ne disent RIEN sur la validité de la session. */
+function isTransientStatus(status: number): boolean {
+  return status >= 500 || status === 429 || status === 408;
+}
+
+/**
  * Tente de rafraîchir l'access token via le refresh token stocké.
  * Renvoie true si réussi (nouveaux tokens enregistrés), false sinon.
  *
@@ -232,8 +246,9 @@ async function refreshTokens(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
-    // Réinitialise le flag à chaque tentative.
+    // Réinitialise les flags à chaque tentative.
     lastRefreshWasEmailNotVerified = false;
+    lastRefreshFailedTransiently = false;
 
     const refreshToken = await getRefreshToken();
     if (!refreshToken) return false;
@@ -245,6 +260,13 @@ async function refreshTokens(): Promise<boolean> {
         body: JSON.stringify({ refreshToken, deviceId }),
       });
       if (!res.ok) {
+        // Serveur indisponible ou rate limit : le refresh token est peut-être
+        // parfaitement valide. On NE l'efface PAS (sinon un simple redéploiement
+        // déconnecterait tout le monde) ; on réessaiera au prochain appel.
+        if (isTransientStatus(res.status)) {
+          lastRefreshFailedTransiently = true;
+          return false;
+        }
         // Cas particulier : l'email n'est pas encore vérifié.
         // Le backend renvoie 403 { error: { code: 'EMAIL_NOT_VERIFIED' } }.
         // On PRÉSERVE les tokens (ils sont toujours valides) et on signale
@@ -258,14 +280,17 @@ async function refreshTokens(): Promise<boolean> {
             }
           } catch { /* body non-JSON → traitement normal ci-dessous */ }
         }
-        await clearTokens(); // refresh invalide/expiré → session terminée
+        // Refus explicite du serveur (401 révoqué/expiré, 403 banni…) → session terminée.
+        await clearTokens();
         return false;
       }
       const data = await res.json();
       await setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
       return true;
     } catch {
-      return false; // erreur réseau : on n'efface pas, on réessaiera plus tard
+      // Erreur réseau : on n'efface pas, on réessaiera plus tard.
+      lastRefreshFailedTransiently = true;
+      return false;
     } finally {
       refreshPromise = null;
     }
