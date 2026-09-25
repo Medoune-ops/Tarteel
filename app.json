@@ -100,8 +100,9 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
-          "color": "#6B4DFF"
+          "icon": "./assets/notification-icon.png",
+          "color": "#6B4DFF",
+          "sounds": ["./assets/sounds/prayer_reminder.wav"]
         }
       ],
       "expo-asset",
