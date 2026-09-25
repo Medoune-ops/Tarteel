@@ -7,6 +7,7 @@
  * donc par expo-asset : les fichiers sont livrés avec l'app (donc hors-ligne)
  * mais lus seulement à l'ouverture de l'écran, puis gardés en mémoire.
  */
+import { Platform } from 'react-native';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import { chaptersFor, THEMES, type ThemeId } from '../constants/hadithChapters';
@@ -92,10 +93,17 @@ export async function loadCollection(id: CollectionId, lang: HadithLang = 'fr'):
   const asset = Asset.fromModule(entry.modules[lang]);
   await asset.downloadAsync();
 
-  // Metro peut servir l'asset soit depuis un fichier local (build), soit
-  // depuis une URL http (dev) : on gère les deux.
+  /*
+   * Trois façons d'atteindre le fichier, selon la plateforme :
+   *  - web : l'asset est servi par le serveur, à une URL absolue OU relative
+   *    (`/assets/...`). `expo-file-system` n'existe pas dans un navigateur,
+   *    il faut donc passer par `fetch` dans les deux cas ;
+   *  - natif en dev : Metro sert l'asset en http, `fetch` également ;
+   *  - natif en build : le fichier est sur le disque, on le lit directement.
+   */
   const uri = asset.localUri ?? asset.uri;
-  const raw = uri.startsWith('http')
+  const parLeReseau = Platform.OS === 'web' || uri.startsWith('http');
+  const raw = parLeReseau
     ? await (await fetch(uri)).text()
     : await FileSystem.readAsStringAsync(uri);
 
@@ -155,6 +163,24 @@ export function groupByTheme(collection: Collection): ThemeGroup[] {
       .filter((c) => c.count > 0);
     return { theme: id, emoji, color, chapters };
   }).filter((g) => g.chapters.length > 0);
+}
+
+/**
+ * Thème d'un hadith, déduit de son chapitre.
+ *
+ * Utilisé par le flux de lecture pour colorer la carte. Les tables de
+ * chapitres ne couvrent pas toujours tous les identifiants livrés par la
+ * source : on retombe alors sur 'foi', le thème le plus général, plutôt que
+ * de laisser une carte sans couleur.
+ */
+export function themeOfHadith(collectionId: string, chapterId: number): ThemeId {
+  return chaptersFor(collectionId)[chapterId]?.theme ?? 'foi';
+}
+
+/** Couleur et emoji d'un thème, pour l'affichage. */
+export function themeStyle(theme: ThemeId): { emoji: string; color: string } {
+  const found = THEMES.find((t) => t.id === theme);
+  return { emoji: found?.emoji ?? '📜', color: found?.color ?? '#6B4DFF' };
 }
 
 /** Hadiths d'un chapitre donné. */

@@ -133,6 +133,10 @@ export default function AppLayout() {
         <Stack.Screen name="sourates" />
         <Stack.Screen name="sourate/[numero]" />
         <Stack.Screen name="asma" />
+        <Stack.Screen name="hadiths" />
+        <Stack.Screen name="hadiths-recueils" />
+        <Stack.Screen name="hadiths-ressenti" />
+        <Stack.Screen name="hadiths-mes-hadiths" />
         <Stack.Screen name="lecture-libre" />
         <Stack.Screen name="lecture/[numero]" />
         <Stack.Screen name="streak-goal" />
