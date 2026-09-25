@@ -17,4 +17,24 @@ config.watchFolders = [__dirname];
 // sont livres avec l'app (donc hors-ligne) mais lus a la demande.
 config.resolver.assetExts.push('hadith');
 
+// Zustand livre deux builds : `esm/middleware.mjs` utilise `import.meta.env`,
+// une syntaxe que Metro ne transpile pas pour le web. Le navigateur echoue
+// alors au PARSING du bundle ("Cannot use 'import.meta' outside a module") et
+// l'app ne rend rien du tout — ecran blanc, sans erreur exploitable.
+//
+// Sur le web, on force donc la resolution vers le build CommonJS, equivalent
+// et depourvu de cette syntaxe. Les plateformes natives gardent l'ESM, qui y
+// fonctionne tres bien.
+const resolveRequestOrigine = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web' && moduleName.startsWith('zustand')) {
+    return context.resolveRequest(
+      { ...context, unstable_enablePackageExports: false, isESMImport: false },
+      moduleName,
+      platform,
+    );
+  }
+  return (resolveRequestOrigine ?? context.resolveRequest)(context, moduleName, platform);
+};
+
 module.exports = config;
