@@ -21,6 +21,8 @@ import {
 
 export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
 
+export const PRAYER_NAMES: PrayerName[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
 /** Une prière : son nom technique et son heure locale. */
 export interface PrayerSlot {
   name: PrayerName;
