@@ -6,11 +6,12 @@
  * réseau, l'écran fonctionne hors-ligne dès que la position est connue.
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert, Switch, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import HeaderPattern from '../../components/HeaderPattern';
 import DeviceStatusBar from '../../components/StatusBar';
 import QiblaCompass from '../../components/QiblaCompass';
@@ -24,8 +25,10 @@ import {
   timeUntil,
   FALLBACK_CITIES,
   METHOD_IDS,
+  PRAYER_NAMES,
   type PrayerSlot,
 } from '../../constants/prayerTimes';
+import { requestReminderPermission } from '../../lib/prayerReminders';
 import { useT } from '../../lib/i18n';
 
 const LOCALE_BY_LANG: Record<string, string> = { fr: 'fr-FR', en: 'en-US', ar: 'ar' };
@@ -46,6 +49,37 @@ export default function PrieresScreen() {
   const setFromGps = usePrayerStore((s) => s.setFromGps);
   const setFromCity = usePrayerStore((s) => s.setFromCity);
   const setMethod = usePrayerStore((s) => s.setMethod);
+  const remindersEnabled = usePrayerStore((s) => s.remindersEnabled);
+  const reminderPrayers = usePrayerStore((s) => s.reminderPrayers);
+  const setRemindersEnabled = usePrayerStore((s) => s.setRemindersEnabled);
+  const toggleReminderPrayer = usePrayerStore((s) => s.toggleReminderPrayer);
+
+  // Aperçu du son de rappel (le même fichier que la notification).
+  const preview = useAudioPlayer(require('../../assets/sounds/prayer_reminder.wav'));
+  const previewStatus = useAudioPlayerStatus(preview);
+  const togglePreview = useCallback(() => {
+    if (previewStatus.playing) {
+      preview.pause();
+    } else {
+      preview.seekTo(0);
+      preview.play();
+    }
+  }, [preview, previewStatus.playing]);
+
+  // La programmation elle-même est faite par usePrayerRemindersSync (layout
+  // racine) dès que le réglage change ; ici on ne gère que la permission.
+  const onToggleReminders = useCallback(async (value: boolean) => {
+    if (!value) {
+      setRemindersEnabled(false);
+      return;
+    }
+    const granted = await requestReminderPermission().catch(() => false);
+    if (!granted) {
+      Alert.alert(tr('prayer.reminder.permissionTitle'), tr('prayer.reminder.permissionDenied'));
+      return;
+    }
+    setRemindersEnabled(true);
+  }, [setRemindersEnabled, tr]);
 
   const [locating, setLocating] = useState(false);
   const [showCities, setShowCities] = useState(false);
@@ -178,6 +212,47 @@ export default function PrieresScreen() {
               })}
             </View>
 
+            {/* Rappels sonores à l'heure de la prière. */}
+            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('prayer.reminder.sectionTitle')}</Text>
+            <View style={[styles.list, { backgroundColor: T.cardBg }]}>
+              <View style={styles.row}>
+                <View style={styles.reminderTextCol}>
+                  <Text style={[styles.rowName, { color: T.text }]}>{tr('prayer.reminder.toggle')}</Text>
+                  <Text style={[styles.reminderHint, { color: T.textTertiary }]}>{tr('prayer.reminder.toggleHint')}</Text>
+                </View>
+                <Switch
+                  value={remindersEnabled}
+                  onValueChange={onToggleReminders}
+                  trackColor={{ true: '#1F8A70' }}
+                />
+              </View>
+              {remindersEnabled && PRAYER_NAMES.map((name) => (
+                <Pressable
+                  key={name}
+                  style={[styles.row, styles.divider, { borderTopColor: T.divider }]}
+                  onPress={() => toggleReminderPrayer(name)}
+                >
+                  <Text style={[styles.rowName, { color: reminderPrayers[name] ? T.text : T.textTertiary }]}>
+                    {tr(`prayer.name.${name}`)}
+                  </Text>
+                  <Feather
+                    name={reminderPrayers[name] ? 'bell' : 'bell-off'}
+                    size={18}
+                    color={reminderPrayers[name] ? '#1F8A70' : T.textTertiary}
+                  />
+                </Pressable>
+              ))}
+              <Pressable
+                style={[styles.row, styles.divider, { borderTopColor: T.divider }]}
+                onPress={togglePreview}
+              >
+                <Text style={[styles.rowName, { color: '#1F8A70' }]}>
+                  {previewStatus.playing ? tr('prayer.reminder.stop') : tr('prayer.reminder.preview')}
+                </Text>
+                <Feather name={previewStatus.playing ? 'pause' : 'play'} size={18} color="#1F8A70" />
+              </Pressable>
+            </View>
+
             {/* Position courante + moyen d'en changer. */}
             <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('prayer.locationTitle')}</Text>
             <View style={[styles.locationBox, { backgroundColor: T.cardBg }]}>
@@ -299,6 +374,9 @@ const styles = StyleSheet.create({
 
   sectionTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, marginTop: 22, marginBottom: 10 },
   methodHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginBottom: 10, lineHeight: 17 },
+
+  reminderTextCol: { flex: 1, paddingRight: 12 },
+  reminderHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 2, lineHeight: 17 },
 
   locationBox: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14 },
   locationText: { fontFamily: 'Nunito_700Bold', fontSize: 14 },
