@@ -372,6 +372,19 @@ const fr = {
   'gift.premium': 'Tarteel Plus',
   'gift.continue': 'Génial !',
 
+  // ─── Demande de note sur les stores (pré-question) ─────────────────────────
+  'review.title': 'Tu aimes Tarteel ?',
+  'review.sub': 'Ton avis nous aide à améliorer l’app.',
+  'review.yes': 'Oui, beaucoup !',
+  'review.no': 'Pas trop',
+  'review.later': 'Plus tard',
+  'review.thanksTitle': 'Merci ! 🌙',
+  'review.thanksSub': 'Laisse-nous une note sur le store, ça nous aide énormément.',
+  'review.rate': 'Noter l’app',
+  'review.feedbackTitle': 'Dis-nous tout',
+  'review.feedbackSub': 'Qu’est-ce qui ne va pas ? On lit chaque message.',
+  'review.feedbackCta': 'Écrire au support',
+
   // ─── Feedback vocal (leçon) ────────────────────────────────────────────────
   'feedback.analysis': 'Analyse de ta récitation :',
   'feedback.score': 'Score',
@@ -1571,6 +1584,19 @@ const en: Dict = {
   'gift.xp': '{n} XP',
   'gift.premium': 'Tarteel Plus',
   'gift.continue': 'Awesome!',
+
+  // ─── Store review prompt (pre-question) ────────────────────────────────────
+  'review.title': 'Enjoying Tarteel?',
+  'review.sub': 'Your feedback helps us improve the app.',
+  'review.yes': 'Yes, a lot!',
+  'review.no': 'Not really',
+  'review.later': 'Later',
+  'review.thanksTitle': 'Thank you! 🌙',
+  'review.thanksSub': 'Leaving a review on the store helps us a great deal.',
+  'review.rate': 'Rate the app',
+  'review.feedbackTitle': 'Tell us more',
+  'review.feedbackSub': 'What went wrong? We read every message.',
+  'review.feedbackCta': 'Contact support',
 
   // ─── Voice feedback (lesson) ────────────────────────────────────────────────
   'feedback.analysis': 'Analysis of your recitation:',

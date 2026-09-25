@@ -5,7 +5,9 @@ import { fetchMe, fetchPendingGift, ackPendingGift, syncTimezone } from '../../l
 import { registerForPushNotifications } from '../../lib/pushNotifications';
 import GiftModal from '../../components/GiftModal';
 import MiniPlayer from '../../components/MiniPlayer';
+import ReviewPromptModal from '../../components/ReviewPromptModal';
 import { useGiftModalStore } from '../../store/giftModalStore';
+import { useReviewPromptStore } from '../../store/reviewPromptStore';
 
 /**
  * Enregistre le token push et la timezone du device au lancement de l'app
@@ -101,10 +103,23 @@ function usePendingGiftPolling() {
   }, []);
 }
 
+/**
+ * Amorce la date de première ouverture, qui sert de base au délai de 48 h
+ * avant toute demande de note (voir reviewPromptStore). Sans cet appel, le
+ * compteur ne démarrerait qu'à la 1re leçon terminée et un utilisateur très
+ * assidu pourrait voir la pré-question dès son premier jour.
+ */
+function useInitReviewPrompt() {
+  useEffect(() => {
+    useReviewPromptStore.getState().init();
+  }, []);
+}
+
 export default function AppLayout() {
   useRegisterPushOnMount();
   useRefreshMeOnForeground();
   usePendingGiftPolling();
+  useInitReviewPrompt();
   return (
     <>
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', freezeOnBlur: true }}>
@@ -139,6 +154,7 @@ export default function AppLayout() {
       </Stack>
       <MiniPlayer />
       <GiftModal />
+      <ReviewPromptModal />
     </>
   );
 }
