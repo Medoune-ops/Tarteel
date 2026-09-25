@@ -7,7 +7,7 @@
  */
 import { getAccessToken, getRefreshToken } from './tokens';
 import { fetchMe } from './me';
-import { ApiError, lastRefreshWasEmailNotVerified } from './client';
+import { ApiError, lastRefreshWasEmailNotVerified, lastRefreshFailedTransiently } from './client';
 import { registerForPushNotifications } from '../pushNotifications';
 import { useUserStore } from '../../store/userStore';
 
@@ -48,6 +48,12 @@ export async function bootstrapSession(): Promise<SessionStatus> {
     // utilisateur déjà connecté dès qu'il ouvrait l'app sans réseau. On le
     // laisse entrer avec son état en cache ; /me resyncera au retour du réseau.
     if (e instanceof ApiError && e.status === 0) return 'connected';
+    // Cas 4 : l'access token était expiré et le refresh a échoué pour une
+    // raison PASSAGÈRE (serveur en redéploiement, 429, réseau coupé pendant le
+    // refresh). Les tokens sont conservés : même logique que le hors-ligne.
+    if (lastRefreshFailedTransiently) return 'connected';
+    // Serveur indisponible sur /me lui-même : la session n'est pas en cause.
+    if (e instanceof ApiError && (e.status >= 500 || e.status === 429)) return 'connected';
     return 'none'; // session invalide/expirée → rester sur l'onboarding
   }
 }
