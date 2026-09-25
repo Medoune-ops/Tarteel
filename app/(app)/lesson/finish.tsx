@@ -11,6 +11,7 @@ import Confetti from '../../../components/Confetti';
 import CountUp from '../../../components/CountUp';
 import { playSound } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
+import { useReviewPromptStore } from '../../../store/reviewPromptStore';
 import { completeLesson } from '../../../lib/api';
 import { invalidate } from '../../../lib/api/swr';
 import { useT } from '../../../lib/i18n';
@@ -57,6 +58,8 @@ export default function FinishScreen() {
     if (completedRef.current) return;
     completedRef.current = true;
     if (!params.lessonId) return; // maquette / pas de leçon réelle : rien à enregistrer
+    // Compteur local de leçons terminées : garde-fou de la demande de note.
+    useReviewPromptStore.getState().recordLesson();
     completeLesson({
       lessonId: params.lessonId,
       correctAnswers: correct,
@@ -89,7 +92,15 @@ export default function FinishScreen() {
   // enchaîner. Le parcours se recentre tout seul sur le nœud `active` (la
   // leçon suivante, puisque celle-ci vient d'être complétée côté serveur et
   // que le cache `sections` a été invalidé ci-dessus).
+  // La pré-question de notation se déclenche ICI plutôt qu'à l'affichage de
+  // l'écran : on laisse l'utilisateur savourer ses stats et ses confettis, et
+  // la modale s'ouvre par-dessus le parcours une fois la leçon derrière lui.
+  // Une leçon réussie est le meilleur moment pour demander une note ; tous les
+  // autres garde-fous (ancienneté, nb de leçons, refus précédent) sont dans
+  // canPrompt().
   const goNext = () => {
+    const review = useReviewPromptStore.getState();
+    if (accuracy >= 80 && review.canPrompt()) review.show();
     router.replace('/(app)/(tabs)/parcours');
   };
 
