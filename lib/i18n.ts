@@ -285,7 +285,6 @@ const fr = {
   'hadiths.flow.unsaveA11y': 'Retirer ce hadith de mes hadiths',
   'hadiths.flow.shareA11y': 'Partager ce hadith',
   'hadiths.flow.browseA11y': 'Parcourir les recueils',
-  'hadiths.flow.expandA11y': 'Élargir à tous les recueils',
   // --- Parcours par recueil / thème / chapitre ---
   'hadiths.recueils.headerTitle': 'Les recueils',
   'hadiths.recueils.headerSub': 'Parcourir par thème et chapitre',
@@ -316,6 +315,18 @@ const fr = {
   'hadiths.saved.removeA11y': 'Retirer de mes hadiths',
   'hadiths.saved.streak': '{n} jours de lecture',
   'hadiths.saved.streakOne': '1 jour de lecture',
+  // --- Hadith du jour (rendez-vous de lecture, sans QCM ni score) ---
+  'hadiths.daily.openA11y': 'Le hadith du jour',
+  'hadiths.daily.title': 'Le hadith du jour',
+  'hadiths.daily.sub': 'Une lecture, chaque matin.',
+  'hadiths.daily.readMore': 'Continuer à lire',
+  'hadiths.daily.remindTitle': 'Me le rappeler',
+  'hadiths.daily.remindSub': 'Une notification, à l\'heure que tu choisis.',
+  'hadiths.daily.hour': 'À {h}h',
+  'hadiths.daily.unavailable': 'Impossible de charger le hadith du jour.',
+  // Texte de la notification elle-même.
+  'hadiths.daily.notifTitle': 'Le hadith du jour',
+  'hadiths.daily.notifBody': 'Une lecture t\'attend.',
   'widgets.title': 'Widgets',
   'widgets.subtitle': 'Ajoute Tarteel à ton écran d\'accueil pour garder ta série sous les yeux.',
   'widgets.continue.title': 'Rappel',
@@ -1547,7 +1558,6 @@ const en: Dict = {
   'hadiths.flow.unsaveA11y': 'Remove this hadith from my saved ones',
   'hadiths.flow.shareA11y': 'Share this hadith',
   'hadiths.flow.browseA11y': 'Browse the collections',
-  'hadiths.flow.expandA11y': 'Widen to every collection',
   // --- Browsing by collection / theme / chapter ---
   'hadiths.recueils.headerTitle': 'Collections',
   'hadiths.recueils.headerSub': 'Browse by theme and chapter',
@@ -1578,6 +1588,18 @@ const en: Dict = {
   'hadiths.saved.removeA11y': 'Remove from my hadiths',
   'hadiths.saved.streak': '{n} days of reading',
   'hadiths.saved.streakOne': '1 day of reading',
+  // --- Hadith of the day (a reading appointment, no quiz, no score) ---
+  'hadiths.daily.openA11y': 'Hadith of the day',
+  'hadiths.daily.title': 'Hadith of the day',
+  'hadiths.daily.sub': 'One reading, every morning.',
+  'hadiths.daily.readMore': 'Keep reading',
+  'hadiths.daily.remindTitle': 'Remind me',
+  'hadiths.daily.remindSub': 'A notification, at the time you choose.',
+  'hadiths.daily.hour': 'At {h}:00',
+  'hadiths.daily.unavailable': 'Could not load today\'s hadith.',
+  // The notification text itself.
+  'hadiths.daily.notifTitle': 'Hadith of the day',
+  'hadiths.daily.notifBody': 'A reading is waiting for you.',
   'widgets.title': 'Widgets',
   'widgets.subtitle': 'Add Tarteel to your home screen to keep your streak in sight.',
   'widgets.continue.title': 'Reminder',
