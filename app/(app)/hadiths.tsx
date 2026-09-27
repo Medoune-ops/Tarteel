@@ -208,11 +208,17 @@ export default function HadithsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hadithLang, openOn]);
 
-  /** Élargit le flux à Bukhari et Muslim — 15 000 hadiths de plus. */
+  /**
+   * Élargit le flux à Bukhari et Muslim — 15 000 hadiths de plus.
+   *
+   * Déclenché tout seul quand les 82 hadiths courts commencent à s'épuiser,
+   * plutôt que par un bouton : personne n'ouvre une app de lecture en se
+   * demandant quel corpus charger. Le chargement (4,5 Mo par recueil) arrive
+   * ainsi pendant qu'on lit, sans faire attendre à l'ouverture.
+   */
   const widen = useCallback(() => {
     if (wide) return;
     setWide(true);
-    void Haptics.selectionAsync();
     void fill(WIDE, false);
   }, [wide, fill]);
 
@@ -224,6 +230,16 @@ export default function HadithsScreen() {
    * alimente le « 12 jours de lecture », une continuité douce qui ne se perd
    * jamais brutalement.
    */
+  /*
+   * `onViewableItemsChanged` doit garder la même identité pour toute la vie
+   * de la FlatList (React Native refuse qu'elle change), alors qu'elle a
+   * besoin d'appeler `widen`, qui se recrée à chaque rendu. On passe donc par
+   * une ref mise à jour à chaque rendu : la fonction figée lit toujours la
+   * dernière version.
+   */
+  const widenRef = useRef(widen);
+  widenRef.current = widen;
+
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const first = viewableItems[0]?.item as FlowItem | undefined;
     if (!first) return;
@@ -234,6 +250,9 @@ export default function HadithsScreen() {
     setItems((prev) => {
       if (prev.length - index > REFILL_THRESHOLD) return prev;
       const more = draw(BATCH);
+      // Le vivier court s'épuise : on va chercher Bukhari et Muslim pendant
+      // que la personne lit, plutôt que de lui resservir les mêmes hadiths.
+      if (more.length < BATCH) widenRef.current();
       return more.length ? [...prev, ...more] : prev;
     });
   }).current;
@@ -325,17 +344,20 @@ export default function HadithsScreen() {
           <Feather name="bookmark" size={17} color={T.textSecondary} />
         </Pressable>
 
-        {!wide && (
-          <Pressable
-            onPress={widen}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel={tr('hadiths.flow.expandA11y')}
-            style={[styles.iconBtn, { backgroundColor: T.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(23,28,38,0.05)' }]}
-          >
-            <Feather name="maximize-2" size={17} color={T.textSecondary} />
-          </Pressable>
-        )}
+        {/* Le rendez-vous du jour. Il remplace l'icône « élargir » dans
+            l'en-tête : élargir le corpus est une action rare, alors que le
+            hadith du jour est une habitude quotidienne. L'élargissement se
+            fait désormais tout seul, quand le vivier court s'épuise. */}
+        <Pressable
+          onPress={() => router.push('/hadith-du-jour')}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={tr('hadiths.daily.openA11y')}
+          style={[styles.iconBtn, { backgroundColor: T.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(23,28,38,0.05)' }]}
+        >
+          <Feather name="sun" size={17} color={T.textSecondary} />
+        </Pressable>
+
         <Pressable
           onPress={() => router.push('/hadiths-recueils')}
           hitSlop={12}
