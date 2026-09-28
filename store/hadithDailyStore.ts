@@ -20,12 +20,10 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scheduleDaily } from '../lib/localNotifications';
 
 /** Heure par défaut : le matin, pour ouvrir la journée sur une lecture. */
 const DEFAULT_HOUR = 8;
-
-/** Identifiant de la notification programmée, pour pouvoir la remplacer. */
-const CHANNEL = 'hadith-du-jour';
 
 interface HadithDailyState {
   /** Le rendez-vous est-il actif ? */
@@ -65,80 +63,16 @@ export const useHadithDaily = create<HadithDailyState>()(
 );
 
 /**
- * Chargement paresseux d'`expo-notifications`.
+ * (Re)programme le rappel du hadith du jour, ou l'annule.
  *
- * Un `import` direct ferait planter l'écran sur une plateforme sans le module
- * natif (le web, notamment). On le résout à la demande et on renvoie `null`
- * s'il manque : le réglage reste visible, il ne programme simplement rien.
- */
-interface NotificationsModule {
-  requestPermissionsAsync: () => Promise<{ granted: boolean }>;
-  cancelScheduledNotificationAsync: (id: string) => Promise<void>;
-  getAllScheduledNotificationsAsync: () => Promise<{ identifier: string; content?: { data?: Record<string, unknown> } }[]>;
-  scheduleNotificationAsync: (req: {
-    identifier?: string;
-    content: { title: string; body: string; data?: Record<string, unknown> };
-    trigger: unknown;
-  }) => Promise<string>;
-  SchedulableTriggerInputTypes: { DAILY: string };
-}
-
-function loadNotifications(): NotificationsModule | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('expo-notifications') as Partial<NotificationsModule>;
-    return mod.scheduleNotificationAsync ? (mod as NotificationsModule) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * (Re)programme le rappel quotidien, ou l'annule si `enabled` est faux.
- *
- * Idempotent : on annule d'abord tout rappel du hadith déjà programmé, pour
- * qu'un changement d'heure ne laisse pas l'ancien en place. Les notifications
- * des autres fonctionnalités sont reconnues par leur `data.kind` et laissées
- * intactes.
- *
- * Les textes sont passés par l'appelant, qui a accès aux traductions.
+ * Simple relais vers `lib/localNotifications.ts`, qui porte la mécanique
+ * commune à toutes les notifications locales de l'app — le rappel quotidien
+ * du parcours passe par le même chemin.
  */
 export async function scheduleDailyHadith(
   enabled: boolean,
   hour: number,
   texts: { title: string; body: string },
 ): Promise<void> {
-  const N = loadNotifications();
-  if (!N) return; // module absent (web, Expo Go) : rien à programmer
-
-  try {
-    // Retire l'ancien rappel du hadith, quel que soit son identifiant.
-    const planned = await N.getAllScheduledNotificationsAsync();
-    for (const p of planned) {
-      if (p.content?.data?.kind === CHANNEL) {
-        await N.cancelScheduledNotificationAsync(p.identifier);
-      }
-    }
-
-    if (!enabled) return;
-
-    const { granted } = await N.requestPermissionsAsync();
-    if (!granted) return;
-
-    await N.scheduleNotificationAsync({
-      content: {
-        title: texts.title,
-        body: texts.body,
-        data: { kind: CHANNEL },
-      },
-      trigger: {
-        type: N.SchedulableTriggerInputTypes.DAILY,
-        hour,
-        minute: 0,
-      },
-    });
-  } catch {
-    // Permission refusée, module indisponible, plateforme non supportée :
-    // le réglage reste enregistré et s'appliquera quand ce sera possible.
-  }
+  return scheduleDaily('hadith-du-jour', enabled, hour, texts);
 }

@@ -45,9 +45,22 @@ interface UserState {
   theme: 'light' | 'dark' | 'system';
   /** Objectif de série fixé par l'utilisateur (null = aucun objectif en cours). */
   streakGoal: number | null;
-  /** Heure locale préférée (0–23) pour le rappel quotidien — miroir de
-   *  `reminderHour` côté backend (persistée ici pour survivre au redémarrage). */
+  /**
+   * Heure locale (0–23) du rappel quotidien.
+   *
+   * Depuis le passage du rappel en notification locale, cette valeur n'est
+   * plus un miroir du backend : elle en est la SOURCE. L'appareil programme
+   * lui-même la notification à cette heure (voir `lib/localNotifications.ts`).
+   */
   reminderHour: number;
+  /**
+   * Le rappel quotidien est-il actif ?
+   *
+   * Réglage purement local, comme l'heure. Le serveur ne s'occupe plus de ce
+   * rappel — il garde l'alerte de série et les relances d'inactivité, qui
+   * demandent de savoir des choses que l'appareil ignore.
+   */
+  dailyReminder: boolean;
   /** Date (YYYY-MM-DD) du dernier coffre quotidien réclamé (null = jamais). */
   lastChestDay: string | null;
   /** Ids des podiums dont la récompense a déjà été réclamée. */
@@ -75,6 +88,8 @@ interface UserState {
   setTheme: (v: UserState['theme']) => void;
   /** Change l'heure du rappel quotidien (0–23, heure locale). */
   setReminderHour: (hour: number) => void;
+  /** Active ou coupe le rappel quotidien (notification locale). */
+  setDailyReminder: (on: boolean) => void;
   setDailyMinutes: (v: number) => void;
   completeOnboarding: () => void;
   /** Ajoute des XP (×2 si premium). */
@@ -161,6 +176,16 @@ const initialState = {
   theme: 'system' as const,
   streakGoal: null as number | null,
   reminderHour: 19,
+  /*
+   * Activé par défaut, à 19 h.
+   *
+   * Ce n'est pas pour autant une notification imposée : rien n'est programmé
+   * tant que la permission système n'a pas été accordée (voir
+   * `restoreLocalNotifications`, qui ne programme que si elle l'est). Le
+   * réglage dit « si tu acceptes les notifications, tu veux ce rappel » ; la
+   * personne peut ensuite changer l'heure ou tout couper.
+   */
+  dailyReminder: true,
   lastChestDay: null as string | null,
   claimedPodiums: [] as string[],
   dailyMinutes: 10,
@@ -204,6 +229,8 @@ export const useUserStore = create<UserState>()(
       setMemorizedSourates: (memorizedSourates) => set({ memorizedSourates }),
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
+
+      setDailyReminder: (on) => set({ dailyReminder: on }),
 
       setReminderHour: (hour) => {
         set({ reminderHour: hour });
