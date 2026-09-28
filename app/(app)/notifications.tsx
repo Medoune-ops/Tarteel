@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Toggle from '../../components/Toggle';
 import { useTheme } from '../../utils/useTheme';
 import { useT, t } from '../../lib/i18n';
+import { useUserStore } from '../../store/userStore';
+import { scheduleDaily } from '../../lib/localNotifications';
+import { dailyReminderMessage, reminderLangFor } from '../../constants/reminderMessages';
 import {
   fetchNotificationPrefs,
   updateNotificationPrefs,
@@ -12,15 +15,35 @@ import {
 } from '../../lib/api/notifications';
 
 /**
- * Préférences RÉELLES, persistées côté serveur (elles pilotent les push Expo
- * envoyés par le backend). Chaque changement est optimiste puis PATCHé ;
- * en cas d'échec on revient à la valeur précédente.
+ * Réglages des notifications — deux mécanismes distincts sur le même écran.
+ *
+ * LE RAPPEL QUOTIDIEN est une notification LOCALE : l'appareil la programme
+ * lui-même à l'heure choisie (voir `lib/localNotifications.ts`). Rien ne part
+ * du serveur, donc rien ne dépend du réseau, d'un token ou même d'un compte.
+ * Son réglage vit dans `userStore`, pas dans `NotificationPrefs`.
+ *
+ * L'ALERTE DE SÉRIE reste côté serveur : elle doit prévenir quelqu'un qui
+ * n'ouvre PAS l'app, ce qu'une notification locale ne sait pas faire — elle
+ * aurait besoin qu'on l'ouvre pour se reprogrammer. Même chose pour les
+ * relances d'inactivité et les annonces à venir.
+ *
+ * ⚠️ Le backend ne doit plus envoyer `notifDailyReminder` : ce rappel est
+ * servi ici et nulle part ailleurs, sinon la personne le reçoit deux fois.
  */
 export default function NotificationsScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
 
+  // Rappel quotidien : local, donc disponible tout de suite et hors ligne.
+  const dailyReminder = useUserStore((s) => s.dailyReminder);
+  const reminderHour = useUserStore((s) => s.reminderHour);
+  const setDailyReminder = useUserStore((s) => s.setDailyReminder);
+  const setReminderHour = useUserStore((s) => s.setReminderHour);
+  // Le message est écrit dans la langue de l'app (l'arabe reçoit l'anglais).
+  const reminderLang = reminderLangFor(useUserStore((s) => s.language));
+
+  // Alerte de série : serveur.
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -30,7 +53,7 @@ export default function NotificationsScreen() {
   };
   useEffect(load, []);
 
-  /** Patch optimiste d'une préférence ; rollback si le serveur refuse. */
+  /** Patch optimiste d'une préférence serveur ; rollback s'il refuse. */
   const patch = (change: Partial<NotificationPrefs>) => {
     if (!prefs) return;
     const before = prefs;
@@ -43,6 +66,26 @@ export default function NotificationsScreen() {
       });
   };
 
+  /**
+   * Reprogramme le rappel local.
+   *
+   * Le message est tiré au hasard dans la liste à chaque programmation : une
+   * notification quotidienne répète sinon le même texte tous les jours.
+   */
+  const reschedule = useCallback((on: boolean, hour: number) => {
+    void scheduleDaily('daily-reminder', on, hour, dailyReminderMessage(reminderLang));
+  }, [reminderLang]);
+
+  const toggleReminder = useCallback((on: boolean) => {
+    setDailyReminder(on);
+    reschedule(on, reminderHour);
+  }, [setDailyReminder, reschedule, reminderHour]);
+
+  const pickHour = useCallback((h: number) => {
+    setReminderHour(h);
+    if (dailyReminder) reschedule(true, h);
+  }, [setReminderHour, dailyReminder, reschedule]);
+
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       {/* Header */}
@@ -54,6 +97,50 @@ export default function NotificationsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Rappel quotidien — local : affiché tout de suite, même hors ligne. */}
+        <View style={[styles.card, { backgroundColor: T.cardBg }]}>
+          <View style={styles.row}>
+            <View style={[styles.rowIcon, { backgroundColor: '#FF4B4B' }]}>
+              <Feather name="bell" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowTitle, { color: T.text }]}>{tr('settings.dailyReminder')}</Text>
+              <Text style={styles.rowSub}>{tr('settings.dailyReminderSub', { h: reminderHour })}</Text>
+            </View>
+            <Toggle value={dailyReminder} onChange={toggleReminder} />
+          </View>
+        </View>
+
+        {/* Heure du rappel — grille des 24 heures, l'heure active en violet. */}
+        <Text style={styles.sectionLabel}>{tr('notif.hourLabel')}</Text>
+        <View style={[styles.timeCard, { backgroundColor: T.cardBg }]}>
+          <Text style={styles.time}>{String(reminderHour).padStart(2, '0')} : 00</Text>
+          <Text style={styles.timeSub}>{tr('notif.hourHint')}</Text>
+          <View style={styles.hourGrid}>
+            {Array.from({ length: 24 }, (_, h) => {
+              const active = reminderHour === h;
+              return (
+                <Pressable
+                  key={h}
+                  style={[
+                    styles.hourChip,
+                    { backgroundColor: active ? '#6B4DFF' : T.pageBg },
+                  ]}
+                  onPress={() => pickHour(h)}
+                >
+                  <Text style={[styles.hourChipText, active && { color: '#fff' }]}>
+                    {String(h).padStart(2, '0')}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Alerte de série — serveur : elle doit atteindre quelqu'un qui
+            n'ouvre pas l'app, ce qu'une notification locale ne sait pas faire. */}
+        <Text style={styles.sectionLabel}>{tr('notif.serverLabel')}</Text>
+
         {prefs == null && !loadError && (
           <View style={styles.centerState}>
             <ActivityIndicator size="large" color="#6B4DFF" />
@@ -70,65 +157,21 @@ export default function NotificationsScreen() {
         )}
 
         {prefs != null && (
-          <>
-            <View style={[styles.card, { backgroundColor: T.cardBg }]}>
-              {/* Rappel quotidien */}
-              <View style={styles.row}>
-                <View style={[styles.rowIcon, { backgroundColor: '#FF4B4B' }]}>
-                  <Feather name="bell" size={22} color="#fff" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.rowTitle, { color: T.text }]}>{tr('settings.dailyReminder')}</Text>
-                  <Text style={styles.rowSub}>{tr('settings.dailyReminderSub', { h: prefs.reminderHour })}</Text>
-                </View>
-                <Toggle
-                  value={prefs.notifDailyReminder}
-                  onChange={(v) => patch({ notifDailyReminder: v })}
-                />
+          <View style={[styles.card, { backgroundColor: T.cardBg }]}>
+            <View style={styles.row}>
+              <View style={[styles.rowIcon, { backgroundColor: '#F0820C' }]}>
+                <Text style={{ fontSize: 22 }}>🔥</Text>
               </View>
-
-              {/* Alerte de série */}
-              <View style={[styles.row, styles.divider, { borderTopColor: T.divider }]}>
-                <View style={[styles.rowIcon, { backgroundColor: '#F0820C' }]}>
-                  <Text style={{ fontSize: 22 }}>🔥</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.rowTitle, { color: T.text }]}>{tr('notif.streakAlert')}</Text>
-                  <Text style={styles.rowSub}>{tr('notif.streakAlertSub')}</Text>
-                </View>
-                <Toggle
-                  value={prefs.notifStreakAlert}
-                  onChange={(v) => patch({ notifStreakAlert: v })}
-                />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowTitle, { color: T.text }]}>{tr('notif.streakAlert')}</Text>
+                <Text style={styles.rowSub}>{tr('notif.streakAlertSub')}</Text>
               </View>
+              <Toggle
+                value={prefs.notifStreakAlert}
+                onChange={(v) => patch({ notifStreakAlert: v })}
+              />
             </View>
-
-            {/* Heure du rappel — grille des 24 heures, l'heure active en violet. */}
-            <Text style={styles.sectionLabel}>{tr('notif.hourLabel')}</Text>
-            <View style={[styles.timeCard, { backgroundColor: T.cardBg }]}>
-              <Text style={styles.time}>{String(prefs.reminderHour).padStart(2, '0')} : 00</Text>
-              <Text style={styles.timeSub}>{tr('notif.hourHint')}</Text>
-              <View style={styles.hourGrid}>
-                {Array.from({ length: 24 }, (_, h) => {
-                  const active = prefs.reminderHour === h;
-                  return (
-                    <Pressable
-                      key={h}
-                      style={[
-                        styles.hourChip,
-                        { backgroundColor: active ? '#6B4DFF' : T.pageBg },
-                      ]}
-                      onPress={() => patch({ reminderHour: h })}
-                    >
-                      <Text style={[styles.hourChipText, active && { color: '#fff' }]}>
-                        {String(h).padStart(2, '0')}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          </>
+          </View>
         )}
       </ScrollView>
     </View>

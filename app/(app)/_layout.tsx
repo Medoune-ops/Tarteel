@@ -3,6 +3,11 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { Stack } from 'expo-router';
 import { fetchMe, fetchPendingGift, ackPendingGift, syncTimezone } from '../../lib/api/me';
 import { registerForPushNotifications } from '../../lib/pushNotifications';
+import { restoreLocalNotifications } from '../../lib/localNotifications';
+import { dailyReminderMessage, reminderLangFor } from '../../constants/reminderMessages';
+import { useUserStore } from '../../store/userStore';
+import { useHadithDaily } from '../../store/hadithDailyStore';
+import { t } from '../../lib/i18n';
 import GiftModal from '../../components/GiftModal';
 import MiniPlayer from '../../components/MiniPlayer';
 import ReviewPromptModal from '../../components/ReviewPromptModal';
@@ -22,6 +27,46 @@ function useRegisterPushOnMount() {
     registerForPushNotifications();
     syncTimezone();
   }, []);
+}
+
+/**
+ * Remet en place les notifications LOCALES à chaque ouverture de l'app.
+ *
+ * Indispensable : un redémarrage du téléphone, une mise à jour ou une
+ * réinstallation effacent les notifications programmées, alors que les
+ * réglages, eux, sont persistés. Sans ce rappel, quelqu'un qui redémarre son
+ * appareil ne reçoit plus jamais son rappel du soir.
+ *
+ * Ça renouvelle aussi le message : une notification quotidienne répète le
+ * même texte jusqu'à sa reprogrammation, et la liste en compte soixante.
+ *
+ * Ne demande PAS la permission — on ne fait qu'honorer un réglage déjà pris.
+ */
+function useRestoreLocalNotifications() {
+  const dailyReminder = useUserStore((s) => s.dailyReminder);
+  const reminderHour = useUserStore((s) => s.reminderHour);
+  const hadithEnabled = useHadithDaily((s) => s.enabled);
+  const hadithHour = useHadithDaily((s) => s.hour);
+  // La langue fait partie des dépendances : la changer doit reprogrammer les
+  // rappels, sinon ils resteraient dans l'ancienne langue jusqu'au lendemain.
+  const language = useUserStore((s) => s.language);
+
+  useEffect(() => {
+    void restoreLocalNotifications([
+      {
+        kind: 'daily-reminder',
+        enabled: dailyReminder,
+        hour: reminderHour,
+        texts: dailyReminderMessage(reminderLangFor(language)),
+      },
+      {
+        kind: 'hadith-du-jour',
+        enabled: hadithEnabled,
+        hour: hadithHour,
+        texts: { title: t('hadiths.daily.notifTitle'), body: t('hadiths.daily.notifBody') },
+      },
+    ]);
+  }, [dailyReminder, reminderHour, hadithEnabled, hadithHour, language]);
 }
 
 // En dessous de ce délai depuis le dernier fetchMe(), un retour au premier
@@ -117,6 +162,7 @@ function useInitReviewPrompt() {
 
 export default function AppLayout() {
   useRegisterPushOnMount();
+  useRestoreLocalNotifications();
   useRefreshMeOnForeground();
   usePendingGiftPolling();
   useInitReviewPrompt();
