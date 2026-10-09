@@ -9,18 +9,22 @@ import { swrFetch } from '../../../lib/api/swr';
 import { playRemoteAudioAsync, stopRemoteAudio } from '../../../constants/sounds';
 import { useTheme } from '../../../utils/useTheme';
 import { useT } from '../../../lib/i18n';
+import { sourateMeaning } from '../../../constants/sourateMeaning';
+import { useUserStore } from '../../../store/userStore';
 import OfflineState from '../../../components/OfflineState';
 
 // Tag de verrouillage d'écran (empêche la mise en veille pendant la récitation).
 const KEEP_AWAKE_TAG = 'lecture-libre';
 
 // Lecteur « Lecture libre » — récite la sourate EN ENTIER, verset après verset,
-// sans arrêt jusqu'à la fin. Affichage en ARABE UNIQUEMENT (pas de traduction ni
-// de translittération). L'écran reste allumé tant que la lecture est en cours.
+// sans arrêt jusqu'à la fin. Chaque verset en arabe, avec son sens (traduction)
+// dans la langue de l'utilisateur juste en dessous (rien en plus si l'app est en
+// arabe). L'écran reste allumé tant que la lecture est en cours.
 export default function LectureSourateScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const language = useUserStore((st) => st.language);
   const { numero } = useLocalSearchParams<{ numero?: string }>();
 
   const [data, setData] = useState<SourateVersets | null>(null);
@@ -39,11 +43,12 @@ export default function LectureSourateScreen() {
     setError(false);
     try {
       // Le texte coranique ne change jamais → cache mémoire (affichage instantané).
-      setData(await swrFetch(`versets:${numero}:ar`, () => fetchVersets(numero)));
+      // La traduction dépend de la langue → une entrée de cache par langue.
+      setData(await swrFetch(`versets:${numero}:${language}`, () => fetchVersets(numero, language)));
     } catch (e) {
       setError(e);
     }
-  }, [numero]);
+  }, [numero, language]);
 
   // Stoppe la lecture, coupe l'audio et réautorise la mise en veille.
   const stopAuto = useCallback(() => {
@@ -118,6 +123,7 @@ export default function LectureSourateScreen() {
 
   const s = data.sourate;
   const hasAudio = data.versets.some((v) => v.audioUrl);
+  const sens = sourateMeaning(s.numero, language);
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
@@ -128,6 +134,8 @@ export default function LectureSourateScreen() {
         </Pressable>
         <Text style={styles.headerArabe}>{s.nomArabe}</Text>
         <Text style={styles.headerNom}>{s.numero}. {s.nom}</Text>
+        {/* Sens/thème de la sourate (ex. « Les Hypocrites » — …), comme dans le catalogue. */}
+        {sens ? <Text style={styles.headerSens}>{sens}</Text> : null}
         <Text style={styles.headerSub}>{tr('lectureNumero.versetsCount', { n: s.nombreVersets })}</Text>
       </LinearGradient>
 
@@ -163,6 +171,10 @@ export default function LectureSourateScreen() {
               <Text style={[styles.arabe, { color: T.text }, active && styles.arabeActive]}>
                 {v.texteArabe}
               </Text>
+              {/* Sens du verset dans la langue de l'utilisateur. */}
+              {language !== 'ar' && v.traduction?.texte ? (
+                <Text style={[styles.traduction, { color: T.textSecondary }]}>{v.traduction.texte}</Text>
+              ) : null}
             </View>
           );
         })}
@@ -185,6 +197,7 @@ const styles = StyleSheet.create({
   backBtn: { position: 'absolute', top: 54, left: 16 },
   headerArabe: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 40, color: '#fff' },
   headerNom: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff', marginTop: 4 },
+  headerSens: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, lineHeight: 18, color: '#fff', textAlign: 'center', marginTop: 6 },
   headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
 
   autoBar: {
@@ -207,4 +220,5 @@ const styles = StyleSheet.create({
   numText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 14, color: '#6B4DFF' },
   arabe: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 32, lineHeight: 60, textAlign: 'right', writingDirection: 'rtl' },
   arabeActive: { color: '#2A9E1C' },
+  traduction: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, lineHeight: 21, marginTop: 8 },
 });

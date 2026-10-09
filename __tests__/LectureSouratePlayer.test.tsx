@@ -15,7 +15,7 @@ const mockVersets = {
     { id: 'v2', numero: 2, texteArabe: 'الْحَمْدُ لِلَّهِ', audioUrl: 'https://cdn/2.mp3', traduction: null, translitteration: null, mots: [] },
   ],
 };
-const mockFetchVersets = jest.fn((..._a: unknown[]) => Promise.resolve(mockVersets));
+const mockFetchVersets = jest.fn((..._a: unknown[]): Promise<unknown> => Promise.resolve(mockVersets));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ back: mockBack }),
@@ -45,6 +45,7 @@ jest.mock('../utils/useTheme', () => ({
 }));
 
 import LectureSourateScreen from '../app/(app)/lecture/[numero]';
+import { useUserStore } from '../store/userStore';
 
 function textOf(inst: ReactTestInstance | string): string {
   if (typeof inst === 'string') return inst;
@@ -90,10 +91,34 @@ describe('Lecteur « Lecture libre » (sourate en entier)', () => {
     expect(all).toContain('Écouter la sourate en entier');
   });
 
-  it('n\'affiche jamais la traduction (arabe uniquement)', async () => {
+  it('affiche le sens de chaque verset dans la langue de l\'utilisateur', async () => {
+    useUserStore.setState({ language: 'fr' });
+    mockFetchVersets.mockImplementationOnce(() => Promise.resolve({
+      ...mockVersets,
+      versets: mockVersets.versets.map((v, i) => ({
+        ...v,
+        traduction: { texte: i === 0 ? 'Au nom de Dieu' : 'Louange à Dieu', langue: 'fr', source: 'test' },
+      })),
+    }));
     const r = await renderScreen();
-    // Les versets mockés n'ont pas de traduction ; l'écran ne doit rien inventer.
-    expect(textOf(r.root)).not.toContain('traduction');
+    const all = textOf(r.root);
+    expect(mockFetchVersets).toHaveBeenCalledWith('1', 'fr');
+    expect(all).toContain('Au nom de Dieu');
+    expect(all).toContain('Louange à Dieu');
+  });
+
+  it('n\'affiche pas de traduction quand l\'app est en arabe', async () => {
+    useUserStore.setState({ language: 'ar' });
+    mockFetchVersets.mockImplementationOnce(() => Promise.resolve({
+      ...mockVersets,
+      versets: mockVersets.versets.map((v) => ({
+        ...v,
+        traduction: { texte: 'Au nom de Dieu', langue: 'fr', source: 'test' },
+      })),
+    }));
+    const r = await renderScreen();
+    expect(textOf(r.root)).not.toContain('Au nom de Dieu');
+    useUserStore.setState({ language: 'fr' });
   });
 
   it('lit chaque verset dans l\'ordre et garde l\'écran allumé', async () => {
