@@ -10,6 +10,7 @@ import { useHadithDaily } from '../../store/hadithDailyStore';
 import { t } from '../../lib/i18n';
 import GiftModal from '../../components/GiftModal';
 import MiniPlayer from '../../components/MiniPlayer';
+import PrayerShortcut from '../../components/PrayerShortcut';
 import ReviewPromptModal from '../../components/ReviewPromptModal';
 import { useGiftModalStore } from '../../store/giftModalStore';
 import { useReviewPromptStore } from '../../store/reviewPromptStore';
@@ -203,6 +204,7 @@ export default function AppLayout() {
         <Stack.Screen name="docs" />
         <Stack.Screen name="lesson" />
       </Stack>
+      <PrayerShortcut />
       <MiniPlayer />
       <GiftModal />
       <ReviewPromptModal />
