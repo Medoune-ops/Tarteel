@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import CollapsingHeader, { useCollapsingHeader } from '../../components/CollapsingHeader';
 import Toggle from '../../components/Toggle';
 import { useTheme } from '../../utils/useTheme';
 import { useT, t } from '../../lib/i18n';
@@ -34,6 +36,10 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+
+  // L'en-tête se comprime en barre fine quand on descend, pour rendre de la
+  // hauteur au contenu sans perdre le titre ni le retour.
+  const header = useCollapsingHeader({ expanded: 96, collapsed: 56 });
 
   // Rappel quotidien : local, donc disponible tout de suite et hors ligne.
   const dailyReminder = useUserStore((s) => s.dailyReminder);
@@ -88,15 +94,20 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: T.cardBg }]}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.back}>‹</Text>
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: T.text }]}>{tr('notif.title')}</Text>
-      </View>
+      <CollapsingHeader
+        {...header.props}
+        title={tr('notif.title')}
+        onBack={() => router.back()}
+      />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView
+        {...header.scrollProps}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Réserve la place de l'en-tête, qui est posé par-dessus. */}
+        <View style={{ height: header.contentInset }} />
+
         {/* Rappel quotidien — local : affiché tout de suite, même hors ligne. */}
         <View style={[styles.card, { backgroundColor: T.cardBg }]}>
           <View style={styles.row}>
@@ -173,20 +184,14 @@ export default function NotificationsScreen() {
             </View>
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    paddingTop: 50, paddingBottom: 18, paddingHorizontal: 24,
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-  },
-  back: { fontSize: 30, color: '#6B4DFF', lineHeight: 32 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 26 },
-  content: { paddingHorizontal: 22, paddingVertical: 18 },
+  content: { paddingHorizontal: 22, paddingBottom: 28 },
   centerState: { alignItems: 'center', paddingVertical: 60, gap: 14 },
   retryBtn: { backgroundColor: '#6B4DFF', borderRadius: 14, paddingHorizontal: 22, paddingVertical: 10 },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
