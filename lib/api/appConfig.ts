@@ -20,6 +20,10 @@ export interface AppConfig {
   /** Vérification d'email par code à 4 chiffres après l'inscription — feature
    *  désactivée par défaut côté serveur (EMAIL_VERIFICATION_ENABLED). */
   emailVerificationEnabled: boolean;
+  /** Fonctionnalité Amis (code/QR, défis, envois) — désactivée par défaut côté
+   *  serveur (FRIENDS_ENABLED). Quand faux, l'UI amis est masquée et les routes
+   *  /me/friends renvoient 404. */
+  friendsEnabled: boolean;
   pricing: AppConfigPricing;
 }
 

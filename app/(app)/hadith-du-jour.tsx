@@ -24,6 +24,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import DeviceStatusBar from '../../components/StatusBar';
 import HadithCard from '../../components/HadithCard';
+import FriendPickerModal from '../../components/FriendPickerModal';
+import FriendSendModal from '../../components/FriendSendModal';
 import { useTheme } from '../../utils/useTheme';
 import {
   loadCollection, hadithLangFor, themeOfHadith, themeStyle,
@@ -35,6 +37,8 @@ import { useHadithFavorites } from '../../store/hadithFavoritesStore';
 import { useHadithProgress, today } from '../../store/hadithProgressStore';
 import { useHadithShare } from '../../hooks/useHadithShare';
 import { useUserStore } from '../../store/userStore';
+import { useAppConfigStore } from '../../store/appConfigStore';
+import type { FriendUser } from '../../lib/api';
 import { useT } from '../../lib/i18n';
 import type { ThemeId } from '../../constants/hadithChapters';
 
@@ -78,6 +82,10 @@ export default function HadithDuJourScreen() {
   const [daily, setDaily] = useState<Daily | null>(null);
   const [loading, setLoading] = useState(true);
   const [favTick, setFavTick] = useState(0);
+  const [friendPickOpen, setFriendPickOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sendFriend, setSendFriend] = useState<FriendUser | null>(null);
+  const friendsEnabled = useAppConfigStore((s) => s.friendsEnabled);
 
   const day = useMemo(() => today(), []);
 
@@ -216,6 +224,22 @@ export default function HadithDuJourScreen() {
             <Feather name="chevron-right" size={16} color={T.textSecondary} />
           </Pressable>
 
+          {/* Envoyer à un ami (Phase 4) — masqué si Amis désactivées. */}
+          {friendsEnabled && (
+            <Pressable
+              onPress={() => {
+                if (sendFriend) setSendOpen(true);
+                else setFriendPickOpen(true);
+              }}
+              style={[styles.more, { backgroundColor: soft }]}
+            >
+              <Feather name="send" size={16} color="#6B4DFF" />
+              <Text style={[styles.moreText, { color: T.text }]}>
+                {tr('friends.send')}
+              </Text>
+            </Pressable>
+          )}
+
           {/* Rappel quotidien. */}
           <View style={[styles.remind, { backgroundColor: T.cardBg, borderColor: border }]}>
             <View style={styles.remindHead}>
@@ -288,6 +312,23 @@ export default function HadithDuJourScreen() {
 
       {/* Visuel de partage, rendu hors champ le temps de la capture. */}
       {shareHadith.portal}
+
+      {/* Envoi à un ami (Phase 4). */}
+      <FriendPickerModal
+        visible={friendPickOpen}
+        onClose={() => setFriendPickOpen(false)}
+        onPick={(f) => {
+          setSendFriend(f);
+          setFriendPickOpen(false);
+          setSendOpen(true);
+        }}
+      />
+      <FriendSendModal
+        visible={sendOpen}
+        friend={sendFriend}
+        hadithRef={daily ? { collectionId: daily.collectionId as string, n: daily.n } : null}
+        onClose={() => setSendOpen(false)}
+      />
     </View>
   );
 }

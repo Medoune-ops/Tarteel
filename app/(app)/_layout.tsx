@@ -197,6 +197,13 @@ export default function AppLayout() {
         <Stack.Screen name="subscription" />
         <Stack.Screen name="hearts" />
         <Stack.Screen name="referral" />
+        <Stack.Screen name="friends" />
+        <Stack.Screen name="friends-add" />
+        <Stack.Screen name="friends-qr" />
+        <Stack.Screen name="friends-activity" />
+        <Stack.Screen name="friends-challenges" />
+        <Stack.Screen name="friends-inbox" />
+        <Stack.Screen name="friend-progress" />
         <Stack.Screen name="payment-method" />
         <Stack.Screen name="payment-card" />
         <Stack.Screen name="revision" />
