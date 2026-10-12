@@ -1,6 +1,6 @@
 /**
  * Écran « Heures de prière » — les 5 prières du jour, la prochaine mise en
- * avant, plus le choix de la position et de la méthode de calcul.
+ * avant (le Chourouq rattaché au Fajr), plus le choix de la position.
  *
  * Tout est calculé localement (`constants/prayerTimes.ts`) : aucun appel
  * réseau, l'écran fonctionne hors-ligne dès que la position est connue.
@@ -20,11 +20,11 @@ import { usePrayerStore } from '../../store/prayerStore';
 import { useUserStore } from '../../store/userStore';
 import {
   computePrayerTimes,
+  computeSunrise,
   nextPrayer,
   formatPrayerTime,
   timeUntil,
   FALLBACK_CITIES,
-  METHOD_IDS,
   PRAYER_NAMES,
   type PrayerSlot,
 } from '../../constants/prayerTimes';
@@ -45,10 +45,8 @@ export default function PrieresScreen() {
   const longitude = usePrayerStore((s) => s.longitude);
   const cityName = usePrayerStore((s) => s.cityName);
   const source = usePrayerStore((s) => s.source);
-  const method = usePrayerStore((s) => s.method);
   const setFromGps = usePrayerStore((s) => s.setFromGps);
   const setFromCity = usePrayerStore((s) => s.setFromCity);
-  const setMethod = usePrayerStore((s) => s.setMethod);
   const remindersEnabled = usePrayerStore((s) => s.remindersEnabled);
   const reminderPrayers = usePrayerStore((s) => s.reminderPrayers);
   const setRemindersEnabled = usePrayerStore((s) => s.setRemindersEnabled);
@@ -115,8 +113,14 @@ export default function PrieresScreen() {
 
   const slots: PrayerSlot[] = useMemo(() => {
     if (latitude == null || longitude == null) return [];
-    return computePrayerTimes(latitude, longitude, method, now);
-  }, [latitude, longitude, method, now]);
+    return computePrayerTimes(latitude, longitude, now);
+  }, [latitude, longitude, now]);
+
+  // Chourouq : fin du temps du Fajr, affiché sous sa ligne (pas une prière).
+  const sunrise = useMemo(() => {
+    if (latitude == null || longitude == null) return null;
+    return computeSunrise(latitude, longitude, now);
+  }, [latitude, longitude, now]);
 
   const upcoming = useMemo(() => {
     if (slots.length === 0) return null;
@@ -125,9 +129,9 @@ export default function PrieresScreen() {
     // Après l'Isha : le Fajr de demain.
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     return latitude != null && longitude != null
-      ? computePrayerTimes(latitude, longitude, method, tomorrow)[0] ?? null
+      ? computePrayerTimes(latitude, longitude, tomorrow)[0] ?? null
       : null;
-  }, [slots, now, latitude, longitude, method]);
+  }, [slots, now, latitude, longitude]);
 
   const remaining = upcoming ? timeUntil(upcoming.time, now) : null;
   const hasLocation = latitude != null && longitude != null;
@@ -196,17 +200,33 @@ export default function PrieresScreen() {
                   <View
                     key={s.name}
                     style={[
-                      styles.row,
                       i > 0 && [styles.divider, { borderTopColor: T.divider }],
                       isNext && styles.rowActive,
                     ]}
                   >
-                    <Text style={[styles.rowName, { color: passed && !isNext ? T.textTertiary : T.text }]}>
-                      {tr(`prayer.name.${s.name}`)}
-                    </Text>
-                    <Text style={[styles.rowTime, { color: passed && !isNext ? T.textTertiary : T.text }]}>
-                      {formatPrayerTime(s.time, localeTag)}
-                    </Text>
+                    <View style={styles.row}>
+                      <Text style={[styles.rowName, { color: passed && !isNext ? T.textTertiary : T.text }]}>
+                        {tr(`prayer.name.${s.name}`)}
+                      </Text>
+                      <Text style={[styles.rowTime, { color: passed && !isNext ? T.textTertiary : T.text }]}>
+                        {formatPrayerTime(s.time, localeTag)}
+                      </Text>
+                    </View>
+                    {/* Chourouq DANS le bloc du Fajr, sans séparateur, en retrait
+                        et en plus petit : il se lit comme la fin du temps du
+                        Fajr, pas comme une sixième prière. */}
+                    {s.name === 'fajr' && sunrise && (
+                      <View style={styles.subRow}>
+                        <Feather name="corner-down-right" size={14} color={T.textTertiary} />
+                        <View style={styles.subTextCol}>
+                          <Text style={[styles.subName, { color: T.textSecondary }]}>{tr('prayer.sunrise')}</Text>
+                          <Text style={[styles.subHint, { color: T.textTertiary }]}>{tr('prayer.sunriseHint')}</Text>
+                        </View>
+                        <Text style={[styles.subTime, { color: T.textSecondary }]}>
+                          {formatPrayerTime(sunrise, localeTag)}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 );
               })}
@@ -290,26 +310,6 @@ export default function PrieresScreen() {
           </View>
         )}
 
-        {/* Méthode de calcul — change surtout Fajr et Isha. */}
-        {hasLocation && (
-          <>
-            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('prayer.methodTitle')}</Text>
-            <Text style={[styles.methodHint, { color: T.textTertiary }]}>{tr('prayer.methodHint')}</Text>
-            <View style={[styles.list, { backgroundColor: T.cardBg }]}>
-              {METHOD_IDS.map((m, i) => (
-                <Pressable
-                  key={m}
-                  style={[styles.row, i > 0 && [styles.divider, { borderTopColor: T.divider }]]}
-                  onPress={() => setMethod(m)}
-                >
-                  <Text style={[styles.rowName, { color: T.text }]}>{tr(`prayer.method.${m}`)}</Text>
-                  {method === m && <Feather name="check" size={18} color="#1F8A70" />}
-                </Pressable>
-              ))}
-            </View>
-          </>
-        )}
-
         {/* Qibla — même position, même besoin : on évite un écran séparé. */}
         {hasLocation && (
           <>
@@ -371,9 +371,13 @@ const styles = StyleSheet.create({
   divider: { borderTopWidth: 1 },
   rowName: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
   rowTime: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17 },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 22, paddingRight: 16, paddingBottom: 12, marginTop: -6 },
+  subTextCol: { flex: 1 },
+  subName: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
+  subHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, marginTop: 1 },
+  subTime: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 14 },
 
   sectionTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, marginTop: 22, marginBottom: 10 },
-  methodHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginBottom: 10, lineHeight: 17 },
 
   reminderTextCol: { flex: 1, paddingRight: 12 },
   reminderHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 2, lineHeight: 17 },

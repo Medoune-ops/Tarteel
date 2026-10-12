@@ -2,8 +2,8 @@
  * Rappels des heures de prière — notifications LOCALES, programmées sur
  * l'appareil à partir du calcul local des horaires (`constants/prayerTimes`).
  *
- * Aucun serveur : les horaires dépendent de la position et de la méthode
- * choisies sur le téléphone, et le rappel doit sonner même hors-ligne.
+ * Aucun serveur : les horaires dépendent de la position choisie sur le
+ * téléphone, et le rappel doit sonner même hors-ligne.
  *
  * Contraintes plateformes :
  *   - iOS garde au plus 64 notifications locales en attente. On programme
@@ -19,7 +19,7 @@
  */
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { computePrayerTimes, type MethodId, type PrayerName } from '../constants/prayerTimes';
+import { computePrayerTimes, type PrayerName } from '../constants/prayerTimes';
 import { t } from './i18n';
 
 /** Nom du fichier embarqué via le plugin expo-notifications (app.json). */
@@ -32,7 +32,6 @@ export interface ReminderConfig {
   enabled: boolean;
   latitude: number | null;
   longitude: number | null;
-  method: MethodId;
   prayers: Record<PrayerName, boolean>;
 }
 
@@ -64,7 +63,7 @@ async function cancelAll(): Promise<void> {
 }
 
 async function reschedule(cfg: ReminderConfig, now: Date): Promise<void> {
-  // Toujours repartir de zéro : position, méthode ou langue ont pu changer.
+  // Toujours repartir de zéro : position ou langue ont pu changer.
   await cancelAll();
   if (!cfg.enabled || cfg.latitude == null || cfg.longitude == null) return;
   if (!Object.values(cfg.prayers).some(Boolean)) return;
@@ -80,7 +79,7 @@ async function reschedule(cfg: ReminderConfig, now: Date): Promise<void> {
     // Pas de +24 h : setDate avance d'un jour CALENDAIRE (sûr aux changements d'heure).
     const day = new Date(now);
     day.setDate(now.getDate() + d);
-    for (const slot of computePrayerTimes(cfg.latitude, cfg.longitude, cfg.method, day)) {
+    for (const slot of computePrayerTimes(cfg.latitude, cfg.longitude, day)) {
       if (!cfg.prayers[slot.name] || slot.time.getTime() <= now.getTime()) continue;
       const name = t(`prayer.name.${slot.name}`);
       await Notifications.scheduleNotificationAsync({

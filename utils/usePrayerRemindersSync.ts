@@ -14,7 +14,6 @@ function currentConfig(): ReminderConfig {
     enabled: s.remindersEnabled,
     latitude: s.latitude,
     longitude: s.longitude,
-    method: s.method,
     prayers: s.reminderPrayers,
   };
 }
@@ -22,7 +21,7 @@ function currentConfig(): ReminderConfig {
 /**
  * Garde les rappels de prière programmés alignés sur les réglages : au
  * lancement (complète la fenêtre de 7 jours), à chaque changement de
- * position / méthode / prières / langue, et au retour au premier plan.
+ * position / prières / langue, et au retour au premier plan.
  * À monter une seule fois, dans le layout racine.
  */
 export function usePrayerRemindersSync() {
@@ -44,7 +43,6 @@ export function usePrayerRemindersSync() {
         s.remindersEnabled !== prev.remindersEnabled ||
         s.latitude !== prev.latitude ||
         s.longitude !== prev.longitude ||
-        s.method !== prev.method ||
         s.reminderPrayers !== prev.reminderPrayers
       ) {
         sync();
