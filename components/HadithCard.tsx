@@ -43,8 +43,10 @@ export interface HadithCardProps {
   favorite?: boolean;
   /** Marque-page — optionnel tant que l'action n'est pas branchée. */
   onFavorite?: () => void;
-  /** Partage — optionnel tant que l'action n'est pas branchée. */
+  /** Partage image — optionnel tant que l'action n'est pas branchée. */
   onShare?: () => void;
+  /** Envoyer à un ami (module Amis) — optionnel, masqué si absent. */
+  onSendToFriend?: () => void;
   /** Espace à réserver en haut (encoche) et en bas (barre d'onglets). */
   insetTop?: number;
   insetBottom?: number;
@@ -76,7 +78,7 @@ function withAlpha(hex: string, alpha: number): string {
 
 export default function HadithCard({
   text, collectionLabel, number, theme, themeColor, height,
-  favorite = false, onFavorite, onShare,
+  favorite = false, onFavorite, onShare, onSendToFriend,
   insetTop = 0, insetBottom = 0,
 }: HadithCardProps) {
   const T = useTheme();
@@ -192,6 +194,25 @@ export default function HadithCard({
               ]}
             >
               <Feather name="share-2" size={18} color={meta} />
+            </Pressable>
+          )}
+
+          {onSendToFriend && (
+            <Pressable
+              onPress={onSendToFriend}
+              hitSlop={14}
+              accessibilityRole="button"
+              accessibilityLabel={tr('hadiths.flow.sendA11y')}
+              style={[
+                styles.actionBtn,
+                {
+                  backgroundColor: T.isDark
+                    ? 'rgba(255,255,255,0.06)'
+                    : 'rgba(23,28,38,0.04)',
+                },
+              ]}
+            >
+              <Feather name="send" size={17} color={meta} />
             </Pressable>
           )}
         </View>

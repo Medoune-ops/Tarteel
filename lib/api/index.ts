@@ -47,5 +47,18 @@ export type {
 } from './household';
 export { fetchAppConfig } from './appConfig';
 export type { AppConfig, AppConfigPricing } from './appConfig';
+export {
+  fetchFriendCode, regenerateFriendCode, addFriend, fetchFriends,
+  fetchFriendProgress, removeFriend, blockFriend, unblockFriend, reportFriend,
+  fetchFriendsLeaderboard, fetchFriendsActivity, cheerActivity,
+  fetchChallenges, createChallenge, fetchChallenge, leaveChallenge,
+  fetchFriendsInbox, fetchSendQuota, sendToFriend, markFriendMessageRead,
+} from './friends';
+export type {
+  FriendView, FriendUser, FriendProgressView, LeaderboardEntry,
+  FriendActivityView, FriendActivityType, ChallengeView, ChallengeParticipantView,
+  ChallengeMetric, CreateChallengeInput, FriendSendType, SendQuotaStatus,
+  FriendInboxView, FriendInboxMessage, SendToFriendInput,
+} from './friends';
 export { fetchSudaisManifest, sudaisFileUrl } from './audio';
 export type { SudaisManifest, SudaisManifestEntry } from './audio';

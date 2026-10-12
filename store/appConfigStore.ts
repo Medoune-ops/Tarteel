@@ -30,6 +30,10 @@ interface AppConfigState {
    *  garantie disponible. Reste `false` tant que le serveur ne confirme pas
    *  explicitement `true`. */
   emailVerificationEnabled: boolean;
+  /** Fail-CLOSED (comme emailVerificationEnabled) : l'UI amis n'apparaît que si
+   *  le serveur confirme explicitement `true`. Reste `false` tant que /config
+   *  n'a pas répondu. */
+  friendsEnabled: boolean;
   /** Tarification réelle, modifiable depuis le back-office SANS redéploiement
    *  — voir back-office/Monétisation. Toujours ces valeurs de repli tant que
    *  /config n'a pas répondu. */
@@ -48,6 +52,7 @@ export const useAppConfigStore = create<AppConfigState>((set) => ({
   loaded: false,
   paymentsEnabled: true,
   emailVerificationEnabled: false,
+  friendsEnabled: false,
   pricing: FALLBACK_PRICING,
   load: async () => {
     try {
@@ -55,6 +60,7 @@ export const useAppConfigStore = create<AppConfigState>((set) => ({
       set({
         paymentsEnabled: cfg.paymentsEnabled,
         emailVerificationEnabled: cfg.emailVerificationEnabled,
+        friendsEnabled: cfg.friendsEnabled,
         pricing: cfg.pricing,
         loaded: true,
       });

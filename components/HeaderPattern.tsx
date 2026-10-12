@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import Svg, { Path, Circle, G } from 'react-native-svg';
+import Svg, { Path, Circle, Line, G } from 'react-native-svg';
 
 // Rub el hizb — l'étoile islamique classique (۞) : deux carrés superposés
 // tournés de 45°. Rendu net et reconnaissable, contrairement à une étoile à
@@ -16,7 +16,7 @@ function rubElHizb(cx: number, cy: number, r: number): string {
   return `${sq(0)} ${sq(Math.PI / 4)}`;
 }
 
-export type PatternVariant = 'stars' | 'waves' | 'arcs' | 'grid';
+export type PatternVariant = 'stars' | 'waves' | 'arcs' | 'grid' | 'network';
 
 /**
  * Trame décorative en filigrane pour le fond d'un header à dégradé. Plusieurs
@@ -26,6 +26,7 @@ export type PatternVariant = 'stars' | 'waves' | 'arcs' | 'grid';
  *  - 'waves' : ondes sonores concentriques (audio — lecture libre)
  *  - 'arcs'  : arcs/vagues fluides (mélodie — tajwid)
  *  - 'grid'  : losanges/points en trame (tuiles — widgets)
+ *  - 'network' : nœuds reliés entre proches voisins (réseau — amis)
  * À rendre EN PREMIER dans le LinearGradient (occupe tout le fond, le contenu
  * passe au-dessus).
  */
@@ -41,6 +42,7 @@ export default function HeaderPattern({
         {variant === 'waves' && <Waves width={width} height={height} color={color} />}
         {variant === 'arcs' && <Arcs width={width} height={height} color={color} />}
         {variant === 'grid' && <Grid width={width} height={height} color={color} />}
+        {variant === 'network' && <Network width={width} height={height} color={color} />}
       </G>
     </Svg>
   );
@@ -109,6 +111,42 @@ function Arcs({ width, height, color }: { width: number; height: number; color: 
     <>
       {rows.map((d, i) => (
         <Path key={i} d={d} fill="none" stroke={color} strokeWidth={1.3} strokeLinecap="round" />
+      ))}
+    </>
+  );
+}
+
+// ── Réseau : nœuds reliés aux plus proches voisins (graphe social) ──────────
+function Network({ width, height, color }: { width: number; height: number; color: string }) {
+  const step = 56;
+  const off = step / 2;
+  const nodes: { x: number; y: number }[] = [];
+  for (let y = -step; y < height + step; y += step) {
+    const shift = (Math.round((y + step) / step) % 2) * off;
+    for (let x = -step; x < width + step; x += step) nodes.push({ x: x + shift, y });
+  }
+  const max = step * 1.06;
+  const maxSq = max * max;
+  const edges: [number, number][] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      if (dx * dx + dy * dy <= maxSq) edges.push([i, j]);
+    }
+  }
+  return (
+    <>
+      {edges.map(([i, j], k) => (
+        <Line
+          key={`e${k}`}
+          x1={nodes[i].x} y1={nodes[i].y}
+          x2={nodes[j].x} y2={nodes[j].y}
+          stroke={color} strokeWidth={1}
+        />
+      ))}
+      {nodes.map((n, i) => (
+        <Circle key={`n${i}`} cx={n.x} cy={n.y} r={i % 3 === 0 ? 3 : 1.8} fill={color} />
       ))}
     </>
   );

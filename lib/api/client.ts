@@ -48,6 +48,11 @@ const FRIENDLY_BY_CODE: Record<string, string> = {
   EMAIL_NOT_VERIFIED: 'Confirme ton email pour continuer.',
   INVALID_CODE: 'Code incorrect.',
   TOO_MANY_ATTEMPTS: 'Trop de tentatives. Demande un nouveau code.',
+  FRIEND_LIMIT_REACHED: 'Limite d\'amis atteinte (9 en Gratuit, 20 en Premium). Passe en Premium pour inviter plus de monde.',
+  FRIEND_SEND_QUOTA_EXCEEDED: 'Quota d\'envois du jour atteint (3). Réessaie demain.',
+  FRIEND_CODE_INVALID: 'Ce code Amis est invalide.',
+  FRIEND_BLOCKED: 'Impossible d\'ajouter cet utilisateur.',
+  FRIEND_EXISTS: 'Tu es déjà ami avec cette personne.',
 };
 
 /** Libellé lisible d'un champ pour les messages de validation. */

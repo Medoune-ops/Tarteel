@@ -56,6 +56,7 @@ function ThemedApp() {
     <>
       <StatusBar style={statusBar} />
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Screen name="add" />
         <Stack.Screen name="(onboarding)" />
         <Stack.Screen name="(setup)" />
         <Stack.Screen name="(app)" />

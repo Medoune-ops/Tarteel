@@ -37,6 +37,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import DeviceStatusBar from '../../components/StatusBar';
 import HadithCard from '../../components/HadithCard';
+import FriendPickerModal from '../../components/FriendPickerModal';
+import FriendSendModal from '../../components/FriendSendModal';
 import { useTheme } from '../../utils/useTheme';
 import {
   loadCollection, hadithLangFor, themeOfHadith, themeStyle,
@@ -46,6 +48,8 @@ import { useUserStore } from '../../store/userStore';
 import { useHadithFavorites } from '../../store/hadithFavoritesStore';
 import { useHadithProgress } from '../../store/hadithProgressStore';
 import { useHadithShare } from '../../hooks/useHadithShare';
+import { useAppConfigStore } from '../../store/appConfigStore';
+import type { FriendUser } from '../../lib/api';
 import { useT } from '../../lib/i18n';
 import type { ThemeId } from '../../constants/hadithChapters';
 
@@ -99,6 +103,7 @@ export default function HadithsScreen() {
   const markReadToday = useHadithFavorites((s) => s.markReadToday);
   const markRead = useHadithProgress((s) => s.markRead);
   const shareHadith = useHadithShare();
+  const friendsEnabled = useAppConfigStore((s) => s.friendsEnabled);
 
   const [items, setItems] = useState<FlowItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +111,11 @@ export default function HadithsScreen() {
   const [wide, setWide] = useState(false);
   /** Re-rendu des cartes quand un favori change (le store n'est pas réactif ici). */
   const [favTick, setFavTick] = useState(0);
+  /** Envoi à un ami : ami choisi + hadith à envoyer (module Amis). */
+  const [sendFriend, setSendFriend] = useState<FriendUser | null>(null);
+  const [sendItem, setSendItem] = useState<FlowItem | null>(null);
+  const [friendPickOpen, setFriendPickOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
 
   /**
    * Hadiths déjà servis, pour ne pas repasser deux fois sur le même tant
@@ -280,6 +290,12 @@ export default function HadithsScreen() {
     );
   }, [shareHadith, tr]);
 
+  /** Envoi à un ami : on choisit d'abord l'ami (module Amis). */
+  const onSendToFriend = useCallback((item: FlowItem) => {
+    setSendItem(item);
+    setFriendPickOpen(true);
+  }, []);
+
   const renderItem = useCallback(({ item }: { item: FlowItem }) => (
     <HadithCard
       text={item.text}
@@ -291,10 +307,11 @@ export default function HadithsScreen() {
       favorite={isFavorite(item.collectionId, item.n)}
       onFavorite={() => onFavorite(item)}
       onShare={shareHadith.available ? () => onShare(item) : undefined}
+      onSendToFriend={friendsEnabled ? () => onSendToFriend(item) : undefined}
       insetTop={insets.top}
       insetBottom={insets.bottom}
     />
-  ), [tr, height, insets.top, insets.bottom, isFavorite, onFavorite, onShare, shareHadith.available]);
+  ), [tr, height, insets.top, insets.bottom, isFavorite, onFavorite, onShare, shareHadith.available, friendsEnabled, onSendToFriend]);
 
   const keyExtractor = useCallback(
     (item: FlowItem, index: number) => `${item.collectionId}:${item.n}:${index}`,
@@ -430,6 +447,27 @@ export default function HadithsScreen() {
 
       {/* Visuel de partage, rendu hors champ le temps de la capture. */}
       {shareHadith.portal}
+
+      {/* Envoi à un ami (module Amis). */}
+      {friendsEnabled && (
+        <>
+          <FriendPickerModal
+            visible={friendPickOpen}
+            onClose={() => setFriendPickOpen(false)}
+            onPick={(f) => {
+              setSendFriend(f);
+              setFriendPickOpen(false);
+              setSendOpen(true);
+            }}
+          />
+          <FriendSendModal
+            visible={sendOpen}
+            friend={sendFriend}
+            hadithRef={sendItem ? { collectionId: sendItem.collectionId as string, n: sendItem.n } : null}
+            onClose={() => setSendOpen(false)}
+          />
+        </>
+      )}
     </View>
   );
 }

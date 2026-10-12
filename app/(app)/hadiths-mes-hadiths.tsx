@@ -30,6 +30,8 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import DeviceStatusBar from '../../components/StatusBar';
+import FriendPickerModal from '../../components/FriendPickerModal';
+import FriendSendModal from '../../components/FriendSendModal';
 import { useTheme } from '../../utils/useTheme';
 import {
   loadCollection, hadithLangFor, themeOfHadith, themeStyle,
@@ -37,8 +39,10 @@ import {
 } from '../../lib/hadiths';
 import { useHadithFavorites } from '../../store/hadithFavoritesStore';
 import { useHadithShare } from '../../hooks/useHadithShare';
+import { useAppConfigStore } from '../../store/appConfigStore';
 import { useUserStore } from '../../store/userStore';
 import { useT } from '../../lib/i18n';
+import type { FriendUser } from '../../lib/api';
 
 /** Signature du visuel partagé. Une marque ne se traduit pas. */
 const APP_NAME = 'TARTEEL';
@@ -64,9 +68,15 @@ export default function MesHadithsScreen() {
   const removeFavorite = useHadithFavorites((s) => s.removeFavorite);
   const streak = useHadithFavorites((s) => s.streak);
   const shareHadith = useHadithShare();
+  const friendsEnabled = useAppConfigStore((s) => s.friendsEnabled);
 
   const [items, setItems] = useState<SavedHadith[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Envoi à un ami : ami choisi + hadith à envoyer (module Amis). */
+  const [sendFriend, setSendFriend] = useState<FriendUser | null>(null);
+  const [sendItem, setSendItem] = useState<SavedHadith | null>(null);
+  const [friendPickOpen, setFriendPickOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
 
   /** Recueils à ouvrir : seulement ceux réellement présents en favori. */
   const needed = useMemo(
@@ -132,6 +142,12 @@ export default function MesHadithsScreen() {
       APP_NAME,
     );
   }, [shareHadith, tr]);
+
+  /** Envoi à un ami : on choisit d'abord l'ami (module Amis). */
+  const onSendToFriend = useCallback((item: SavedHadith) => {
+    setSendItem(item);
+    setFriendPickOpen(true);
+  }, []);
 
   const open = useCallback((item: SavedHadith) => {
     router.push({
@@ -230,6 +246,17 @@ export default function MesHadithsScreen() {
                   </Text>
 
                   <View style={styles.actions}>
+                    {friendsEnabled && (
+                      <Pressable
+                        onPress={() => onSendToFriend(item)}
+                        hitSlop={10}
+                        accessibilityRole="button"
+                        accessibilityLabel={tr('hadiths.flow.sendA11y')}
+                        style={[styles.actionBtn, { backgroundColor: soft }]}
+                      >
+                        <Feather name="send" size={15} color={T.textSecondary} />
+                      </Pressable>
+                    )}
                     {shareHadith.available && (
                       <Pressable
                         onPress={() => share(item)}
@@ -260,6 +287,27 @@ export default function MesHadithsScreen() {
 
       {/* Visuel de partage, rendu hors champ le temps de la capture. */}
       {shareHadith.portal}
+
+      {/* Envoi à un ami (module Amis). */}
+      {friendsEnabled && (
+        <>
+          <FriendPickerModal
+            visible={friendPickOpen}
+            onClose={() => setFriendPickOpen(false)}
+            onPick={(f) => {
+              setSendFriend(f);
+              setFriendPickOpen(false);
+              setSendOpen(true);
+            }}
+          />
+          <FriendSendModal
+            visible={sendOpen}
+            friend={sendFriend}
+            hadithRef={sendItem ? { collectionId: sendItem.collectionId as string, n: sendItem.n } : null}
+            onClose={() => setSendOpen(false)}
+          />
+        </>
+      )}
     </View>
   );
 }
