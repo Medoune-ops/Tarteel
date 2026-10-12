@@ -10,13 +10,16 @@ import DeviceStatusBar from '../../components/StatusBar';
 import FriendsHeader from '../../components/FriendsHeader';
 import FriendAvatar from '../../components/FriendAvatar';
 import FriendButton from '../../components/FriendButton';
+import FriendSendModal from '../../components/FriendSendModal';
+import ChallengeVictoryModal from '../../components/ChallengeVictoryModal';
 import { useTheme } from '../../utils/useTheme';
 import { friendPalette } from '../../utils/friendTheme';
 import {
   fetchChallenges, createChallenge, leaveChallenge, fetchFriends,
-  type ChallengeView, type FriendView, type ChallengeMetric,
+  type ChallengeView, type FriendView, type ChallengeMetric, type FriendUser,
 } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
+import { useChallengeSeenStore } from '../../store/challengeSeenStore';
 import { useT, type I18nKey } from '../../lib/i18n';
 
 const DURATIONS_DAYS = [7, 14, 30, 60];
@@ -61,6 +64,9 @@ export default function FriendsChallengesScreen() {
   const [friends, setFriends] = useState<FriendView[]>([]);
   const [creating, setCreating] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [remindUser, setRemindUser] = useState<FriendUser | null>(null);
+  const [remindChallenge, setRemindChallenge] = useState<ChallengeView | null>(null);
+  const [victory, setVictory] = useState<ChallengeView | null>(null);
   const label = targetLabel(tr);
 
   const load = useCallback(async () => {
@@ -77,6 +83,23 @@ export default function FriendsChallengesScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  /** Détecte une victoire non encore célébrée : défi terminé, l'utilisateur
+   *  fait partie des gagnants et l'overlay n'a pas encore été montré. */
+  useEffect(() => {
+    if (loading) return;
+    const seen = useChallengeSeenStore.getState();
+    for (const c of challenges) {
+      if (c.status === 'ended' && c.winnerIds.length > 0) {
+        const meIsWinner = c.participants.some((p) => p.isMe && c.winnerIds.includes(p.user.id));
+        if (meIsWinner && !seen.hasSeen(c.id)) {
+          setVictory(c);
+          return;
+        }
+      }
+    }
+    if (victory) setVictory(null);
+  }, [loading, challenges]);
 
   const openCreate = async () => {
     setCreateOpen(true);
@@ -128,6 +151,12 @@ export default function FriendsChallengesScreen() {
         },
       },
     ]);
+  };
+
+  /** Relance d'un ami sur un défi (décompte du quota d'envois). */
+  const onRemind = (c: ChallengeView, user: FriendUser) => {
+    setRemindChallenge(c);
+    setRemindUser(user);
   };
 
   return (
@@ -209,6 +238,17 @@ export default function FriendsChallengesScreen() {
                               {c.winnerIds.includes(p.user.id) && <Text style={styles.trophy}>🏆</Text>}
                               {p.achieved && <Feather name="check-circle" size={15} color="#2A9E1C" />}
                               <Text style={[styles.partProgress, { color: T.textSecondary }]}>{p.progress}/{c.targetValue}</Text>
+                              {c.status === 'active' && !p.isMe && (
+                                <Pressable
+                                  onPress={() => onRemind(c, p.user)}
+                                  hitSlop={8}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={tr('friends.remindA11y', { name: p.user.displayName })}
+                                  style={[styles.remindBtn, { backgroundColor: P.tint }]}
+                                >
+                                  <Feather name="send" size={12} color="#6B4DFF" />
+                                </Pressable>
+                              )}
                             </View>
                           ))}
                         </View>
@@ -321,6 +361,27 @@ export default function FriendsChallengesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Relance d'un ami sur un défi (module Amis). */}
+      <FriendSendModal
+        visible={remindUser != null && remindChallenge != null}
+        friend={remindUser}
+        initialType="reminder"
+        reminderChallengeId={remindChallenge?.id}
+        onClose={() => {
+          setRemindUser(null);
+          setRemindChallenge(null);
+        }}
+      />
+
+      {/* Célébration de victoire d'un défi (affichée une seule fois par défi). */}
+      <ChallengeVictoryModal
+        challenge={victory}
+        onClose={() => {
+          if (victory) useChallengeSeenStore.getState().markSeen(victory.id);
+          setVictory(null);
+        }}
+      />
     </View>
   );
 }
@@ -357,6 +418,7 @@ const styles = StyleSheet.create({
   partRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 8 },
   partName: { fontFamily: 'Nunito_700Bold', fontSize: 14, flex: 1 },
   partProgress: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
+  remindBtn: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   trophy: { fontSize: 15 },
   winners: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, marginTop: 10 },
   leaveBtn: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-end', padding: 6 },

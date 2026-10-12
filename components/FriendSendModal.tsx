@@ -22,6 +22,10 @@ interface Props {
   friend: FriendUser | null;
   /** Référence à pré-remplir pour un envoi de hadith (Phase 4). */
   hadithRef?: { collectionId: string; n: number } | null;
+  /** Type pré-sélectionné à l'ouverture (ex. « reminder » depuis un défi). */
+  initialType?: SendType;
+  /** Défi pré-sélectionné pour une relance (« remainder »). */
+  reminderChallengeId?: string;
   onClose: () => void;
   onSent?: () => void;
 }
@@ -30,7 +34,7 @@ interface Props {
  * Envoi « à un ami » (Phases 2/3/4) : encouragement, réussite, relance de défi
  * ou hadith. Passé par le quota serveur (3/jour, débité atomiquement).
  */
-export default function FriendSendModal({ visible, friend, hadithRef, onClose, onSent }: Props) {
+export default function FriendSendModal({ visible, friend, hadithRef, initialType, reminderChallengeId, onClose, onSent }: Props) {
   const tr = useT();
   const T = useTheme();
   const P = friendPalette(T.isDark);
@@ -43,7 +47,7 @@ export default function FriendSendModal({ visible, friend, hadithRef, onClose, o
 
   useEffect(() => {
     if (!visible) return;
-    setType(hadithRef ? 'hadith' : 'encouragement');
+    setType(initialType ?? (hadithRef ? 'hadith' : 'encouragement'));
     setText('');
     setSending(false);
     fetchSendQuota().then(setQuota).catch(() => setQuota(null));
@@ -51,10 +55,11 @@ export default function FriendSendModal({ visible, friend, hadithRef, onClose, o
       .then((r) => {
         const active = r.challenges.filter((c) => c.status === 'active');
         setChallenges(active);
-        setChallengeId(active.length ? active[0].id : null);
+        const wanted = reminderChallengeId ?? (initialType === 'reminder' ? active[0]?.id : undefined);
+        setChallengeId(active.find((c) => c.id === wanted)?.id ?? active[0]?.id ?? null);
       })
       .catch(() => {});
-  }, [visible, hadithRef]);
+  }, [visible, hadithRef, initialType, reminderChallengeId]);
 
   const types: { id: SendType; label: string; icon: keyof typeof Feather.glyphMap }[] = [
     { id: 'encouragement', label: tr('friends.sendEncouragement'), icon: 'smile' },

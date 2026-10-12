@@ -45,6 +45,8 @@ export interface MeResponse {
   /** Id de la prochaine leçon du parcours (cuid), ou null si c'était la
    *  dernière. Présent uniquement sur POST /lesson/complete. */
   nextLessonId?: string | null;
+  /** Présent si l'on vient de maîtriser une sourate (première complétion). */
+  sourateMastered?: { numero: number; nom: string } | null;
 }
 
 export interface OnboardingInput {

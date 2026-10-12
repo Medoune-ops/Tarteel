@@ -14,6 +14,7 @@ import { useUserStore } from '../../../store/userStore';
 import { useReviewPromptStore } from '../../../store/reviewPromptStore';
 import { completeLesson } from '../../../lib/api';
 import { invalidate } from '../../../lib/api/swr';
+import SourateMasteredModal from '../../../components/SourateMasteredModal';
 import { useT } from '../../../lib/i18n';
 
 const LEVEL_TARGET = 0.62; // 62 %
@@ -53,6 +54,8 @@ export default function FinishScreen() {
   const [doubleXpWasActive, setDoubleXpWasActive] = useState(false);
   // Évite un double appel (StrictMode / re-render).
   const completedRef = useRef(false);
+  const [showMastered, setShowMastered] = useState(false);
+  const [mastered, setMastered] = useState<{ numero: number; nom: string } | null>(null);
 
   useEffect(() => {
     if (completedRef.current) return;
@@ -80,6 +83,10 @@ export default function FinishScreen() {
         invalidate(`sections:${useUserStore.getState().language}`);
         invalidate('league');
         invalidate(`activity:${new Date().toISOString().slice(0, 7)}`);
+        if (data.sourateMastered) {
+          setMastered(data.sourateMastered);
+          setShowMastered(true);
+        }
       })
       .catch((err) => {
         console.log('[finish] completeLesson FAILED', err);
@@ -232,6 +239,13 @@ export default function FinishScreen() {
           <Text style={styles.ctaLabel}>{tr('finish.continue')}</Text>
         </Pressable>
       </Animated.View>
+
+      {/* Célébration si on vient de maîtriser une sourate (première fois). */}
+      <SourateMasteredModal
+        visible={showMastered}
+        sourate={mastered}
+        onContinue={goNext}
+      />
     </View>
   );
 }
