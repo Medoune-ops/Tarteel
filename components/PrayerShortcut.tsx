@@ -13,11 +13,20 @@ const STORAGE_KEY = 'prayerShortcut:position';
 // Écrans avec la tab bar visible → le raccourci ne doit pas descendre dessus.
 const TAB_ROUTES = new Set(['/parcours', '/revisions', '/ligues', '/coran', '/profil']);
 
-/** Écrans où le raccourci gênerait : exercices, lecture, et la page prières elle-même. */
+/**
+ * Écrans où le raccourci gênerait : exercices, lecture, et la page prières
+ * elle-même.
+ *
+ * Les écrans de hadiths en font partie : ce sont des cartes plein écran, où
+ * la pastille se posait sur le texte et sur les boutons favori et partage.
+ */
 function isHiddenOn(pathname: string) {
   return (
     pathname === '/prieres' ||
     pathname === '/coran-player' ||
+    pathname === '/hadiths' ||
+    pathname === '/hadith-du-jour' ||
+    pathname === '/hadiths-mes-hadiths' ||
     pathname.startsWith('/lesson/') ||
     pathname.startsWith('/revision/') ||
     pathname.startsWith('/lecture/')

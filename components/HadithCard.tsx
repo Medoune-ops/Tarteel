@@ -96,6 +96,12 @@ export default function HadithCard({
 
   // Texte : blanc cassé en sombre (jamais #FFF pur), encre profonde en clair.
   const textColor = T.isDark ? '#EDEAF5' : '#171C26';
+  /*
+   * Couleur du voile sous le pied. Elle reprend la FIN du dégradé de fond
+   * (troisième couleur), pour que le voile se confonde avec la carte au lieu
+   * de former une bande visible.
+   */
+  const veil = T.isDark ? T.pageBg : '#FFFFFF';
   // Accents (numéro, filet, icônes) : la couleur de thème éclaircie en sombre
   // pour tenir le contraste sur fond nuit, telle quelle en clair.
   const accent = T.isDark ? withAlpha(themeColor, 0.95) : themeColor;
@@ -140,6 +146,19 @@ export default function HadithCard({
           </Text>
         </ScrollView>
       </View>
+
+      {/*
+        Voile sous le pied.
+        Le texte défile DERRIÈRE la barre d'actions : sans ce dégradé, les
+        dernières lignes passent sous les boutons et l'on ne distingue plus
+        ni la référence ni les icônes. Le voile part du fond de la carte et
+        s'efface vers le haut, pour que le texte semble s'y fondre.
+      */}
+      <LinearGradient
+        colors={[withAlpha(veil, 0), withAlpha(veil, 0.92), veil]}
+        style={[styles.veil, { height: insetBottom + 104 }]}
+        pointerEvents="none"
+      />
 
       {/* Pied : référence discrète à gauche, actions à droite. */}
       <View style={[styles.footer, { bottom: insetBottom + 22 }]}>
@@ -223,6 +242,8 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: 8 },
 
   text: { fontFamily: 'Nunito_600SemiBold', textAlign: 'left' },
+
+  veil: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 
   footer: {
     position: 'absolute', left: 30, right: 30,

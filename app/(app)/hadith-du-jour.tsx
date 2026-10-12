@@ -191,7 +191,8 @@ export default function HadithDuJourScreen() {
             favorite={isFavorite(daily.collectionId, daily.n)}
             onFavorite={onFavorite}
             onShare={shareHadith.available ? onShare : undefined}
-            insetTop={insets.top + 34}
+            /* Laisse passer l'en-tête : flèche, bandeau et leur marge. */
+            insetTop={insets.top + 46}
             insetBottom={0}
           />
         ) : (
@@ -227,10 +228,19 @@ export default function HadithDuJourScreen() {
                   {tr('hadiths.daily.remindSub')}
                 </Text>
               </View>
+              {/*
+                La piste à l'état éteint ne peut pas reprendre `soft` : sur la
+                carte blanche du mode clair, une piste quasi blanche avec un
+                bouton blanc dessus rendait l'interrupteur invisible. On prend
+                un gris franc en clair, et le gris violacé de la palette nuit
+                en sombre.
+              */}
               <Switch
                 value={enabled}
                 onValueChange={onToggle}
-                trackColor={{ false: soft, true: '#6B4DFF' }}
+                trackColor={{ false: T.isDark ? '#3A3950' : '#D5D7DE', true: '#6B4DFF' }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={T.isDark ? '#3A3950' : '#D5D7DE'}
               />
             </View>
 
@@ -267,19 +277,39 @@ export default function HadithDuJourScreen() {
         </View>
       </ScrollView>
 
-      {/* Retour, posé par-dessus la carte. */}
-      <Pressable
-        onPress={() => router.back()}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel={tr('hadiths.flow.backA11y')}
-        style={[
-          styles.back,
-          { top: insets.top + 6, backgroundColor: T.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(23,28,38,0.05)' },
-        ]}
-      >
-        <Feather name="chevron-left" size={21} color={T.textSecondary} />
-      </Pressable>
+      {/*
+        En-tête posé par-dessus la carte : retour à gauche, et surtout le
+        bandeau qui ANNONCE le rendez-vous. Sans lui, l'écran est identique au
+        fil de lecture et personne ne comprend qu'il s'agit du hadith du jour.
+        La date dit en plus que la carte change demain.
+      */}
+      <View style={[styles.topbar, { top: insets.top + 6 }]} pointerEvents="box-none">
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={tr('hadiths.flow.backA11y')}
+          style={[
+            styles.back,
+            { backgroundColor: T.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(23,28,38,0.05)' },
+          ]}
+        >
+          <Feather name="chevron-left" size={21} color={T.textSecondary} />
+        </Pressable>
+
+        <View
+          style={[
+            styles.badge,
+            { backgroundColor: T.isDark ? 'rgba(107,77,255,0.22)' : 'rgba(107,77,255,0.10)' },
+          ]}
+        >
+          <Feather name="sun" size={13} color="#6B4DFF" />
+          <Text style={styles.badgeText}>{tr('hadiths.daily.badge')}</Text>
+        </View>
+
+        {/* Contrepoids de la flèche, pour que le bandeau reste centré. */}
+        <View style={styles.back} />
+      </View>
 
       {/* `favTick` force le re-rendu quand le favori change. */}
       <View style={styles.hidden} accessibilityElementsHidden>
@@ -298,10 +328,21 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 40 },
   centerText: { fontFamily: 'Nunito_600SemiBold', fontSize: 14.5, textAlign: 'center' },
 
+  topbar: {
+    position: 'absolute', left: 16, right: 16, zIndex: 5,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
   back: {
-    position: 'absolute', left: 16,
     width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
+  },
+  badge: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    paddingHorizontal: 13, paddingVertical: 7, borderRadius: 14,
+  },
+  badgeText: {
+    fontFamily: 'Nunito_800ExtraBold', fontSize: 11,
+    letterSpacing: 1.1, color: '#6B4DFF',
   },
 
   below: { paddingHorizontal: 22, paddingTop: 18, gap: 14 },

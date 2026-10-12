@@ -320,6 +320,8 @@ const fr = {
   'hadiths.daily.openA11y': 'Le hadith du jour',
   'hadiths.daily.title': 'Le hadith du jour',
   'hadiths.daily.sub': 'Une lecture, chaque matin.',
+  // Bandeau en tête de l'écran : sans lui, on croit être dans le fil normal.
+  'hadiths.daily.badge': 'HADITH DU JOUR',
   'hadiths.daily.readMore': 'Continuer à lire',
   'hadiths.daily.remindTitle': 'Me le rappeler',
   'hadiths.daily.remindSub': 'Une notification, à l\'heure que tu choisis.',
@@ -1594,6 +1596,8 @@ const en: Dict = {
   'hadiths.daily.openA11y': 'Hadith of the day',
   'hadiths.daily.title': 'Hadith of the day',
   'hadiths.daily.sub': 'One reading, every morning.',
+  // Banner at the top: without it, this reads like the ordinary feed.
+  'hadiths.daily.badge': 'HADITH OF THE DAY',
   'hadiths.daily.readMore': 'Keep reading',
   'hadiths.daily.remindTitle': 'Remind me',
   'hadiths.daily.remindSub': 'A notification, at the time you choose.',

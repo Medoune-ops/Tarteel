@@ -18,9 +18,18 @@
  * Le rendu hors écran est assuré par l'appelant (voir `useHadithShare`), qui
  * positionne ce composant hors du champ visible avant de le capturer.
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import HeaderPattern from './HeaderPattern';
+
+/**
+ * L'icône de l'app, posée à côté du nom au bas du visuel partagé.
+ *
+ * On prend la variante « sun » : la mascotte sur fond orange ressort mieux
+ * sur le fond clair du visuel que la variante nuit, qui s'y fondrait.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const APP_ICON = require('../assets/icon-sun.png');
 
 /** Dimensions d'export, en pixels. Ratio 4:5. */
 export const SHARE_WIDTH = 1080;
@@ -66,8 +75,27 @@ function layoutFor(length: number): { fontSize: number; lineHeight: number; max:
   if (length < 200) return { fontSize: 62, lineHeight: 96, max: 200 };
   if (length < 400) return { fontSize: 52, lineHeight: 82, max: 400 };
   if (length < 700) return { fontSize: 44, lineHeight: 70, max: 700 };
-  if (length < 1100) return { fontSize: 37, lineHeight: 59, max: 1100 };
-  return { fontSize: 33, lineHeight: 53, max: 1250 };
+  if (length < 1000) return { fontSize: 37, lineHeight: 59, max: 1000 };
+  // Plafond abaissé depuis que la signature occupe une hauteur fixe en bas :
+  // au-delà, le texte réclamait l'espace du pied et le poussait dehors.
+  return { fontSize: 33, lineHeight: 53, max: 1080 };
+}
+
+/**
+ * Nombre de lignes que le texte peut occuper, à un interlignage donné.
+ *
+ * C'est le garde-fou décisif : la troncature par caractères ignore la largeur
+ * réelle du rendu, donc un texte peut tenir sous `max` et occuper quand même
+ * trop de lignes — auquel cas la référence du hadith remontait par-dessus la
+ * signature de l'app.
+ *
+ * Hauteur disponible = la carte, moins les marges du corps (96 × 2), le
+ * guillemet ouvrant (110), le filet et la référence (~140), et la zone de
+ * signature (190).
+ */
+function maxLines(lineHeight: number): number {
+  const dispo = SHARE_HEIGHT - 96 * 2 - 110 - 140 - 190;
+  return Math.max(4, Math.floor(dispo / lineHeight));
 }
 
 /**
@@ -125,7 +153,15 @@ export default function HadithShareCard({
           «
         </Text>
 
+        {/*
+          `numberOfLines` est le vrai garde-fou : la troncature par caractères
+          ne connaît pas la largeur réelle du rendu, donc un texte peut tenir
+          sous `max` et occuper quand même trop de lignes. En bornant les
+          lignes, le bloc ne peut plus pousser la référence sur la signature.
+        */}
         <Text
+          numberOfLines={maxLines(layout.lineHeight)}
+          ellipsizeMode="tail"
           style={[
             styles.text,
             { fontSize: s(layout.fontSize), lineHeight: s(layout.lineHeight) },
@@ -141,8 +177,21 @@ export default function HadithShareCard({
         </Text>
       </View>
 
-      <View style={[styles.footer, { paddingBottom: s(64) }]}>
-        <Text style={[styles.brand, { fontSize: s(30), color: withAlpha('#171C26', 0.38) }]}>
+      {/*
+        Signature : le logo à côté du nom, pour qu'on reconnaisse l'app d'un
+        coup d'œil quand l'image circule sur WhatsApp ou en story.
+
+        Hauteur FIXE et zone séparée du corps : la référence du hadith vit
+        au-dessus, dans `body`, et un texte long ne peut plus venir se
+        superposer au nom de l'app.
+      */}
+      <View style={[styles.footer, { height: s(190), paddingBottom: s(70) }]}>
+        <Image
+          source={APP_ICON}
+          style={[styles.logo, { width: s(62), height: s(62), borderRadius: s(16) }]}
+          accessibilityIgnoresInvertColors
+        />
+        <Text style={[styles.brand, { fontSize: s(32), color: withAlpha('#171C26', 0.45) }]}>
           {appName}
         </Text>
       </View>
@@ -156,7 +205,12 @@ const styles = StyleSheet.create({
 
   pattern: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0.5 },
 
-  body: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  /*
+   * `minHeight: 0` autorise le corps à se comprimer sous sa taille naturelle.
+   * Le débordement est évité à la source par `maxLines`, qui borne le nombre
+   * de lignes du texte — rogner ici masquerait la référence du hadith.
+   */
+  body: { flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center' },
 
   quote: { fontFamily: 'Baloo2_800ExtraBold', textAlign: 'center' },
 
@@ -174,6 +228,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  footer: { alignItems: 'center' },
+  footer: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 14,
+  },
+  // L'icône est carrée et déjà cadrée : `cover` évite toute déformation si
+  // l'asset change un jour de proportions.
+  logo: { resizeMode: 'cover' },
   brand: { fontFamily: 'Baloo2_700Bold', letterSpacing: 1.6 },
 });

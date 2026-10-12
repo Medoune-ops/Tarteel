@@ -19,8 +19,8 @@ function layoutFor(length: number): { fontSize: number; lineHeight: number; max:
   if (length < 200) return { fontSize: 62, lineHeight: 96, max: 200 };
   if (length < 400) return { fontSize: 52, lineHeight: 82, max: 400 };
   if (length < 700) return { fontSize: 44, lineHeight: 70, max: 700 };
-  if (length < 1100) return { fontSize: 37, lineHeight: 59, max: 1100 };
-  return { fontSize: 33, lineHeight: 53, max: 1250 };
+  if (length < 1000) return { fontSize: 37, lineHeight: 59, max: 1000 };
+  return { fontSize: 33, lineHeight: 53, max: 1080 };
 }
 
 function truncate(text: string, max: number): string {
@@ -111,8 +111,15 @@ describe('Sur le corpus réel (82 hadiths)', () => {
   it('la grande majorité passe sans troncature', () => {
     const all = corpus();
     const kept = all.filter((h) => h.t.length <= layoutFor(h.t.length).max);
-    // Au moins 90 % doivent tenir entiers : tronquer doit rester l'exception.
-    expect(kept.length / all.length).toBeGreaterThan(0.9);
+    /*
+     * Au moins 85 % doivent tenir entiers : tronquer reste l'exception.
+     *
+     * Le seuil était à 90 % avant que la signature (logo + nom de l'app)
+     * occupe une hauteur fixe en bas du visuel. Rendre cette place a abaissé
+     * le plafond de texte, donc trois hadiths de plus sont abrégés — on
+     * préfère ça à un nom d'app qui se superpose à la référence.
+     */
+    expect(kept.length / all.length).toBeGreaterThan(0.85);
   });
 
   it('aucun visuel ne dépasse la limite de sa mise en page', () => {
