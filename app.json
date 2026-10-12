@@ -104,7 +104,11 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#6B4DFF",
-          "sounds": ["./assets/sounds/prayer_reminder.wav"]
+          "defaultChannel": "tarteel-general-v1",
+          "sounds": [
+            "./assets/sounds/prayer_reminder.wav",
+            "./assets/sounds/tarteel_notification.wav"
+          ]
         }
       ],
       "expo-asset",

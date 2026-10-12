@@ -20,6 +20,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { apiFetch } from './api/client';
 import { getDeviceId } from './api/tokens';
+import { GENERAL_CHANNEL_ID, NOTIF_SOUND } from './localNotifications';
 
 /**
  * Identifiant du projet EAS, exigé par getExpoPushTokenAsync() dans un build
@@ -66,6 +67,13 @@ export async function registerForPushNotifications(): Promise<void> {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.DEFAULT,
+      });
+      // Canal des push du serveur : il porte le son Tarteel. Le backend doit
+      // viser ce canal (`channelId`) — voir lib/localNotifications.ts.
+      await Notifications.setNotificationChannelAsync(GENERAL_CHANNEL_ID, {
+        name: 'Tarteel',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        sound: NOTIF_SOUND,
       });
     }
 

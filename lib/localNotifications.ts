@@ -19,6 +19,22 @@
  * s'il manque. Le réglage reste enregistré et s'appliquera dans un vrai build.
  */
 
+/**
+ * Son des notifications « générales » : rappel quotidien, hadith du jour et
+ * push du serveur. Les rappels de prière gardent le leur (lib/prayerReminders).
+ * Fichier embarqué via le plugin expo-notifications (app.json → sounds).
+ *
+ * iOS : sans `sound` dans le contenu, une notification locale est SILENCIEUSE.
+ * Android : le son appartient au canal et est figé à sa création — changer de
+ * son impose un NOUVEL identifiant de canal (d'où le suffixe -v1).
+ *
+ * ⚠️ Le backend doit envoyer ces deux mêmes valeurs dans ses push Expo
+ * (`sound` pour iOS, `channelId` pour Android), sinon ils gardent le son
+ * par défaut du téléphone.
+ */
+export const NOTIF_SOUND = 'tarteel_notification.wav';
+export const GENERAL_CHANNEL_ID = 'tarteel-general-v1';
+
 /** Étiquette portée par chaque notification locale, pour la retrouver. */
 export type LocalKind = 'daily-reminder' | 'hadith-du-jour';
 
@@ -33,9 +49,14 @@ interface NotificationsModule {
   cancelScheduledNotificationAsync: (id: string) => Promise<void>;
   getAllScheduledNotificationsAsync: () => Promise<Scheduled[]>;
   scheduleNotificationAsync: (req: {
-    content: { title: string; body: string; data?: Record<string, unknown> };
+    content: { title: string; body: string; sound?: string; data?: Record<string, unknown> };
     trigger: unknown;
   }) => Promise<string>;
+  setNotificationChannelAsync: (
+    id: string,
+    channel: { name: string; importance: number; sound?: string },
+  ) => Promise<unknown>;
+  AndroidImportance: { DEFAULT: number };
   SchedulableTriggerInputTypes: { DAILY: string };
 }
 
@@ -59,6 +80,15 @@ function load(): NotificationsModule | null {
 /** Les notifications locales sont-elles utilisables sur cet appareil ? */
 export function localNotificationsAvailable(): boolean {
   return load() !== null;
+}
+
+/** Crée le canal Android qui porte NOTIF_SOUND (sans effet sur iOS). */
+async function ensureGeneralChannel(N: NotificationsModule): Promise<void> {
+  await N.setNotificationChannelAsync(GENERAL_CHANNEL_ID, {
+    name: 'Tarteel',
+    importance: N.AndroidImportance.DEFAULT,
+    sound: NOTIF_SOUND,
+  });
 }
 
 /** Annule toutes les notifications locales d'un type donné. */
@@ -97,12 +127,14 @@ export async function scheduleDaily(
     const { granted } = await N.requestPermissionsAsync();
     if (!granted) return;
 
+    await ensureGeneralChannel(N);
     await N.scheduleNotificationAsync({
-      content: { title: texts.title, body: texts.body, data: { kind } },
+      content: { title: texts.title, body: texts.body, sound: NOTIF_SOUND, data: { kind } },
       trigger: {
         type: N.SchedulableTriggerInputTypes.DAILY,
         hour: Math.min(Math.max(Math.trunc(hour), 0), 23),
         minute: 0,
+        channelId: GENERAL_CHANNEL_ID,
       },
     });
   } catch {
@@ -132,15 +164,17 @@ export async function restoreLocalNotifications(
     const { granted } = await N.getPermissionsAsync();
     if (!granted) return;
 
+    await ensureGeneralChannel(N);
     for (const it of items) {
       await cancelKind(N, it.kind);
       if (!it.enabled) continue;
       await N.scheduleNotificationAsync({
-        content: { title: it.texts.title, body: it.texts.body, data: { kind: it.kind } },
+        content: { title: it.texts.title, body: it.texts.body, sound: NOTIF_SOUND, data: { kind: it.kind } },
         trigger: {
           type: N.SchedulableTriggerInputTypes.DAILY,
           hour: Math.min(Math.max(Math.trunc(it.hour), 0), 23),
           minute: 0,
+          channelId: GENERAL_CHANNEL_ID,
         },
       });
     }
