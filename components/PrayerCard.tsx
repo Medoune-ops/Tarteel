@@ -31,7 +31,6 @@ export default function PrayerCard({ onPress, localeTag = 'fr-FR' }: Props) {
   const latitude = usePrayerStore((s) => s.latitude);
   const longitude = usePrayerStore((s) => s.longitude);
   const cityName = usePrayerStore((s) => s.cityName);
-  const method = usePrayerStore((s) => s.method);
 
   // Re-rendu chaque minute : le compte à rebours doit descendre tout seul.
   const [now, setNow] = useState(() => new Date());
@@ -42,14 +41,14 @@ export default function PrayerCard({ onPress, localeTag = 'fr-FR' }: Props) {
 
   const upcoming = useMemo(() => {
     if (latitude == null || longitude == null) return null;
-    const slots = computePrayerTimes(latitude, longitude, method, now);
+    const slots = computePrayerTimes(latitude, longitude, now);
     const next = nextPrayer(slots, now);
     // Après l'Isha, la prochaine est le Fajr de demain — sinon la carte
     // afficherait une heure déjà passée toute la soirée.
     if (next) return next;
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    return computePrayerTimes(latitude, longitude, method, tomorrow)[0] ?? null;
-  }, [latitude, longitude, method, now]);
+    return computePrayerTimes(latitude, longitude, tomorrow)[0] ?? null;
+  }, [latitude, longitude, now]);
 
   // Position inconnue : la carte invite à la définir plutôt que de rester vide.
   if (latitude == null || longitude == null) {

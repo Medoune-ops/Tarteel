@@ -30,7 +30,7 @@ import { syncPrayerReminders, PRAYER_SOUND, type ReminderConfig } from '../lib/p
 
 const ALL = { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true };
 const DAKAR: ReminderConfig = {
-  enabled: true, latitude: 14.6928, longitude: -17.4467, method: 'muslimWorldLeague', prayers: ALL,
+  enabled: true, latitude: 14.6928, longitude: -17.4467, prayers: ALL,
 };
 // Selon le fuseau de la machine de test, certaines prières d'aujourd'hui sont
 // déjà passées à cette heure : on vérifie des propriétés, pas un compte exact.

@@ -4,7 +4,7 @@
     "slug": "tarteel",
     "version": "1.0.4",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-sun.png",
     "userInterfaceStyle": "automatic",
     "scheme": "tarteel",
     "ios": {
@@ -27,11 +27,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Ta position sert uniquement à calculer les heures de prière sur ton appareil. Elle n'est jamais envoyée ni partagée."
       },
-      "icon": {
-        "light": "./assets/icon-light.png",
-        "dark": "./assets/icon-dark.png",
-        "tinted": "./assets/icon-tinted.png"
-      },
+      "icon": "./assets/icon-sun.png",
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.tarteel.app.expowidgets"
@@ -42,7 +38,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#6B4DFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
+        "backgroundImage": "./assets/android-icon-background-sun.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -127,6 +123,14 @@
       [
         "expo-alternate-app-icons",
         [
+          {
+            "name": "Night",
+            "ios": "./assets/icon.png",
+            "android": {
+              "foregroundImage": "./assets/android-icon-foreground.png",
+              "backgroundImage": "./assets/android-icon-background.png"
+            }
+          },
           {
             "name": "Sun",
             "ios": "./assets/icon-sun.png",

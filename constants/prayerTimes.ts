@@ -7,17 +7,12 @@
  * l'app souffre déjà assez du hors-ligne.
  *
  * ⚠️ CONTENU RELIGIEUX — la méthode de calcul change les heures (surtout Fajr
- * et Isha, dont l'angle solaire varie d'une école à l'autre). On expose donc le
- * choix à l'utilisateur plutôt que d'imposer un réglage : des horaires « faux »
- * de 15 minutes par rapport à la mosquée du quartier ruinent la confiance.
+ * et Isha, dont l'angle solaire varie d'une école à l'autre). Une seule méthode
+ * est utilisée : la Ligue Islamique Mondiale, la plus répandue en Afrique de
+ * l'Ouest et en Europe. L'Asr suit le calcul standard (malikite / chaféite /
+ * hanbalite), valeur par défaut de la librairie.
  */
-import {
-  CalculationMethod,
-  Coordinates,
-  PrayerTimes,
-  Qibla,
-  type CalculationParameters,
-} from 'adhan';
+import { CalculationMethod, Coordinates, PrayerTimes, Qibla } from 'adhan';
 
 export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
 
@@ -29,42 +24,17 @@ export interface PrayerSlot {
   time: Date;
 }
 
-/** Méthodes de calcul proposées (libellé affiché côté écran via i18n). */
-export type MethodId = 'muslimWorldLeague' | 'egyptian' | 'karachi' | 'ummAlQura' | 'moonsightingCommittee';
-
-export const METHOD_IDS: MethodId[] = [
-  'muslimWorldLeague',
-  'egyptian',
-  'karachi',
-  'ummAlQura',
-  'moonsightingCommittee',
-];
-
-/**
- * Défaut : Muslim World League, la plus répandue en Afrique de l'Ouest et en
- * Europe. L'utilisateur peut en changer dans les réglages.
- */
-export const DEFAULT_METHOD: MethodId = 'muslimWorldLeague';
-
-function paramsFor(method: MethodId): CalculationParameters {
-  switch (method) {
-    case 'egyptian': return CalculationMethod.Egyptian();
-    case 'karachi': return CalculationMethod.Karachi();
-    case 'ummAlQura': return CalculationMethod.UmmAlQura();
-    case 'moonsightingCommittee': return CalculationMethod.MoonsightingCommittee();
-    case 'muslimWorldLeague':
-    default: return CalculationMethod.MuslimWorldLeague();
-  }
+function timesFor(latitude: number, longitude: number, date: Date): PrayerTimes {
+  return new PrayerTimes(new Coordinates(latitude, longitude), date, CalculationMethod.MuslimWorldLeague());
 }
 
 /** Les 5 prières du jour pour une position donnée. */
 export function computePrayerTimes(
   latitude: number,
   longitude: number,
-  method: MethodId = DEFAULT_METHOD,
   date: Date = new Date(),
 ): PrayerSlot[] {
-  const times = new PrayerTimes(new Coordinates(latitude, longitude), date, paramsFor(method));
+  const times = timesFor(latitude, longitude, date);
   return [
     { name: 'fajr', time: times.fajr },
     { name: 'dhuhr', time: times.dhuhr },
@@ -72,6 +42,20 @@ export function computePrayerTimes(
     { name: 'maghrib', time: times.maghrib },
     { name: 'isha', time: times.isha },
   ];
+}
+
+/**
+ * Chourouq (lever du soleil) : la fin du temps du Fajr, PAS une sixième
+ * prière. Volontairement hors de `computePrayerTimes` pour ne jamais se
+ * retrouver « prochaine prière » ni dans les rappels — l'écran l'affiche
+ * rattaché à la ligne du Fajr.
+ */
+export function computeSunrise(
+  latitude: number,
+  longitude: number,
+  date: Date = new Date(),
+): Date {
+  return timesFor(latitude, longitude, date).sunrise;
 }
 
 /**

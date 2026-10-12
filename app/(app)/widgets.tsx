@@ -43,14 +43,19 @@ try {
   }
 }
 
-// null = icône par défaut (Nuit, celle déclarée dans app.json → icon/ios.icon/
-// android.adaptiveIcon), 'Sun' = alternative déclarée via le plugin
+// null = icône par défaut (Soleil, celle déclarée dans app.json → icon/ios.icon/
+// android.adaptiveIcon), 'Night' = alternative déclarée via le plugin
 // expo-alternate-app-icons (voir app.json → plugins). Le nom DOIT correspondre
 // exactement (PascalCase) à celui déclaré dans la config du plugin.
-type AppIconChoice = { key: string; name: string | null; source: number; labelKey: 'widgets.icon.night' | 'widgets.icon.sun' | 'widgets.icon.duo' | 'widgets.icon.fille' | 'widgets.icon.garcon' };
+//
+// `legacyName` : avant la 1.0.5 le défaut était Nuit et Soleil était
+// l'alternative 'Sun'. Ceux qui l'avaient choisie sont toujours sur cet alias
+// (gardé dans app.json : le retirer ferait disparaître leur icône du lanceur
+// Android) — on le reconnaît donc comme « Soleil actif ».
+type AppIconChoice = { key: string; name: string | null; legacyName?: string; source: number; labelKey: 'widgets.icon.night' | 'widgets.icon.sun' | 'widgets.icon.duo' | 'widgets.icon.fille' | 'widgets.icon.garcon' };
 const APP_ICON_CHOICES: AppIconChoice[] = [
-  { key: 'night', name: null, source: require('../../assets/icon.png'), labelKey: 'widgets.icon.night' },
-  { key: 'sun', name: 'Sun', source: require('../../assets/icon-sun.png'), labelKey: 'widgets.icon.sun' },
+  { key: 'sun', name: null, legacyName: 'Sun', source: require('../../assets/icon-sun.png'), labelKey: 'widgets.icon.sun' },
+  { key: 'night', name: 'Night', source: require('../../assets/icon.png'), labelKey: 'widgets.icon.night' },
   { key: 'duo', name: 'Duo', source: require('../../assets/icon-duo.png'), labelKey: 'widgets.icon.duo' },
   { key: 'fille', name: 'Fille', source: require('../../assets/icon-fille.png'), labelKey: 'widgets.icon.fille' },
   { key: 'garcon', name: 'Garcon', source: require('../../assets/icon-garcon.png'), labelKey: 'widgets.icon.garcon' },
@@ -107,7 +112,7 @@ function AppIconPicker() {
         contentContainerStyle={styles.iconRow}
       >
         {APP_ICON_CHOICES.map((choice) => {
-          const isActive = active === choice.name;
+          const isActive = active === choice.name || (choice.legacyName != null && active === choice.legacyName);
           return (
             <Pressable
               key={choice.key}
