@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { withDangerousMod, withXcodeProject } = require('@expo/config-plugins');
+const { withFinalizedMod, withXcodeProject } = require('@expo/config-plugins');
 
 /**
  * Active la localisation des widgets iOS.
@@ -27,20 +27,28 @@ const { withDangerousMod, withXcodeProject } = require('@expo/config-plugins');
 const LANGS = ['fr', 'en'];
 const TARGET = 'TarteelWidgets';
 
-/** Ajoute CFBundleLocalizations a l'Info.plist de l'extension widget. */
+/**
+ * Ajoute CFBundleLocalizations a l'Info.plist de l'extension widget.
+ *
+ * Mod "finalized" et non "dangerous" : Expo execute TOUS les mods dangerous
+ * avant les mods xcodeproj, quel que soit l'ordre dans app.json. Or expo-widget
+ * cree cet Info.plist dans son mod xcodeproj — sur un prebuild propre (EAS),
+ * un mod dangerous le cherchait donc avant qu'il existe. Les mods finalized
+ * passent en dernier, une fois tous les fichiers ecrits.
+ */
 function withWidgetInfoPlistLocalizations(config) {
-  return withDangerousMod(config, [
+  return withFinalizedMod(config, [
     'ios',
     (cfg) => {
       const plistPath = path.join(cfg.modRequest.platformProjectRoot, TARGET, 'Info.plist');
 
-      // expo-widget cree ce fichier dans son propre mod ; s'il n'est pas encore
-      // la, mieux vaut echouer bruyamment que produire un build ou les widgets
-      // restent silencieusement en francais.
+      // expo-widget cree ce fichier dans son mod xcodeproj ; s'il manque, mieux
+      // vaut echouer bruyamment que produire un build ou les widgets restent
+      // silencieusement en francais.
       if (!fs.existsSync(plistPath)) {
         throw new Error(
-          `[withWidgetLocalizations] ${plistPath} introuvable. Le plugin doit passer ` +
-            `APRES expo-widget dans app.json.`,
+          `[withWidgetLocalizations] ${plistPath} introuvable : expo-widget ` +
+            `n'a pas genere l'extension TarteelWidgets.`,
         );
       }
 
