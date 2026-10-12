@@ -55,7 +55,24 @@ export default function NotificationsScreen() {
 
   const load = () => {
     setLoadError(false);
-    fetchNotificationPrefs().then(setPrefs).catch(() => setLoadError(true));
+    fetchNotificationPrefs()
+      .then((p) => {
+        setPrefs(p);
+        // Le rappel quotidien s'affiche depuis le store local, mais c'est le
+        // serveur qui le sert au job de rappels. Tant que `pickHour` ne l'a pas
+        // persisté, les deux divergent et l'écran Paramètres — qui lit le
+        // serveur — montre l'ancienne heure. On repousse donc le choix local
+        // dès qu'un écart est constaté, pour rattraper les réglages faits
+        // avant ce correctif.
+        const { reminderHour: localHour, dailyReminder: localOn } = useUserStore.getState();
+        const diff: Partial<NotificationPrefs> = {};
+        if (p.reminderHour !== localHour) diff.reminderHour = localHour;
+        if (p.notifDailyReminder !== localOn) diff.notifDailyReminder = localOn;
+        if (Object.keys(diff).length > 0) {
+          updateNotificationPrefs(diff).then(setPrefs).catch(() => { /* resync plus tard */ });
+        }
+      })
+      .catch(() => setLoadError(true));
   };
   useEffect(load, []);
 
@@ -82,15 +99,32 @@ export default function NotificationsScreen() {
     void scheduleDaily('daily-reminder', on, hour, dailyReminderMessage(reminderLang));
   }, [reminderLang]);
 
+  /**
+   * Persiste une préférence de rappel côté serveur.
+   *
+   * Distinct de `patch` : celui-ci ne part QUE si `prefs` est déjà chargé, or
+   * l'heure doit être enregistrée même quand la carte serveur n'a pas pu être
+   * lue (hors ligne au moment de l'ouverture). Le store local reste la source
+   * d'affichage ; cet appel évite que `/me/notifications/preferences` reste sur
+   * son ancienne valeur et ré-écrase le choix au prochain écran qui la relit.
+   */
+  const persistReminder = useCallback((change: Partial<NotificationPrefs>) => {
+    updateNotificationPrefs(change)
+      .then((p) => setPrefs(p))
+      .catch(() => { /* hors ligne : le store local garde le choix, resync plus tard */ });
+  }, []);
+
   const toggleReminder = useCallback((on: boolean) => {
     setDailyReminder(on);
     reschedule(on, reminderHour);
-  }, [setDailyReminder, reschedule, reminderHour]);
+    persistReminder({ notifDailyReminder: on });
+  }, [setDailyReminder, reschedule, reminderHour, persistReminder]);
 
   const pickHour = useCallback((h: number) => {
     setReminderHour(h);
     if (dailyReminder) reschedule(true, h);
-  }, [setReminderHour, dailyReminder, reschedule]);
+    persistReminder({ reminderHour: h });
+  }, [setReminderHour, dailyReminder, reschedule, persistReminder]);
 
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
