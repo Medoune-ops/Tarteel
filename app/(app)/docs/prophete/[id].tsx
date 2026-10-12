@@ -3,6 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { DocHeader, Quote } from '../_components';
 import { PROPHETES, usePropheteLocalized } from '../_prophetes-data';
 import { useT } from '../../../../lib/i18n';
+import { prophetIcon } from '../../../../components/ProphetIcons';
 
 const C = '#D96E00';
 
@@ -12,10 +13,11 @@ export default function PropheteDetail() {
   const p = PROPHETES.find((x) => x.id === id) ?? PROPHETES[0];
   const { titre, histoire, verset } = usePropheteLocalized(p);
   const numero = PROPHETES.indexOf(p) + 1;
+  const Icon = prophetIcon(p.id);
 
   return (
     <View style={styles.screen}>
-      <DocHeader emoji={p.emoji} titre={p.nom} sous={p.fr ? `${p.arabe}  ·  ${p.fr}` : p.arabe} c1="#F0820C" c2="#D96E00" />
+      <DocHeader icon={<Icon size={56} />} titre={p.nom} sous={p.fr ? `${p.arabe}  ·  ${p.fr}` : p.arabe} c1="#F0820C" c2="#D96E00" />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 

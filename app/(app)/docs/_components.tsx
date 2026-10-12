@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-/** En-tête dégradé avec bouton retour, emoji, titre. */
-export function DocHeader({ emoji, titre, sous, c1, c2 }: {
-  emoji: string; titre: string; sous?: string; c1: string; c2: string;
+/** En-tête dégradé avec bouton retour, emoji ou icône SVG (`icon` prime), titre. */
+export function DocHeader({ emoji, icon, titre, sous, c1, c2 }: {
+  emoji?: string; icon?: React.ReactNode; titre: string; sous?: string; c1: string; c2: string;
 }) {
   const router = useRouter();
   return (
@@ -13,7 +13,7 @@ export function DocHeader({ emoji, titre, sous, c1, c2 }: {
       <Pressable style={s.back} onPress={() => router.back()} hitSlop={10}>
         <Feather name="arrow-left" size={24} color="#fff" />
       </Pressable>
-      <Text style={s.emoji}>{emoji}</Text>
+      {icon ? <View style={s.icon}>{icon}</View> : <Text style={s.emoji}>{emoji}</Text>}
       <Text style={s.titre}>{titre}</Text>
       {sous && <Text style={s.sous}>{sous}</Text>}
     </LinearGradient>
@@ -104,6 +104,7 @@ const s = StyleSheet.create({
   header: { paddingTop: 54, paddingBottom: 26, paddingHorizontal: 24, alignItems: 'center' },
   back: { position: 'absolute', top: 54, left: 18 },
   emoji: { fontSize: 50, marginBottom: 8 },
+  icon: { marginBottom: 10 },
   titre: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 26, color: '#fff', textAlign: 'center' },
   sous: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginTop: 4 },
 
