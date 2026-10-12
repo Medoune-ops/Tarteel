@@ -26,6 +26,12 @@ interface Props {
   initialType?: SendType;
   /** Défi pré-sélectionné pour une relance (« remainder »). */
   reminderChallengeId?: string;
+  /**
+   * Numéro de sourate MAÎTRISÉE (renvoyé par le serveur, ex. `sourateMastered`).
+   * Sa présence débloque l'envoi « réussite » : on ne partage qu'une réussite
+   * écrite serveur (règle 2). L'option disparaît si absente.
+   */
+  successSourateNumero?: number | null;
   onClose: () => void;
   onSent?: () => void;
 }
@@ -34,7 +40,7 @@ interface Props {
  * Envoi « à un ami » (Phases 2/3/4) : encouragement, réussite, relance de défi
  * ou hadith. Passé par le quota serveur (3/jour, débité atomiquement).
  */
-export default function FriendSendModal({ visible, friend, hadithRef, initialType, reminderChallengeId, onClose, onSent }: Props) {
+export default function FriendSendModal({ visible, friend, hadithRef, initialType, reminderChallengeId, successSourateNumero, onClose, onSent }: Props) {
   const tr = useT();
   const T = useTheme();
   const P = friendPalette(T.isDark);
@@ -47,7 +53,9 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
 
   useEffect(() => {
     if (!visible) return;
-    setType(initialType ?? (hadithRef ? 'hadith' : 'encouragement'));
+    const initial = initialType ?? (hadithRef ? 'hadith' : 'encouragement');
+    // Pas de réussite sans attestation serveur (règle 2).
+    setType(initial === 'success' && successSourateNumero == null ? 'encouragement' : initial);
     setText('');
     setSending(false);
     fetchSendQuota().then(setQuota).catch(() => setQuota(null));
@@ -59,18 +67,22 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
         setChallengeId(active.find((c) => c.id === wanted)?.id ?? active[0]?.id ?? null);
       })
       .catch(() => {});
-  }, [visible, hadithRef, initialType, reminderChallengeId]);
+  }, [visible, hadithRef, initialType, reminderChallengeId, successSourateNumero]);
 
   const types: { id: SendType; label: string; icon: keyof typeof Feather.glyphMap }[] = [
     { id: 'encouragement', label: tr('friends.sendEncouragement'), icon: 'smile' },
-    { id: 'success', label: tr('friends.sendSuccess'), icon: 'star' },
+    // « Réussite » n'est proposée que si le serveur a attesté une sourate
+    // maîtrisée (règle 2) : jamais une réussite auto-déclarée par le client.
+    ...(successSourateNumero != null
+      ? [{ id: 'success' as const, label: tr('friends.sendSuccess'), icon: 'star' as const }]
+      : []),
     { id: 'reminder', label: tr('friends.sendReminder'), icon: 'target' },
     { id: 'hadith', label: tr('friends.sendHadith'), icon: 'book-open' },
   ];
 
   const canSend =
     (type === 'encouragement' && text.trim().length > 0) ||
-    (type === 'success') ||
+    (type === 'success' && successSourateNumero != null) ||
     (type === 'reminder' && challengeId != null) ||
     (type === 'hadith' && hadithRef != null);
 
@@ -80,7 +92,7 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
     try {
       const payload =
         type === 'encouragement' ? { type, text: text.trim() } as const :
-        type === 'success' ? { type, text: text.trim() || undefined } as const :
+        type === 'success' ? { type, numero: successSourateNumero!, text: text.trim() || undefined } as const :
         type === 'reminder' ? { type, challengeId: challengeId! } as const :
         { type, collectionId: hadithRef!.collectionId, n: hadithRef!.n, text: text.trim() || undefined } as const;
       const res = await sendToFriend(friend.id, payload);

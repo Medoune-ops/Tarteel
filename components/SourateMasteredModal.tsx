@@ -83,6 +83,7 @@ export default function SourateMasteredModal({ visible, sourate, onContinue }: P
                   visible={send}
                   friend={friend}
                   initialType="success"
+                  successSourateNumero={sourate.numero}
                   onClose={() => setSend(false)}
                 />
               </>
