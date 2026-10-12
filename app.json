@@ -208,8 +208,7 @@
           }
         }
       ],
-      "./plugins/withoutActivityRecognition",
-      "./plugins/withWidgetLocalizations"
+      "./plugins/withoutActivityRecognition"
     ],
     "experiments": {
       "typedRoutes": true

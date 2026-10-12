@@ -4,7 +4,7 @@
 // ⚠️ CONTENU RELIGIEUX — voir le fichier TS pour la note de relecture.
 //
 // `traduction` choisit fr/en selon la langue de l'appareil, comme les libellés
-// des .lproj : sans ça le widget affichait le nom en français sur un téléphone
+// de Localization.swift (L.isEnglish) : sans ça le widget affichait le nom en français sur un téléphone
 // en anglais, alors que la traduction anglaise existait déjà côté TS.
 
 import Foundation
@@ -18,8 +18,7 @@ struct AsmaName {
 
     /// Traduction dans la langue de l'appareil (repli français).
     var traduction: String {
-        let lang = Bundle.main.preferredLocalizations.first ?? "fr"
-        return lang.hasPrefix("en") ? en : fr
+        L.isEnglish ? en : fr
     }
 }
 
