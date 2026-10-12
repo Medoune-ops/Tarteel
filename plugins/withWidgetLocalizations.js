@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { withFinalizedMod, withXcodeProject } = require('@expo/config-plugins');
+const { withFinalizedMod, withXcodeProject, IOSConfig } = require('@expo/config-plugins');
 
 /**
  * Active la localisation des widgets iOS.
@@ -25,7 +25,17 @@ const { withFinalizedMod, withXcodeProject } = require('@expo/config-plugins');
  */
 
 const LANGS = ['fr', 'en'];
-const TARGET = 'TarteelWidgets';
+
+/**
+ * Nom de la cible (et du dossier ios/<cible>/) cree par expo-widget. Ce n'est
+ * PAS le nom du dossier source (widgets/ios/TarteelWidgets) : expo-widget le
+ * derive du nom de l'app — meme regle que getTargetName() dans
+ * node_modules/expo-widget/plugin/build/ios/xcode/target.js — soit ici
+ * "TarteelWidgetExtension".
+ */
+function widgetTargetName(config) {
+  return `${IOSConfig.XcodeUtils.sanitizedName(config.name)}WidgetExtension`;
+}
 
 /**
  * Ajoute CFBundleLocalizations a l'Info.plist de l'extension widget.
@@ -40,7 +50,7 @@ function withWidgetInfoPlistLocalizations(config) {
   return withFinalizedMod(config, [
     'ios',
     (cfg) => {
-      const plistPath = path.join(cfg.modRequest.platformProjectRoot, TARGET, 'Info.plist');
+      const plistPath = path.join(cfg.modRequest.platformProjectRoot, widgetTargetName(cfg), 'Info.plist');
 
       // expo-widget cree ce fichier dans son mod xcodeproj ; s'il manque, mieux
       // vaut echouer bruyamment que produire un build ou les widgets restent
@@ -48,7 +58,7 @@ function withWidgetInfoPlistLocalizations(config) {
       if (!fs.existsSync(plistPath)) {
         throw new Error(
           `[withWidgetLocalizations] ${plistPath} introuvable : expo-widget ` +
-            `n'a pas genere l'extension TarteelWidgets.`,
+            `n'a pas genere l'extension widget (nom de cible different ?).`,
         );
       }
 
