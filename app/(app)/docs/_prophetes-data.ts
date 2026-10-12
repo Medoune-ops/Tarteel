@@ -5,7 +5,6 @@ export type Prophete = {
   nom: string;        // nom arabe francisé
   arabe: string;      // nom en arabe
   fr?: string;        // équivalent biblique connu
-  emoji: string;
   titreFr: string;      // accroche courte (fr)
   titreEn: string;      // accroche courte (en)
   histoireFr: string[]; // paragraphes (fr)
@@ -21,7 +20,7 @@ export type Prophete = {
 
 const PROPHETES_DATA: Prophete[] = [
   {
-    id: 'adam', nom: 'Adam', arabe: 'آدم', fr: 'Adam', emoji: '🌍',
+    id: 'adam', nom: 'Adam', arabe: 'آدم', fr: 'Adam',
     titreFr: "Le premier homme et le premier prophète",
     titreEn: 'The first man and the first prophet',
     histoireFr: [
@@ -36,7 +35,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'idris', nom: 'Idris', arabe: 'إدريس', fr: 'Hénoch', emoji: '✒️',
+    id: 'idris', nom: 'Idris', arabe: 'إدريس', fr: 'Hénoch',
     titreFr: "Le sage qui maîtrisa l'écriture",
     titreEn: 'The sage who mastered writing',
     histoireFr: [
@@ -49,7 +48,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'nuh', nom: 'Nuh', arabe: 'نوح', fr: 'Noé', emoji: '🚢',
+    id: 'nuh', nom: 'Nuh', arabe: 'نوح', fr: 'Noé',
     titreFr: "Le prophète de l'arche et du déluge",
     titreEn: 'The prophet of the ark and the flood',
     histoireFr: [
@@ -64,7 +63,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'hud', nom: 'Hud', arabe: 'هود', emoji: '🏜️',
+    id: 'hud', nom: 'Hud', arabe: 'هود',
     titreFr: "Envoyé au peuple de ʿÂd",
     titreEn: 'Sent to the people of Aad',
     histoireFr: [
@@ -77,7 +76,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'salih', nom: 'Salih', arabe: 'صالح', emoji: '🐪',
+    id: 'salih', nom: 'Salih', arabe: 'صالح',
     titreFr: "Le prophète de la chamelle miraculeuse",
     titreEn: 'The prophet of the miraculous she-camel',
     histoireFr: [
@@ -90,7 +89,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'ibrahim', nom: 'Ibrahim', arabe: 'إبراهيم', fr: 'Abraham', emoji: '🕋',
+    id: 'ibrahim', nom: 'Ibrahim', arabe: 'إبراهيم', fr: 'Abraham',
     titreFr: "L'ami d'Allah, père des prophètes",
     titreEn: "Allah's friend, father of the prophets",
     histoireFr: [
@@ -105,7 +104,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'lut', nom: 'Lut', arabe: 'لوط', fr: 'Loth', emoji: '🔥',
+    id: 'lut', nom: 'Lut', arabe: 'لوط', fr: 'Loth',
     titreFr: "Envoyé à Sodome",
     titreEn: 'Sent to Sodom',
     histoireFr: [
@@ -118,7 +117,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'ismail', nom: 'Ismâʿîl', arabe: 'إسماعيل', fr: 'Ismaël', emoji: '💦',
+    id: 'ismail', nom: 'Ismâʿîl', arabe: 'إسماعيل', fr: 'Ismaël',
     titreFr: "Le fils patient d'Ibrahim",
     titreEn: "Ibrahim's patient son",
     histoireFr: [
@@ -131,7 +130,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'ishaq', nom: 'Ishâq', arabe: 'إسحاق', fr: 'Isaac', emoji: '🌟',
+    id: 'ishaq', nom: 'Ishâq', arabe: 'إسحاق', fr: 'Isaac',
     titreFr: "Le fils béni d'Ibrahim",
     titreEn: "Ibrahim's blessed son",
     histoireFr: [
@@ -144,7 +143,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'yaqub', nom: 'Yaʿqûb', arabe: 'يعقوب', fr: 'Jacob', emoji: '👨‍👦',
+    id: 'yaqub', nom: 'Yaʿqûb', arabe: 'يعقوب', fr: 'Jacob',
     titreFr: "Le père des douze tribus",
     titreEn: 'The father of the twelve tribes',
     histoireFr: [
@@ -157,7 +156,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'yusuf', nom: 'Yûsuf', arabe: 'يوسف', fr: 'Joseph', emoji: '👑',
+    id: 'yusuf', nom: 'Yûsuf', arabe: 'يوسف', fr: 'Joseph',
     titreFr: "Le prophète à la belle histoire",
     titreEn: 'The prophet of the beautiful story',
     histoireFr: [
@@ -172,7 +171,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'ayyub', nom: 'Ayyûb', arabe: 'أيوب', fr: 'Job', emoji: '🤲',
+    id: 'ayyub', nom: 'Ayyûb', arabe: 'أيوب', fr: 'Job',
     titreFr: "Le modèle de patience",
     titreEn: 'The model of patience',
     histoireFr: [
@@ -185,7 +184,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'shuayb', nom: 'Shuʿayb', arabe: 'شعيب', emoji: '⚖️',
+    id: 'shuayb', nom: 'Shuʿayb', arabe: 'شعيب',
     titreFr: "Le prophète de la justice commerciale",
     titreEn: 'The prophet of commercial fairness',
     histoireFr: [
@@ -198,7 +197,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'musa', nom: 'Mûsâ', arabe: 'موسى', fr: 'Moïse', emoji: '🌊',
+    id: 'musa', nom: 'Mûsâ', arabe: 'موسى', fr: 'Moïse',
     titreFr: "Celui à qui Allah parla",
     titreEn: 'The one to whom Allah spoke',
     histoireFr: [
@@ -213,7 +212,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'harun', nom: 'Hârûn', arabe: 'هارون', fr: 'Aaron', emoji: '🗣️',
+    id: 'harun', nom: 'Hârûn', arabe: 'هارون', fr: 'Aaron',
     titreFr: "Le frère et soutien de Mûsâ",
     titreEn: "Musa's brother and support",
     histoireFr: [
@@ -226,7 +225,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'dhulkifl', nom: 'Dhûl-Kifl', arabe: 'ذو الكفل', emoji: '🕊️',
+    id: 'dhulkifl', nom: 'Dhûl-Kifl', arabe: 'ذو الكفل',
     titreFr: "L'homme de parole",
     titreEn: 'The man of his word',
     histoireFr: [
@@ -239,7 +238,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'dawud', nom: 'Dâwûd', arabe: 'داود', fr: 'David', emoji: '🎵',
+    id: 'dawud', nom: 'Dâwûd', arabe: 'داود', fr: 'David',
     titreFr: "Le roi prophète à la belle voix",
     titreEn: 'The king-prophet with the beautiful voice',
     histoireFr: [
@@ -252,7 +251,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'sulayman', nom: 'Sulaymân', arabe: 'سليمان', fr: 'Salomon', emoji: '👑',
+    id: 'sulayman', nom: 'Sulaymân', arabe: 'سليمان', fr: 'Salomon',
     titreFr: "Le roi qui commandait le vent et les djinns",
     titreEn: 'The king who commanded the wind and the jinn',
     histoireFr: [
@@ -265,7 +264,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'ilyas', nom: 'Ilyâs', arabe: 'إلياس', fr: 'Élie', emoji: '⚡',
+    id: 'ilyas', nom: 'Ilyâs', arabe: 'إلياس', fr: 'Élie',
     titreFr: "Le défenseur du monothéisme",
     titreEn: 'The defender of monotheism',
     histoireFr: [
@@ -278,7 +277,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'alyasa', nom: 'Al-Yasaʿ', arabe: 'اليسع', fr: 'Élisée', emoji: '🌿',
+    id: 'alyasa', nom: 'Al-Yasaʿ', arabe: 'اليسع', fr: 'Élisée',
     titreFr: "Le successeur d'Ilyâs",
     titreEn: "Ilyas's successor",
     histoireFr: [
@@ -291,7 +290,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'yunus', nom: 'Yûnus', arabe: 'يونس', fr: 'Jonas', emoji: '🐋',
+    id: 'yunus', nom: 'Yûnus', arabe: 'يونس', fr: 'Jonas',
     titreFr: "Le prophète de la baleine",
     titreEn: 'The prophet of the whale',
     histoireFr: [
@@ -309,7 +308,7 @@ const PROPHETES_DATA: Prophete[] = [
     versetArabe: 'لَّآ إِلَـٰهَ إِلَّآ أَنتَ سُبْحَـٰنَكَ إِنِّى كُنتُ مِنَ ٱلظَّـٰلِمِينَ',
   },
   {
-    id: 'zakariya', nom: 'Zakariyyâ', arabe: 'زكريا', fr: 'Zacharie', emoji: '🤍',
+    id: 'zakariya', nom: 'Zakariyyâ', arabe: 'زكريا', fr: 'Zacharie',
     titreFr: "Le gardien de Maryam",
     titreEn: "Maryam's guardian",
     histoireFr: [
@@ -322,7 +321,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'yahya', nom: 'Yahyâ', arabe: 'يحيى', fr: 'Jean-Baptiste', emoji: '🕯️',
+    id: 'yahya', nom: 'Yahyâ', arabe: 'يحيى', fr: 'Jean-Baptiste',
     titreFr: "Le prophète pur et pieux",
     titreEn: 'The pure and pious prophet',
     histoireFr: [
@@ -335,7 +334,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'isa', nom: 'ʿÎsâ', arabe: 'عيسى', fr: 'Jésus', emoji: '🤲',
+    id: 'isa', nom: 'ʿÎsâ', arabe: 'عيسى', fr: 'Jésus',
     titreFr: "Le Messie, né de Maryam",
     titreEn: 'The Messiah, born of Maryam',
     histoireFr: [
@@ -350,7 +349,7 @@ const PROPHETES_DATA: Prophete[] = [
     ],
   },
   {
-    id: 'muhammad', nom: 'Muhammad ﷺ', arabe: 'محمد', emoji: '🌙',
+    id: 'muhammad', nom: 'Muhammad ﷺ', arabe: 'محمد',
     titreFr: "Le sceau des prophètes",
     titreEn: 'The seal of the prophets',
     histoireFr: [

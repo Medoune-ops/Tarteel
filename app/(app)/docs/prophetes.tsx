@@ -2,9 +2,12 @@ import { useState, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { DocHeader } from './_components';
 import { PROPHETES, usePropheteLocalized, type Prophete } from './_prophetes-data';
 import { useT } from '../../../lib/i18n';
+import { ProphetsIcon } from '../../../components/IslamicIcons';
+import { prophetIcon } from '../../../components/ProphetIcons';
 
 export default function DocProphetes() {
   const router = useRouter();
@@ -23,7 +26,7 @@ export default function DocProphetes() {
 
   return (
     <View style={styles.screen}>
-      <DocHeader emoji="👤" titre={tr('docProphetes.headerTitre')} sous={tr('docProphetes.headerSous')} c1="#F0820C" c2="#D96E00" />
+      <DocHeader icon={<ProphetsIcon size={56} />} titre={tr('docProphetes.headerTitre')} sous={tr('docProphetes.headerSous')} c1="#F0820C" c2="#D96E00" />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
@@ -47,7 +50,7 @@ export default function DocProphetes() {
 
         {resultats.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🔍</Text>
+            <Feather name="search" size={40} color="#C9CDD4" />
             <Text style={styles.emptyTitle}>{tr('docProphetes.noneFound')}</Text>
           </View>
         ) : resultats.map((p) => (
@@ -62,12 +65,15 @@ export default function DocProphetes() {
 
 function ProphetCard({ p, onPress }: { p: Prophete; onPress: () => void }) {
   const { titre } = usePropheteLocalized(p);
+  const Icon = prophetIcon(p.id);
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.num}>
         <Text style={styles.numText}>{PROPHETES.indexOf(p) + 1}</Text>
       </View>
-      <Text style={styles.emoji}>{p.emoji}</Text>
+      <LinearGradient colors={['#F0820C', '#D96E00']} style={styles.icon}>
+        <Icon size={26} color="#fff" />
+      </LinearGradient>
       <View style={{ flex: 1 }}>
         <Text style={styles.nom} numberOfLines={1}>
           {p.nom}{p.fr ? <Text style={styles.fr}>  ·  {p.fr}</Text> : null}
@@ -89,7 +95,6 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontFamily: 'Nunito_600SemiBold', fontSize: 15, color: '#1B2333', padding: 0 },
   empty: { alignItems: 'center', paddingVertical: 50, gap: 8 },
-  emptyEmoji: { fontSize: 44 },
   emptyTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17, color: '#1B2333' },
   card: {
     backgroundColor: '#fff', borderRadius: 16, padding: 14,
@@ -98,7 +103,7 @@ const styles = StyleSheet.create({
   },
   num: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFF0E0', alignItems: 'center', justifyContent: 'center' },
   numText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 13, color: '#F0820C' },
-  emoji: { fontSize: 26 },
+  icon: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   nom: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#1B2333' },
   fr: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#A0A5AE' },
   titre: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#8A8F99', marginTop: 2 },
