@@ -1,6 +1,9 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { DocHeader, DocScroll, Section, P, B, Quote, docStyles } from './_components';
 import { useT } from '../../../lib/i18n';
+import {
+  CrescentStarIcon, StarIslamIcon, PrayerMatIcon, ZakatIcon, KaabaColorIcon,
+} from '../../../components/IslamicIcons';
 
 const C = '#2A9E1C';
 
@@ -8,11 +11,11 @@ export default function DocIslam() {
   const tr = useT();
 
   const PILIERS = [
-    { emoji: '🕋', nom: tr('docIslam.pilier1Nom'), fr: tr('docIslam.pilier1Fr'), desc: tr('docIslam.pilier1Desc') },
-    { emoji: '🤲', nom: tr('docIslam.pilier2Nom'), fr: tr('docIslam.pilier2Fr'), desc: tr('docIslam.pilier2Desc') },
-    { emoji: '💰', nom: tr('docIslam.pilier3Nom'), fr: tr('docIslam.pilier3Fr'), desc: tr('docIslam.pilier3Desc') },
-    { emoji: '🌙', nom: tr('docIslam.pilier4Nom'), fr: tr('docIslam.pilier4Fr'), desc: tr('docIslam.pilier4Desc') },
-    { emoji: '🕋', nom: tr('docIslam.pilier5Nom'), fr: tr('docIslam.pilier5Fr'), desc: tr('docIslam.pilier5Desc') },
+    { Icon: StarIslamIcon, nom: tr('docIslam.pilier1Nom'), fr: tr('docIslam.pilier1Fr'), desc: tr('docIslam.pilier1Desc') },
+    { Icon: PrayerMatIcon, nom: tr('docIslam.pilier2Nom'), fr: tr('docIslam.pilier2Fr'), desc: tr('docIslam.pilier2Desc') },
+    { Icon: ZakatIcon, nom: tr('docIslam.pilier3Nom'), fr: tr('docIslam.pilier3Fr'), desc: tr('docIslam.pilier3Desc') },
+    { Icon: CrescentStarIcon, nom: tr('docIslam.pilier4Nom'), fr: tr('docIslam.pilier4Fr'), desc: tr('docIslam.pilier4Desc') },
+    { Icon: KaabaColorIcon, nom: tr('docIslam.pilier5Nom'), fr: tr('docIslam.pilier5Fr'), desc: tr('docIslam.pilier5Desc') },
   ];
 
   const FOI = [
@@ -26,7 +29,7 @@ export default function DocIslam() {
 
   return (
     <View style={docStyles.screen}>
-      <DocHeader emoji="☪️" titre={tr('docIslam.headerTitre')} sous={tr('docIslam.headerSous')} c1="#34C724" c2="#2A9E1C" />
+      <DocHeader icon={<CrescentStarIcon size={56} color="#fff" />} titre={tr('docIslam.headerTitre')} sous={tr('docIslam.headerSous')} c1="#34C724" c2="#2A9E1C" />
       <DocScroll>
 
         <Section titre={tr('docIslam.s1Titre')} accent={C}>
@@ -42,7 +45,7 @@ export default function DocIslam() {
           <P>{tr('docIslam.s2P1')}</P>
           {PILIERS.map((p, i) => (
             <View key={i} style={st.pilier}>
-              <Text style={st.pilierEmoji}>{p.emoji}</Text>
+              <View style={st.pilierIcon}><p.Icon size={26} color={C} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={st.pilierNom}>{i + 1}. {p.nom} <Text style={st.pilierFr}>· {p.fr}</Text></Text>
                 <Text style={st.pilierDesc}>{p.desc}</Text>
@@ -77,7 +80,7 @@ export default function DocIslam() {
 
 const st = StyleSheet.create({
   pilier: { flexDirection: 'row', gap: 12, marginBottom: 14, alignItems: 'flex-start' },
-  pilierEmoji: { fontSize: 26, width: 32, textAlign: 'center' },
+  pilierIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#DEF5E5', alignItems: 'center', justifyContent: 'center' },
   pilierNom: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#1B2333' },
   pilierFr: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#2A9E1C' },
   pilierDesc: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: '#6A7280', lineHeight: 21, marginTop: 2 },

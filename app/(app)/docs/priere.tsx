@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { DocHeader, DocScroll, Section, P, B, Quote, Step, docStyles } from './_components';
 import { useT } from '../../../lib/i18n';
+import { MosqueIcon } from '../../../components/IslamicIcons';
 
 const C = '#C42968';
 
@@ -17,7 +18,7 @@ export default function DocPriere() {
 
   return (
     <View style={docStyles.screen}>
-      <DocHeader emoji="🕌" titre={tr('docPriere.headerTitre')} sous={tr('docPriere.headerSous')} c1="#E0387E" c2="#C42968" />
+      <DocHeader icon={<MosqueIcon size={66} />} titre={tr('docPriere.headerTitre')} sous={tr('docPriere.headerSous')} c1="#E0387E" c2="#C42968" />
       <DocScroll>
 
         <Section titre={tr('docPriere.s1Titre')} accent={C}>
