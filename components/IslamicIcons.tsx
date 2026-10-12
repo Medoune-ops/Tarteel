@@ -300,6 +300,39 @@ export function HadithIcon({ size = 28, color = '#fff' }: { size?: number; color
   );
 }
 
+/** Tapis de prière et son mihrab — pilier As-Salât. */
+export function PrayerMatIcon({ size = 28, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* tapis */}
+      <Rect x={7} y={3} width={14} height={22} rx={1.5} fill={color} opacity={0.3} />
+      <Rect x={7} y={3} width={14} height={22} rx={1.5} stroke={color} strokeWidth={1.3} />
+      {/* mihrab */}
+      <Path d="M10.5 20 V11.5 Q10.5 8.2 14 6.4 Q17.5 8.2 17.5 11.5 V20 Z" fill={color} />
+      {/* franges */}
+      <Path
+        d="M9 1 V3 M12.3 1 V3 M15.7 1 V3 M19 1 V3 M9 25 V27 M12.3 25 V27 M15.7 25 V27 M19 25 V27"
+        stroke={color} strokeWidth={1.1} strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** Bourse et pièce — pilier Az-Zakât. */
+export function ZakatIcon({ size = 28, color = '#fff' }: { size?: number; color?: string }) {
+  const bag = 'M9.5 9.5 L7.5 5.5 Q14 3 20.5 5.5 L18.5 9.5 Q25 14 25 19.5 Q25 25.5 14 25.5 Q3 25.5 3 19.5 Q3 14 9.5 9.5 Z';
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <Path d={bag} fill={color} opacity={0.3} />
+      <Path d={bag} stroke={color} strokeWidth={1.3} strokeLinejoin="round" />
+      {/* lien */}
+      <Rect x={8.5} y={8.6} width={11} height={2} rx={1} fill={color} />
+      {/* pièce */}
+      <Circle cx={14} cy={18} r={3.6} fill={color} />
+    </Svg>
+  );
+}
+
 /** Minaret élancé (style mecquois) — nœud verrouillé. */
 export function MinaretIcon({ size = 32 }: { size?: number }) {
   const c = '#9AA0AA';
