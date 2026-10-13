@@ -1,22 +1,95 @@
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { createContext, useContext, useMemo } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle,
+  interpolate, Extrapolation, type SharedValue,
+} from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+
+/*
+ * En-tête qui se comprime au défilement.
+ *
+ * Un grand en-tête fixe mange en permanence le tiers haut de l'écran. Ici il
+ * se réduit à une barre fine dès qu'on descend : l'icône et le sous-titre
+ * s'effacent, le titre rétrécit, mais le retour reste toujours accessible.
+ *
+ * `DocHeader` et `DocScroll` communiquent par ce contexte : la page les pose
+ * côte à côte sans rien avoir à brancher, et les six pages de contenu en
+ * bénéficient sans être modifiées.
+ */
+const ScrollCtx = createContext<SharedValue<number> | null>(null);
+
+/** Hauteurs de l'en-tête, au repos et une fois comprimé. */
+const H_OUVERT = 190;
+const H_FERME = 92;
+/** Distance de défilement sur laquelle la compression s'étale. */
+const COURSE = H_OUVERT - H_FERME;
 
 /** En-tête dégradé avec bouton retour, emoji ou icône SVG (`icon` prime), titre. */
 export function DocHeader({ emoji, icon, titre, sous, c1, c2 }: {
   emoji?: string; icon?: React.ReactNode; titre: string; sous?: string; c1: string; c2: string;
 }) {
   const router = useRouter();
+  const scrollY = useContext(ScrollCtx);
+
+  const hauteur = useAnimatedStyle(() => {
+    if (!scrollY) return {};
+    return {
+      height: interpolate(scrollY.value, [0, COURSE], [H_OUVERT, H_FERME], Extrapolation.CLAMP),
+    };
+  });
+
+  /*
+   * L'icône et le sous-titre s'effacent AVANT la fin de la compression (à
+   * 55 % de la course) : les voir s'écraser jusqu'au dernier pixel donne une
+   * impression de désordre, alors qu'un fondu plus tôt laisse la barre fine
+   * se poser proprement.
+   */
+  const fondu = useAnimatedStyle(() => {
+    if (!scrollY) return {};
+    return {
+      opacity: interpolate(scrollY.value, [0, COURSE * 0.55], [1, 0], Extrapolation.CLAMP),
+      transform: [
+        { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.6], Extrapolation.CLAMP) },
+      ],
+    };
+  });
+
+  // Le titre rétrécit sans descendre sous 0,74 : en dessous, la police
+  // devient floue sur les écrans peu denses.
+  const titreStyle = useAnimatedStyle(() => {
+    if (!scrollY) return {};
+    return {
+      transform: [
+        { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.74], Extrapolation.CLAMP) },
+      ],
+    };
+  });
+
   return (
-    <LinearGradient colors={[c1, c2]} style={s.header}>
-      <Pressable style={s.back} onPress={() => router.back()} hitSlop={10}>
-        <Feather name="arrow-left" size={24} color="#fff" />
-      </Pressable>
-      {icon ? <View style={s.icon}>{icon}</View> : <Text style={s.emoji}>{emoji}</Text>}
-      <Text style={s.titre}>{titre}</Text>
-      {sous && <Text style={s.sous}>{sous}</Text>}
-    </LinearGradient>
+    <Animated.View style={[s.headerWrap, hauteur]}>
+      <LinearGradient colors={[c1, c2]} style={s.header}>
+        <Pressable style={s.back} onPress={() => router.back()} hitSlop={10}>
+          <Feather name="arrow-left" size={24} color="#fff" />
+        </Pressable>
+
+        <Animated.View style={fondu}>
+          {icon ? <View style={s.icon}>{icon}</View> : <Text style={s.emoji}>{emoji}</Text>}
+        </Animated.View>
+
+        <Animated.Text style={[s.titre, titreStyle]} numberOfLines={1}>
+          {titre}
+        </Animated.Text>
+
+        {sous && (
+          <Animated.Text style={[s.sous, fondu]} numberOfLines={1}>
+            {sous}
+          </Animated.Text>
+        )}
+      </LinearGradient>
+    </Animated.View>
   );
 }
 
@@ -101,7 +174,15 @@ export function Fact({ val, lbl, accent = '#6B4DFF' }: { val: string; lbl: strin
 }
 
 const s = StyleSheet.create({
-  header: { paddingTop: 54, paddingBottom: 26, paddingHorizontal: 24, alignItems: 'center' },
+  // `overflow: hidden` rogne le contenu pendant la compression, pour qu'il ne
+  // déborde pas sur la page quand la hauteur se réduit.
+  headerWrap: { overflow: 'hidden' },
+  // `justifyContent: flex-end` garde le titre collé au bas de l'en-tête quand
+  // celui-ci rétrécit, au lieu de le laisser flotter au centre.
+  header: {
+    flex: 1, paddingTop: 54, paddingBottom: 20, paddingHorizontal: 24,
+    alignItems: 'center', justifyContent: 'flex-end',
+  },
   back: { position: 'absolute', top: 54, left: 18 },
   emoji: { fontSize: 50, marginBottom: 8 },
   icon: { marginBottom: 10 },
@@ -136,12 +217,86 @@ const s = StyleSheet.create({
   factLbl: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, color: '#8A8F99', textAlign: 'center' },
 });
 
-/** Conteneur scroll standard pour une page doc. */
+/**
+ * Conteneur scroll standard pour une page doc.
+ *
+ * Fournit sa position de défilement à `DocHeader` par le contexte : c'est ce
+ * qui permet à l'en-tête de se comprimer sans que la page ait à brancher quoi
+ * que ce soit. L'animation tourne sur le thread natif (Reanimated), donc elle
+ * suit le doigt sans à-coups même sur un défilement rapide.
+ */
 export function DocScroll({ children }: { children: React.ReactNode }) {
+  const scrollY = useContext(ScrollCtx);
+  const local = useSharedValue(0);
+  const cible = scrollY ?? local;
+
+  const onScroll = useAnimatedScrollHandler((e) => {
+    cible.value = e.contentOffset.y;
+  });
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 18, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+    <Animated.ScrollView
+      onScroll={onScroll}
+      // 16 ms : un événement par image à 60 Hz.
+      scrollEventThrottle={16}
+      contentContainerStyle={{ padding: 18, paddingBottom: 30 }}
+      showsVerticalScrollIndicator={false}
+    >
       {children}
-    </ScrollView>
+    </Animated.ScrollView>
+  );
+}
+
+/**
+ * Variante de `DocScroll` pour les pages qui ont besoin de passer leurs
+ * propres props à la liste — celle des prophètes, par exemple, qui ajoute une
+ * barre de recherche et un style de contenu particulier.
+ *
+ * ⚠️ Doit être rendu À L'INTÉRIEUR de `DocScreen`, comme `DocScroll` : c'est
+ * de là que vient la position partagée. Appeler un hook au-dessus de
+ * `DocScreen` ne verrait pas le contexte et l'en-tête resterait figé.
+ */
+export function DocScrollView({ children, contentContainerStyle }: {
+  children: React.ReactNode;
+  contentContainerStyle?: object;
+}) {
+  const scrollY = useContext(ScrollCtx);
+  const local = useSharedValue(0);
+  const cible = scrollY ?? local;
+
+  const onScroll = useAnimatedScrollHandler((e) => {
+    cible.value = e.contentOffset.y;
+  });
+
+  return (
+    <Animated.ScrollView
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+      contentContainerStyle={contentContainerStyle}
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </Animated.ScrollView>
+  );
+}
+
+/**
+ * Racine d'une page de contenu.
+ *
+ * Porte la position de défilement partagée entre `DocHeader` et `DocScroll`,
+ * qui sont frères dans l'arbre et ne peuvent donc pas se la passer
+ * directement. Remplace le `<View style={docStyles.screen}>` des pages.
+ */
+export function DocScreen({ children }: { children: React.ReactNode }) {
+  const scrollY = useSharedValue(0);
+  // La valeur partagée est stable : on mémorise pour ne pas recréer le
+  // contexte à chaque rendu, ce qui rejouerait l'animation.
+  const ctx = useMemo(() => scrollY, [scrollY]);
+
+  return (
+    <ScrollCtx.Provider value={ctx}>
+      <View style={docStyles.screen}>{children}</View>
+    </ScrollCtx.Provider>
   );
 }
 

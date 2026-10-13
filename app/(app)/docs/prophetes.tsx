@@ -3,7 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, TextInput } from 'react-
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { DocHeader } from './_components';
+import { DocScreen, DocHeader , DocScrollView } from './_components';
 import { PROPHETES, usePropheteLocalized, type Prophete } from './_prophetes-data';
 import { useT } from '../../../lib/i18n';
 import { ProphetsIcon } from '../../../components/IslamicIcons';
@@ -25,10 +25,10 @@ export default function DocProphetes() {
   }, [query]);
 
   return (
-    <View style={styles.screen}>
+    <DocScreen>
       <DocHeader icon={<ProphetsIcon size={56} />} titre={tr('docProphetes.headerTitre')} sous={tr('docProphetes.headerSous')} c1="#F0820C" c2="#D96E00" />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <DocScrollView contentContainerStyle={styles.content}>
 
         {/* Recherche */}
         <View style={styles.searchBar}>
@@ -58,8 +58,8 @@ export default function DocProphetes() {
         ))}
 
         <View style={{ height: 24 }} />
-      </ScrollView>
-    </View>
+      </DocScrollView>
+    </DocScreen>
   );
 }
 

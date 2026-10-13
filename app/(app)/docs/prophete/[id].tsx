@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { DocHeader, Quote } from '../_components';
+import { DocScreen, DocHeader, Quote, DocScrollView } from '../_components';
 import { PROPHETES, usePropheteLocalized } from '../_prophetes-data';
 import { useT } from '../../../../lib/i18n';
 import { prophetIcon } from '../../../../components/ProphetIcons';
@@ -16,10 +16,10 @@ export default function PropheteDetail() {
   const Icon = prophetIcon(p.id);
 
   return (
-    <View style={styles.screen}>
+    <DocScreen>
       <DocHeader icon={<Icon size={56} />} titre={p.nom} sous={p.fr ? `${p.arabe}  ·  ${p.fr}` : p.arabe} c1="#F0820C" c2="#D96E00" />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <DocScrollView contentContainerStyle={styles.content}>
 
         {/* Bandeau titre */}
         <View style={styles.banner}>
@@ -53,8 +53,8 @@ export default function PropheteDetail() {
         </View>
 
         <View style={{ height: 24 }} />
-      </ScrollView>
-    </View>
+      </DocScrollView>
+    </DocScreen>
   );
 }
 
