@@ -42,18 +42,53 @@ export function DocHeader({ emoji, icon, titre, sous, c1, c2 }: {
   });
 
   /*
+   * Les marges se resserrent avec la hauteur.
+   *
+   * Sans ça, le `paddingTop: 54` et le `paddingBottom: 20` consomment 74 des
+   * 92 pixels restants : le titre est poussé hors de la zone visible et seul
+   * le bouton retour demeure. En les réduisant, le titre vient se poser à
+   * côté de la flèche.
+   */
+  const marges = useAnimatedStyle(() => {
+    if (!scrollY) return {};
+    return {
+      paddingTop: interpolate(scrollY.value, [0, COURSE], [54, 44], Extrapolation.CLAMP),
+      paddingBottom: interpolate(scrollY.value, [0, COURSE], [20, 18], Extrapolation.CLAMP),
+      // Le titre se décale à droite pour ne pas passer sous la flèche de
+      // retour, qui reste à sa place.
+      paddingLeft: interpolate(scrollY.value, [0, COURSE], [24, 56], Extrapolation.CLAMP),
+    };
+  });
+
+  /*
    * L'icône et le sous-titre s'effacent AVANT la fin de la compression (à
    * 55 % de la course) : les voir s'écraser jusqu'au dernier pixel donne une
    * impression de désordre, alors qu'un fondu plus tôt laisse la barre fine
    * se poser proprement.
    */
-  const fondu = useAnimatedStyle(() => {
+  /*
+   * L'icône et le sous-titre s'effacent ET se replient.
+   *
+   * L'opacité seule ne suffit pas : un élément transparent occupe toujours sa
+   * place, et le titre — pris dans un conteneur en `flex: 1` — se retrouvait
+   * écrasé à une hauteur de zéro. On anime donc aussi leur hauteur, pour
+   * qu'ils libèrent réellement l'espace.
+   */
+  const fonduIcone = useAnimatedStyle(() => {
     if (!scrollY) return {};
     return {
-      opacity: interpolate(scrollY.value, [0, COURSE * 0.55], [1, 0], Extrapolation.CLAMP),
-      transform: [
-        { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.6], Extrapolation.CLAMP) },
-      ],
+      opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
+      height: interpolate(scrollY.value, [0, COURSE], [66, 0], Extrapolation.CLAMP),
+      marginBottom: interpolate(scrollY.value, [0, COURSE], [10, 0], Extrapolation.CLAMP),
+    };
+  });
+
+  const fonduSous = useAnimatedStyle(() => {
+    if (!scrollY) return {};
+    return {
+      opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
+      height: interpolate(scrollY.value, [0, COURSE], [20, 0], Extrapolation.CLAMP),
+      marginTop: interpolate(scrollY.value, [0, COURSE], [4, 0], Extrapolation.CLAMP),
     };
   });
 
@@ -70,12 +105,13 @@ export function DocHeader({ emoji, icon, titre, sous, c1, c2 }: {
 
   return (
     <Animated.View style={[s.headerWrap, hauteur]}>
-      <LinearGradient colors={[c1, c2]} style={s.header}>
+      <LinearGradient colors={[c1, c2]} style={StyleSheet.absoluteFill} />
+      <Animated.View style={[s.header, marges]}>
         <Pressable style={s.back} onPress={() => router.back()} hitSlop={10}>
           <Feather name="arrow-left" size={24} color="#fff" />
         </Pressable>
 
-        <Animated.View style={fondu}>
+        <Animated.View style={[s.iconWrap, fonduIcone]}>
           {icon ? <View style={s.icon}>{icon}</View> : <Text style={s.emoji}>{emoji}</Text>}
         </Animated.View>
 
@@ -84,11 +120,11 @@ export function DocHeader({ emoji, icon, titre, sous, c1, c2 }: {
         </Animated.Text>
 
         {sous && (
-          <Animated.Text style={[s.sous, fondu]} numberOfLines={1}>
+          <Animated.Text style={[s.sous, fonduSous]} numberOfLines={1}>
             {sous}
           </Animated.Text>
         )}
-      </LinearGradient>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -177,10 +213,15 @@ const s = StyleSheet.create({
   // `overflow: hidden` rogne le contenu pendant la compression, pour qu'il ne
   // déborde pas sur la page quand la hauteur se réduit.
   headerWrap: { overflow: 'hidden' },
+  // Conteneur de l'icône : sa hauteur est animée, donc il doit rogner son
+  // contenu pendant le repli au lieu de le laisser déborder.
+  iconWrap: { overflow: 'hidden', alignItems: 'center' },
   // `justifyContent: flex-end` garde le titre collé au bas de l'en-tête quand
   // celui-ci rétrécit, au lieu de le laisser flotter au centre.
+  // Les marges verticales et la marge gauche sont animées (voir `marges`) :
+  // seule la droite est fixe ici, pour garder le titre centré au repos.
   header: {
-    flex: 1, paddingTop: 54, paddingBottom: 20, paddingHorizontal: 24,
+    flex: 1, paddingRight: 24,
     alignItems: 'center', justifyContent: 'flex-end',
   },
   back: { position: 'absolute', top: 54, left: 18 },
