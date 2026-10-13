@@ -43,10 +43,15 @@ export default function CoranScreen() {
   const tr = useT();
   const scrollRef = useScrollToTopOnTabPress();
   const { width } = useWindowDimensions();
-  const FAITS = [
-    { val: '114',   lbl: tr('coran.factSourates') },
+  /*
+   * Les chiffres de l'en-tête. Certains mènent quelque part : « 114 sourates »
+   * ouvre la lecture libre, « 25 prophètes » la page qui les présente. Les
+   * autres restent de simples repères.
+   */
+  const FAITS: { val: string; lbl: string; route?: string }[] = [
+    { val: '114',   lbl: tr('coran.factSourates'),  route: '/(app)/lecture-libre' },
     { val: '6 236', lbl: tr('coran.factVersets') },
-    { val: '25',    lbl: tr('coran.factProphetes') },
+    { val: '25',    lbl: tr('coran.factProphetes'), route: '/(app)/docs/prophetes' },
   ];
 
   return (
@@ -76,12 +81,29 @@ export default function CoranScreen() {
           <Text style={styles.headerSub}>{tr('coran.headerSub')}</Text>
 
           <View style={styles.faits}>
-            {FAITS.map((f, i) => (
-              <View key={i} style={styles.fait}>
-                <Text style={styles.faitVal}>{f.val}</Text>
-                <Text style={styles.faitLbl}>{f.lbl}</Text>
-              </View>
-            ))}
+            {FAITS.map((f, i) => {
+              const contenu = (
+                <>
+                  <Text style={styles.faitVal}>{f.val}</Text>
+                  <Text style={styles.faitLbl}>{f.lbl}</Text>
+                </>
+              );
+              // Une tuile sans route reste un simple repère, non cliquable :
+              // en faire un bouton inerte tromperait sur ce qu'elle fait.
+              return f.route ? (
+                <Pressable
+                  key={i}
+                  style={({ pressed }) => [styles.fait, pressed && styles.faitPresse]}
+                  onPress={() => router.push(f.route as never)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${f.val} ${f.lbl}`}
+                >
+                  {contenu}
+                </Pressable>
+              ) : (
+                <View key={i} style={styles.fait}>{contenu}</View>
+              );
+            })}
           </View>
         </LinearGradient>
 
@@ -139,6 +161,12 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 16,
     paddingVertical: 12, alignItems: 'center', gap: 2,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+  },
+  // Retour d'appui sur les tuiles qui mènent quelque part : la pastille
+  // s'éclaircit légèrement, sans bouger ni changer de taille.
+  faitPresse: {
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    borderColor: 'rgba(255,255,255,0.34)',
   },
   faitVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff' },
   faitLbl: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.85)' },
