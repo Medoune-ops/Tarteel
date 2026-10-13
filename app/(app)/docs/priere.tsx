@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { DocHeader, DocScroll, Section, P, B, Quote, Step, docStyles } from './_components';
+import { DocScreen, DocHeader, DocScroll, Section, P, B, Quote, Step, docStyles } from './_components';
 import { useT } from '../../../lib/i18n';
 import { MosqueIcon } from '../../../components/IslamicIcons';
 
@@ -17,7 +17,7 @@ export default function DocPriere() {
   ];
 
   return (
-    <View style={docStyles.screen}>
+    <DocScreen>
       <DocHeader icon={<MosqueIcon size={66} />} titre={tr('docPriere.headerTitre')} sous={tr('docPriere.headerSous')} c1="#E0387E" c2="#C42968" />
       <DocScroll>
 
@@ -80,7 +80,7 @@ export default function DocPriere() {
         </Section>
 
       </DocScroll>
-    </View>
+    </DocScreen>
   );
 }
 

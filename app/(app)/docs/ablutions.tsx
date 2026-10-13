@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { DocHeader, DocScroll, Section, P, B, Quote, Step, docStyles } from './_components';
+import { DocScreen, DocHeader, DocScroll, Section, P, B, Quote, Step, docStyles } from './_components';
 import { useT } from '../../../lib/i18n';
 import { AblutionsIcon } from '../../../components/IslamicIcons';
 
@@ -8,7 +8,7 @@ const C = '#0894A1';
 export default function DocAblutions() {
   const tr = useT();
   return (
-    <View style={docStyles.screen}>
+    <DocScreen>
       <DocHeader icon={<AblutionsIcon size={56} />} titre={tr('docAblutions.headerTitre')} sous={tr('docAblutions.headerSous')} c1="#0FB5C4" c2="#0894A1" />
       <DocScroll>
 
@@ -65,6 +65,6 @@ export default function DocAblutions() {
         </Section>
 
       </DocScroll>
-    </View>
+    </DocScreen>
   );
 }

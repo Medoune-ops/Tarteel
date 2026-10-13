@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { DocHeader, DocScroll, Section, P, B, Quote, docStyles } from './_components';
+import { DocScreen, DocHeader, DocScroll, Section, P, B, Quote, docStyles } from './_components';
 import { useT } from '../../../lib/i18n';
 import {
   CrescentStarIcon, StarIslamIcon, PrayerMatIcon, ZakatIcon, KaabaColorIcon,
@@ -28,7 +28,7 @@ export default function DocIslam() {
   ];
 
   return (
-    <View style={docStyles.screen}>
+    <DocScreen>
       <DocHeader icon={<CrescentStarIcon size={56} color="#fff" />} titre={tr('docIslam.headerTitre')} sous={tr('docIslam.headerSous')} c1="#34C724" c2="#2A9E1C" />
       <DocScroll>
 
@@ -74,7 +74,7 @@ export default function DocIslam() {
         </Section>
 
       </DocScroll>
-    </View>
+    </DocScreen>
   );
 }
 

@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { DocHeader, DocScroll, Section, P, B, Quote, Fact, docStyles } from './_components';
+import { DocScreen, DocHeader, DocScroll, Section, P, B, Quote, Fact, docStyles } from './_components';
 import { useT } from '../../../lib/i18n';
 import { QuranIcon } from '../../../components/IslamicIcons';
 
@@ -8,7 +8,7 @@ const C = '#6B4DFF';
 export default function DocCoran() {
   const tr = useT();
   return (
-    <View style={docStyles.screen}>
+    <DocScreen>
       <DocHeader icon={<QuranIcon size={56} color="#fff" />} titre={tr('docCoran.headerTitre')} sous={tr('docCoran.headerSous')} c1="#7C5CFF" c2="#6B4DFF" />
       <DocScroll>
 
@@ -52,6 +52,6 @@ export default function DocCoran() {
         </Section>
 
       </DocScroll>
-    </View>
+    </DocScreen>
   );
 }
