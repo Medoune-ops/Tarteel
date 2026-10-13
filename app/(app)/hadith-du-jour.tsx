@@ -262,9 +262,9 @@ export default function HadithDuJourScreen() {
               <Switch
                 value={enabled}
                 onValueChange={onToggle}
-                trackColor={{ false: T.isDark ? '#3A3950' : '#D5D7DE', true: '#6B4DFF' }}
+                trackColor={{ false: T.isDark ? '#3A3950' : '#D4D7DD', true: '#6B4DFF' }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor={T.isDark ? '#3A3950' : '#D5D7DE'}
+                ios_backgroundColor={T.isDark ? '#3A3950' : '#D4D7DD'}
               />
             </View>
 

@@ -240,10 +240,18 @@ export default function PrieresScreen() {
                   <Text style={[styles.rowName, { color: T.text }]}>{tr('prayer.reminder.toggle')}</Text>
                   <Text style={[styles.reminderHint, { color: T.textTertiary }]}>{tr('prayer.reminder.toggleHint')}</Text>
                 </View>
+                {/*
+                  L'état ÉTEINT doit avoir sa propre couleur : sans `false`,
+                  React Native retombe sur un gris très clair, invisible sur
+                  la carte blanche du mode clair — bouton blanc sur piste
+                  quasi blanche. Mêmes valeurs que le composant `Toggle`.
+                */}
                 <Switch
                   value={remindersEnabled}
                   onValueChange={onToggleReminders}
-                  trackColor={{ true: '#1F8A70' }}
+                  trackColor={{ false: T.isDark ? '#3A3950' : '#D4D7DD', true: '#1F8A70' }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor={T.isDark ? '#3A3950' : '#D4D7DD'}
                 />
               </View>
               {remindersEnabled && PRAYER_NAMES.map((name) => (
