@@ -69,10 +69,22 @@ export default function PrieresScreen() {
    * trancher par le bord. En le posant à une coordonnée calculée, il glisse
    * simplement de sa position centrée vers la barre, à hauteur de la flèche.
    */
-  const hdrTitre2 = useAnimatedStyle(() => ({
+  const hdrTitre = useAnimatedStyle(() => ({
     top: interpolate(scrollY.value, [0, COURSE], [118, 50], Extrapolation.CLAMP),
     left: interpolate(scrollY.value, [0, COURSE], [20, 56], Extrapolation.CLAMP),
-    right: 20,
+    // Au repos la boite occupe toute la largeur et `textAlign: center` centre
+    // le titre. Repliee, on l'elargit tres au-dela du bord droit : le centrage
+    // ne joue plus, le texte se cale a gauche apres la fleche et sa position
+    // cesse de dependre de sa longueur (sinon FR et EN n'atterrissent pas au
+    // meme endroit). numberOfLines={1} empeche tout debordement visible.
+    right: interpolate(scrollY.value, [0, COURSE], [20, -220], Extrapolation.CLAMP),
+    // La reduction part du bord GAUCHE (transformOrigin dans headerTitleAbs) :
+    // sans cela elle part du centre, et le titre recule vers la droite d'autant
+    // que sa demi-largeur — un texte long comme « Heures de prière » se
+    // desaligne alors de la fleche retour, un texte court presque pas.
+    transform: [
+      { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.74], Extrapolation.CLAMP) },
+    ],
   }));
   const hdrMedaillon = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
@@ -81,22 +93,18 @@ export default function PrieresScreen() {
   const hdrSous = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
     height: interpolate(scrollY.value, [0, COURSE], [20, 0], Extrapolation.CLAMP),
-    // Le titre étant posé en absolu, il ne pousse plus rien : le sous-titre
-    // doit réserver lui-même la hauteur du titre au-dessus de lui.
-    marginTop: interpolate(scrollY.value, [0, COURSE], [40, 0], Extrapolation.CLAMP),
+    // La hauteur du titre est deja reservee par la marge haute du filet
+    // ci-dessus : la compter ici aussi poussait le sous-titre hors du cadre,
+    // ou il se faisait trancher par le bord bas de l'en-tete.
+    marginTop: interpolate(scrollY.value, [0, COURSE], [2, 0], Extrapolation.CLAMP),
   }));
   const hdrRule = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, COURSE * 0.4], [1, 0], Extrapolation.CLAMP),
     height: interpolate(scrollY.value, [0, COURSE], [3, 0], Extrapolation.CLAMP),
-    marginVertical: interpolate(scrollY.value, [0, COURSE], [8, 0], Extrapolation.CLAMP),
-  }));
-  const hdrTitre = useAnimatedStyle(() => ({
-    // La marge haute se résorbe avec le médaillon : sinon elle pousse le
-    // titre hors du cadre une fois l'en-tête comprimé.
-    marginTop: interpolate(scrollY.value, [0, COURSE], [10, 0], Extrapolation.CLAMP),
-    transform: [
-      { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.74], Extrapolation.CLAMP) },
-    ],
+    // Le titre est absolu (118 -> ~150) : il ne pousse rien, donc le filet doit
+    // reserver lui-meme la hauteur qu'il occupe, sinon il lui passe au travers.
+    marginTop: interpolate(scrollY.value, [0, COURSE], [40, 0], Extrapolation.CLAMP),
+    marginBottom: interpolate(scrollY.value, [0, COURSE], [8, 0], Extrapolation.CLAMP),
   }));
   const language = useUserStore((s) => s.language);
   const localeTag = LOCALE_BY_LANG[language] ?? 'fr-FR';
@@ -212,7 +220,7 @@ export default function PrieresScreen() {
         </Animated.View>
 
         <Animated.Text
-          style={[styles.headerTitle, styles.headerTitleAbs, hdrTitre, hdrTitre2]}
+          style={[styles.headerTitle, styles.headerTitleAbs, hdrTitre]}
           numberOfLines={1}
         >
           {tr('prayer.headerTitle')}
@@ -425,9 +433,11 @@ const styles = StyleSheet.create({
   headerWrap: { overflow: 'hidden', alignItems: 'center' },
   // Le medaillon se replie en hauteur : son enveloppe rogne pendant l'animation.
   headerMedallionWrap: { overflow: 'hidden', marginTop: 54, alignItems: 'center' },
-  // Titre pose a une coordonnee animee (voir hdrTitre2) plutot que laisse au
+  // Titre pose a une coordonnee animee (voir hdrTitre) plutot que laisse au
   // flux : sa place ne depend plus du repli des autres elements.
-  headerTitleAbs: { position: 'absolute', textAlign: 'center' },
+  // transformOrigin ancre la reduction a GAUCHE, sinon un titre long se decale
+  // vers la droite en se reduisant et ne suit plus la fleche retour.
+  headerTitleAbs: { position: 'absolute', textAlign: 'center', transformOrigin: 'left center' },
   // Les marges verticales et la gauche sont animees (voir hdrMarges) :
   // seule la droite est fixe, pour garder le titre centre au repos.
   header: { flex: 1, paddingRight: 20, alignItems: 'center', justifyContent: 'flex-end' },
@@ -440,7 +450,9 @@ const styles = StyleSheet.create({
   headerEmoji: { fontSize: 30 },
   // marginTop est animé (voir hdrTitre) : il se résorbe à la compression.
   headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff' },
-  headerRule: { width: 42, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.5)', marginTop: 8 },
+  // Les marges sont animees (voir hdrRule) : aucune marge statique ici, elle
+  // s'ajouterait a la marge animee et decalerait tout le flux vers le bas.
+  headerRule: { width: 42, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.5)' },
   headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)' },
 
   content: { paddingHorizontal: 20, paddingTop: 18 },
