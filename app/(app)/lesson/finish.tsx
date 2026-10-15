@@ -9,7 +9,7 @@ import Animated, {
 import Otter from '../../../components/Otter';
 import Confetti from '../../../components/Confetti';
 import CountUp from '../../../components/CountUp';
-import { playSound } from '../../../constants/sounds';
+import { playSound, finishFeedback } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
 import { useReviewPromptStore } from '../../../store/reviewPromptStore';
 import { completeLesson } from '../../../lib/api';
@@ -137,9 +137,15 @@ export default function FinishScreen() {
     );
 
     // Fanfare de fin à l'apparition + petit "tick" quand la barre de niveau démarre.
-    playSound('finish');
+    // La fanfare s'accompagne d'une vibration calée sur son rythme (voir
+    // finishFeedback) : les deux partent du même instant pour rester alignées.
+    const stopHaptics = finishFeedback();
     const tick = setTimeout(() => playSound('progress'), 1170);
-    return () => clearTimeout(tick);
+    return () => {
+      clearTimeout(tick);
+      // Sinon le téléphone continue de vibrer sur un écran déjà quitté.
+      stopHaptics();
+    };
   }, []);
 
   const otterStyle = useAnimatedStyle(() => ({
