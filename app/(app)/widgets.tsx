@@ -4,6 +4,10 @@ import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle,
+  interpolate, Extrapolation,
+} from 'react-native-reanimated';
 import HeaderPattern from '../../components/HeaderPattern';
 import DeviceStatusBar from '../../components/StatusBar';
 import Otter from '../../components/Otter';
@@ -318,6 +322,50 @@ export default function WidgetsScreen() {
   const T = useTheme();
   const tr = useT();
   const { width } = useWindowDimensions();
+
+  /*
+   * En-tête qui se comprime au défilement : de 182 à 50 pixels.
+   *
+   * Le sous-titre tient sur deux lignes ici, d'où une hauteur un peu plus
+   * généreuse que sur l'écoute du Coran, qui partage les mêmes dimensions.
+   */
+  const OUVERT = 182;
+  const FERME = 50;
+  const COURSE = OUVERT - FERME;
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+
+  const hdrHauteur = useAnimatedStyle(() => ({
+    height: interpolate(scrollY.value, [0, COURSE], [OUVERT, FERME], Extrapolation.CLAMP),
+  }));
+  const hdrMedaillon = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, COURSE], [72, 0], Extrapolation.CLAMP),
+  }));
+  const hdrRule = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.4], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, COURSE], [3, 0], Extrapolation.CLAMP),
+    // Le titre étant posé en absolu, il ne pousse plus rien : le filet réserve
+    // lui-même la hauteur du titre plus sa respiration.
+    marginTop: interpolate(scrollY.value, [0, COURSE], [48, 0], Extrapolation.CLAMP),
+  }));
+  const hdrSous = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
+    // Deux lignes, d'où 36 et non 20.
+    height: interpolate(scrollY.value, [0, COURSE], [36, 0], Extrapolation.CLAMP),
+    marginTop: interpolate(scrollY.value, [0, COURSE], [8, 0], Extrapolation.CLAMP),
+  }));
+  // Position au repos : 10 (marge haute) + 72 (médaillon) + 12 (respiration).
+  const hdrTitre = useAnimatedStyle(() => ({
+    top: interpolate(scrollY.value, [0, COURSE], [94, 12], Extrapolation.CLAMP),
+    left: interpolate(scrollY.value, [0, COURSE], [24, 54], Extrapolation.CLAMP),
+    transform: [
+      { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.78], Extrapolation.CLAMP) },
+    ],
+  }));
   const streak = useUserStore((s) => s.streak);
   const xp = useUserStore((s) => s.xp);
   const reminderHour = useUserStore((s) => s.reminderHour);
@@ -335,20 +383,50 @@ export default function WidgetsScreen() {
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
 
-      <LinearGradient colors={['#FFA733', '#F0820C', '#D96E00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+      {/*
+        Header — il se comprime au défilement : le médaillon, le filet et le
+        sous-titre replient leur HAUTEUR (pas seulement leur opacité — un
+        élément transparent occupe toujours sa place), et le titre, posé à une
+        coordonnée animée, glisse vers la barre à hauteur de la flèche.
+      */}
+      <Animated.View style={[styles.headerWrap, hdrHauteur]}>
+        <LinearGradient
+          colors={['#FFA733', '#F0820C', '#D96E00']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <HeaderPattern width={width} height={180} variant="grid" />
+
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
-        <View style={styles.headerMedallion}>
-          <Text style={styles.headerEmoji}>🧩</Text>
-        </View>
-        <Text style={styles.headerTitle}>{tr('widgets.title')}</Text>
-        <View style={styles.headerRule} />
-        <Text style={styles.headerSub}>{tr('widgets.subtitle')}</Text>
-      </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <View style={styles.headerBody}>
+          <Animated.View style={[styles.headerMedallionWrap, hdrMedaillon]}>
+            <View style={styles.headerMedallion}>
+              <Text style={styles.headerEmoji}>🧩</Text>
+            </View>
+          </Animated.View>
+
+          <Animated.View style={[styles.headerRule, hdrRule]} />
+          <Animated.Text style={[styles.headerSub, hdrSous]} numberOfLines={2}>
+            {tr('widgets.subtitle')}
+          </Animated.Text>
+        </View>
+
+        <Animated.Text style={[styles.headerTitle, styles.headerTitleAbs, hdrTitre]} numberOfLines={1}>
+          {tr('widgets.title')}
+        </Animated.Text>
+      </Animated.View>
+
+      <Animated.ScrollView
+        onScroll={onScroll}
+        // 16 ms : un événement par image à 60 Hz.
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
         {WIDGET_PREVIEWS.map((w) => (
           <View key={w.key} style={[styles.card, { backgroundColor: T.cardBg, borderColor: T.border }]}>
             <View style={styles.previewWrap}>
@@ -378,30 +456,43 @@ export default function WidgetsScreen() {
         </Pressable>
 
         <View style={{ height: 24 }} />
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  // Enveloppe de hauteur animee ; rogne son contenu pendant la compression.
+  headerWrap: {
+    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+  },
+  headerBody: { flex: 1, paddingTop: 10, paddingHorizontal: 24, alignItems: 'center' },
+  // Le medaillon se replie en hauteur : son enveloppe rogne pendant l'animation.
+  headerMedallionWrap: { overflow: 'hidden', alignItems: 'center' },
+  // Titre pose a une coordonnee animee (voir hdrTitre) : sa place ne depend
+  // plus du repli du medaillon, du filet ni du sous-titre.
+  headerTitleAbs: {
+    position: 'absolute', right: 24, zIndex: 2,
+    textAlign: 'center', transformOrigin: 'left center',
+  },
   header: {
     paddingTop: 16, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center',
     overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
   },
   backBtn: { position: 'absolute', top: 16, left: 16, zIndex: 2 },
   headerMedallion: {
-    width: 68, height: 68, borderRadius: 34, marginTop: 4,
+    width: 68, height: 68, borderRadius: 34,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
   },
   headerEmoji: { fontSize: 32 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 12 },
-  headerRule: { width: 46, height: 3, borderRadius: 2, marginTop: 8, backgroundColor: '#fff' },
+  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff' },
+  headerRule: { width: 46, borderRadius: 2, backgroundColor: '#fff' },
   headerSub: {
     fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)',
-    marginTop: 8, textAlign: 'center', paddingHorizontal: 12,
+    textAlign: 'center', paddingHorizontal: 12,
   },
 
   content: { padding: 18 },
