@@ -2,6 +2,10 @@ import { useState, useMemo } from 'react';
 import { View, Text, TextInput, FlatList, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle,
+  interpolate, Extrapolation,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import ArabicText from '../../components/ArabicText';
 import HeaderPattern from '../../components/HeaderPattern';
@@ -27,6 +31,49 @@ export default function AsmaScreen() {
   const tr = useT();
   const language = useUserStore((s) => s.language);
   const { width } = useWindowDimensions();
+
+  /*
+   * En-tête qui se comprime au défilement : de 212 à 86 pixels.
+   *
+   * Même mécanique que la Lecture libre. Le médaillon est ici plus grand
+   * (76 px contre 68), d'où les valeurs différentes.
+   */
+  const OUVERT = 212;
+  const FERME = 86;
+  const COURSE = OUVERT - FERME;
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+
+  const hdrHauteur = useAnimatedStyle(() => ({
+    height: interpolate(scrollY.value, [0, COURSE], [OUVERT, FERME], Extrapolation.CLAMP),
+  }));
+  const hdrMedaillon = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, COURSE], [80, 0], Extrapolation.CLAMP),
+  }));
+  const hdrRule = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.4], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, COURSE], [3, 0], Extrapolation.CLAMP),
+    // Le titre étant posé en absolu, il ne pousse plus rien : le filet réserve
+    // lui-même la hauteur du titre plus sa respiration.
+    marginTop: interpolate(scrollY.value, [0, COURSE], [52, 0], Extrapolation.CLAMP),
+  }));
+  const hdrSous = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, COURSE], [20, 0], Extrapolation.CLAMP),
+    marginTop: interpolate(scrollY.value, [0, COURSE], [8, 0], Extrapolation.CLAMP),
+  }));
+  // Position au repos : 44 (marge haute) + 80 (médaillon) + 14 (respiration).
+  const hdrTitre = useAnimatedStyle(() => ({
+    top: interpolate(scrollY.value, [0, COURSE], [138, 48], Extrapolation.CLAMP),
+    left: interpolate(scrollY.value, [0, COURSE], [24, 54], Extrapolation.CLAMP),
+    transform: [
+      { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.8], Extrapolation.CLAMP) },
+    ],
+  }));
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -72,29 +119,47 @@ export default function AsmaScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
-      {/* Header — dégradé riche + trame géométrique islamique en filigrane */}
-      <LinearGradient
-        colors={['#8B5CF6', '#6B4DFF', '#4A2FB8']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
+      {/*
+        Header — dégradé riche + trame géométrique islamique en filigrane.
+
+        Il se comprime au défilement : le médaillon, le filet et le sous-titre
+        replient leur HAUTEUR (pas seulement leur opacité — un élément
+        transparent occupe toujours sa place), et le titre, posé à une
+        coordonnée animée, glisse vers la barre à hauteur de la flèche.
+      */}
+      <Animated.View style={[styles.headerWrap, hdrHauteur]}>
+        <LinearGradient
+          colors={['#8B5CF6', '#6B4DFF', '#4A2FB8']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <HeaderPattern width={width} height={210} />
+
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
 
-        {/* Médaillon calligraphique : « Allah » en arabe dans un cercle lumineux */}
-        <View style={styles.medallion}>
-          <View style={styles.medallionInner}>
-            <ArabicText style={styles.medallionText}>ٱللّٰه</ArabicText>
-          </View>
+        <View style={styles.headerBody}>
+          {/* Médaillon calligraphique : « Allah » en arabe dans un cercle lumineux */}
+          <Animated.View style={[styles.medallionWrap, hdrMedaillon]}>
+            <View style={styles.medallion}>
+              <View style={styles.medallionInner}>
+                <ArabicText style={styles.medallionText}>ٱللّٰه</ArabicText>
+              </View>
+            </View>
+          </Animated.View>
+
+          <Animated.View style={[styles.headerRule, hdrRule]} />
+          <Animated.Text style={[styles.headerSub, hdrSous]} numberOfLines={1}>
+            {tr('asma.headerSub')}
+          </Animated.Text>
         </View>
 
-        <Text style={styles.headerTitle}>{tr('asma.headerTitle')}</Text>
-        <View style={styles.headerRule} />
-        <Text style={styles.headerSub}>{tr('asma.headerSub')}</Text>
-      </LinearGradient>
+        <Animated.Text style={[styles.headerTitle, styles.headerTitleAbs, hdrTitre]} numberOfLines={1}>
+          {tr('asma.headerTitle')}
+        </Animated.Text>
+      </Animated.View>
 
       {/* Recherche */}
       <View style={[styles.searchBar, { backgroundColor: T.inputBg, borderColor: T.border }]}>
@@ -116,7 +181,10 @@ export default function AsmaScreen() {
         )}
       </View>
 
-      <FlatList
+      <Animated.FlatList
+        onScroll={onScroll}
+        // 16 ms : un evenement par image a 60 Hz.
+        scrollEventThrottle={16}
         data={filtered}
         keyExtractor={(n) => String(n.numero)}
         renderItem={renderRow}
@@ -142,6 +210,20 @@ export default function AsmaScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  // Enveloppe de hauteur animee ; rogne son contenu pendant la compression.
+  headerWrap: {
+    overflow: 'hidden',
+    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+  },
+  headerBody: { flex: 1, paddingTop: 44, paddingHorizontal: 24, alignItems: 'center' },
+  // Le medaillon se replie en hauteur : son enveloppe rogne pendant l'animation.
+  medallionWrap: { overflow: 'hidden', alignItems: 'center' },
+  // Titre pose a une coordonnee animee (voir hdrTitre) : sa place ne depend
+  // plus du repli du medaillon, du filet ni du sous-titre.
+  headerTitleAbs: {
+    position: 'absolute', right: 24, zIndex: 2,
+    transformOrigin: 'left center',
+  },
   header: {
     paddingTop: 52, paddingBottom: 26, paddingHorizontal: 24,
     alignItems: 'center', overflow: 'hidden',
@@ -150,7 +232,7 @@ const styles = StyleSheet.create({
   backBtn: { position: 'absolute', top: 54, left: 16, zIndex: 2 },
   // Médaillon rond calligraphique (le nom « Allah »), halo lumineux.
   medallion: {
-    width: 76, height: 76, borderRadius: 38, marginTop: 6,
+    width: 76, height: 76, borderRadius: 38,
     backgroundColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
@@ -164,13 +246,13 @@ const styles = StyleSheet.create({
     fontFamily: 'ScheherazadeNew_700Bold', fontSize: 32, lineHeight: 58, color: '#fff',
     textAlign: 'center', includeFontPadding: false,
   },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 23, color: '#fff', marginTop: 14, textAlign: 'center' },
+  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 23, color: '#fff', textAlign: 'center' },
   // Petit filet doré décoratif sous le titre.
   headerRule: {
-    width: 46, height: 3, borderRadius: 2, marginTop: 8,
+    width: 46, borderRadius: 2,
     backgroundColor: '#F6B100',
   },
-  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 8, textAlign: 'center' },
+  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', textAlign: 'center' },
 
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

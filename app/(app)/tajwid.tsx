@@ -2,6 +2,10 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView, Alert, useWindowDimensions } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle,
+  interpolate, Extrapolation,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import NetInfo from '@react-native-community/netinfo';
 import HeaderPattern from '../../components/HeaderPattern';
@@ -34,6 +38,49 @@ export default function TajwidScreen() {
   const T = useTheme();
   const tr = useT();
   const { width } = useWindowDimensions();
+
+  /*
+   * En-tête qui se comprime au défilement : de 154 à 50 pixels.
+   *
+   * Valeurs plus basses que sur les 99 noms ou la Lecture libre : cet écran
+   * part d'un `paddingTop` de 16 et non de 52, il ne compense pas l'encoche.
+   */
+  const OUVERT = 168;
+  const FERME = 50;
+  const COURSE = OUVERT - FERME;
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+
+  const hdrHauteur = useAnimatedStyle(() => ({
+    height: interpolate(scrollY.value, [0, COURSE], [OUVERT, FERME], Extrapolation.CLAMP),
+  }));
+  const hdrMedaillon = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, COURSE], [72, 0], Extrapolation.CLAMP),
+  }));
+  const hdrRule = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.4], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, COURSE], [3, 0], Extrapolation.CLAMP),
+    // Le titre étant posé en absolu, il ne pousse plus rien : le filet réserve
+    // lui-même la hauteur du titre plus sa respiration.
+    marginTop: interpolate(scrollY.value, [0, COURSE], [48, 0], Extrapolation.CLAMP),
+  }));
+  const hdrSous = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, COURSE], [20, 0], Extrapolation.CLAMP),
+    marginTop: interpolate(scrollY.value, [0, COURSE], [8, 0], Extrapolation.CLAMP),
+  }));
+  // Position au repos : 10 (marge haute) + 72 (médaillon) + 12 (respiration).
+  const hdrTitre = useAnimatedStyle(() => ({
+    top: interpolate(scrollY.value, [0, COURSE], [94, 12], Extrapolation.CLAMP),
+    left: interpolate(scrollY.value, [0, COURSE], [24, 54], Extrapolation.CLAMP),
+    transform: [
+      { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.78], Extrapolation.CLAMP) },
+    ],
+  }));
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -157,19 +204,44 @@ export default function TajwidScreen() {
     <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
       <DeviceStatusBar />
 
-      {/* Header — dégradé + trame géométrique + médaillon */}
-      <LinearGradient colors={['#9A6CF5', '#7C3AED', '#5B21B6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+      {/*
+        Header — dégradé + trame géométrique + médaillon.
+
+        Il se comprime au défilement de la liste des sourates : le médaillon,
+        le filet et le sous-titre replient leur HAUTEUR (pas seulement leur
+        opacité — un élément transparent occupe toujours sa place), et le
+        titre, posé à une coordonnée animée, glisse vers la barre.
+      */}
+      <Animated.View style={[styles.headerWrap, hdrHauteur]}>
+        <LinearGradient
+          colors={['#9A6CF5', '#7C3AED', '#5B21B6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <HeaderPattern width={width} height={180} variant="arcs" />
+
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#fff" />
         </Pressable>
-        <View style={styles.headerMedallion}>
-          <Text style={styles.headerEmoji}>🎧</Text>
+
+        <View style={styles.headerBody}>
+          <Animated.View style={[styles.headerMedallionWrap, hdrMedaillon]}>
+            <View style={styles.headerMedallion}>
+              <Text style={styles.headerEmoji}>🎧</Text>
+            </View>
+          </Animated.View>
+
+          <Animated.View style={[styles.headerRule, hdrRule]} />
+          <Animated.Text style={[styles.headerSub, hdrSous]} numberOfLines={1}>
+            {tr('tajwid.headerSub')}
+          </Animated.Text>
         </View>
-        <Text style={styles.headerTitle}>{tr('tajwid.headerTitle')}</Text>
-        <View style={styles.headerRule} />
-        <Text style={styles.headerSub}>{tr('tajwid.headerSub')}</Text>
-      </LinearGradient>
+
+        <Animated.Text style={[styles.headerTitle, styles.headerTitleAbs, hdrTitre]} numberOfLines={1}>
+          {tr('tajwid.headerTitle')}
+        </Animated.Text>
+      </Animated.View>
 
       {error ? (
         <View style={styles.stateBox}>
@@ -235,7 +307,10 @@ export default function TajwidScreen() {
               où il ne pourrait de toute façon pas aboutir. */}
           {!isOffline && <OfflineAudioButton />}
 
-          <FlatList
+          <Animated.FlatList
+            onScroll={onScroll}
+            // 16 ms : un evenement par image a 60 Hz.
+            scrollEventThrottle={16}
             data={ordered}
             keyExtractor={(s) => String(s.numero)}
             renderItem={renderRow}
@@ -255,21 +330,34 @@ export default function TajwidScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  // Enveloppe de hauteur animee ; rogne son contenu pendant la compression.
+  headerWrap: {
+    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+  },
+  headerBody: { flex: 1, paddingTop: 10, paddingHorizontal: 24, alignItems: 'center' },
+  // Le medaillon se replie en hauteur : son enveloppe rogne pendant l'animation.
+  headerMedallionWrap: { overflow: 'hidden', alignItems: 'center' },
+  // Titre pose a une coordonnee animee (voir hdrTitre) : sa place ne depend
+  // plus du repli du medaillon, du filet ni du sous-titre.
+  headerTitleAbs: {
+    position: 'absolute', right: 24, zIndex: 2,
+    textAlign: 'center', transformOrigin: 'left center',
+  },
   header: {
     paddingTop: 16, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center',
     overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
   },
   backBtn: { position: 'absolute', top: 16, left: 16, zIndex: 2 },
   headerMedallion: {
-    width: 68, height: 68, borderRadius: 34, marginTop: 4,
+    width: 68, height: 68, borderRadius: 34,
     backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.32)',
   },
   headerEmoji: { fontSize: 32 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 12 },
-  headerRule: { width: 46, height: 3, borderRadius: 2, marginTop: 8, backgroundColor: '#F6B100' },
-  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 8 },
+  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff' },
+  headerRule: { width: 46, borderRadius: 2, backgroundColor: '#F6B100' },
+  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', textAlign: 'center' },
 
   stateBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
