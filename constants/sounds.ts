@@ -215,6 +215,82 @@ export function vibrateSuccess() {
   }
 }
 
+/*
+ * Vibration rythmée sur la fanfare de fin de leçon.
+ *
+ * Les instants ci-dessous ne sont pas inventés : ils viennent de l'analyse de
+ * l'enveloppe de `lesson_complete.wav` (2,59 s). Chaque entrée est une attaque
+ * detectee dans le fichier, avec une force choisie d'apres son amplitude —
+ * les trois premiers accents portent la montee, la fin s'allege.
+ *
+ * LIMITE ASSUMEE : `expo-haptics` ne sait pas moduler une vibration en continu
+ * sur l'amplitude du son (iOS ne l'expose pas). On joue donc une SUITE
+ * d'impulsions calees sur les temps forts, pas un suivi continu de l'onde.
+ * C'est ce que font les apps du genre, et le ressenti est juste.
+ *
+ * Si le fichier audio change, relancer l'analyse : ces valeurs deviendraient
+ * fausses et la vibration se decalerait du son.
+ */
+const FINISH_PULSES: { at: number; force: 'light' | 'medium' | 'heavy' }[] = [
+  { at: 265,  force: 'light'  },
+  { at: 355,  force: 'heavy'  },
+  { at: 455,  force: 'light'  },
+  { at: 575,  force: 'heavy'  },
+  { at: 710,  force: 'light'  },
+  { at: 830,  force: 'heavy'  },
+  { at: 955,  force: 'medium' },
+  { at: 1085, force: 'medium' },
+  { at: 1205, force: 'medium' },
+  { at: 1335, force: 'light'  },
+  { at: 1525, force: 'medium' },
+  { at: 1710, force: 'light'  },
+  { at: 1900, force: 'light'  },
+];
+
+const IMPACT_BY_FORCE = {
+  light: Haptics.ImpactFeedbackStyle.Light,
+  medium: Haptics.ImpactFeedbackStyle.Medium,
+  heavy: Haptics.ImpactFeedbackStyle.Heavy,
+} as const;
+
+/** Minuteurs de la séquence en cours — annulables si on quitte l'écran. */
+let finishTimers: ReturnType<typeof setTimeout>[] = [];
+
+/** Coupe une séquence de vibrations en cours (démontage de l'écran). */
+export function stopFinishHaptics() {
+  finishTimers.forEach(clearTimeout);
+  finishTimers = [];
+}
+
+/**
+ * Joue la fanfare de fin ET la vibration calée sur son rythme.
+ *
+ * Les deux partent du même instant : le son n'étant pas différé, les
+ * impulsions restent alignées sur ce qu'on entend.
+ *
+ * Renvoie de quoi annuler la séquence — à appeler au démontage, sinon le
+ * téléphone continue de vibrer sur un écran déjà quitté.
+ */
+export function finishFeedback(): () => void {
+  playSound('finish');
+
+  // `muted` coupe le son : une vibration rythmée sur une musique inaudible
+  // n'aurait aucun sens, on s'aligne sur le même réglage.
+  if (muted) return stopFinishHaptics;
+
+  stopFinishHaptics();
+  finishTimers = FINISH_PULSES.map(({ at, force }) =>
+    setTimeout(() => {
+      try {
+        void Haptics.impactAsync(IMPACT_BY_FORCE[force]);
+      } catch (e) {
+        console.log('[haptics] pulse failed', e);
+      }
+    }, at),
+  );
+  return stopFinishHaptics;
+}
+
 /** Joue le son ET la vibration d'erreur en même temps. */
 export function wrongFeedback() {
   playSound('wrong');
