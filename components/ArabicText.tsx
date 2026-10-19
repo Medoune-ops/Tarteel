@@ -1,4 +1,4 @@
-import { View, Text, type StyleProp, type TextStyle } from 'react-native';
+import { View, Text, Platform, type StyleProp, type TextStyle } from 'react-native';
 
 // Harakat et autres diacritiques arabes combinants (U+064B–U+0652, U+0670,
 // U+06D6–U+06ED) — fatha, damma, kasra, soukoun, tanwin, shadda, madda...
@@ -92,6 +92,28 @@ export default function ArabicText({ children, style, harakatScale = 2.2, haraka
   // bi » perd son harakat voyant. On rend donc le texte tel quel, en un seul
   // <Text> — c'est la police (ScheherazadeNew) qui dessine déjà les harakat
   // lisiblement à cette taille. On garantit juste un lineHeight suffisant.
-  const lineHeight = Math.max((flatStyle as TextStyle | undefined)?.lineHeight ?? 0, baseSize * 1.3);
-  return <Text style={[style, { lineHeight }]}>{children}</Text>;
+  //
+  // POURQUOI 1.75 ET PAS 1.3 : l'arabe vocalisé est bien plus haut qu'une
+  // ligne latine. Au-dessus des lettres s'empilent fatha, damma, soukoun,
+  // shadda et madda (parfois shadda + voyelle superposées), en dessous
+  // descendent kasra et kasratan. À 1.3, ces signes sortaient de la ligne et
+  // se faisaient TRANCHER par le haut — visible sur les versets vocalisés de
+  // plusieurs leçons. Les styles corrigés un par un auparavant (play.arabic
+  // 44/76, wordText 40/70) tournaient déjà autour de 1.73-1.75 : on prend
+  // cette valeur éprouvée comme plancher pour TOUS les rendus, au lieu de
+  // laisser chaque écran la redécouvrir.
+  //
+  // C'est un PLANCHER : un style qui demande davantage garde sa valeur.
+  const lineHeight = Math.max((flatStyle as TextStyle | undefined)?.lineHeight ?? 0, baseSize * 1.75);
+  return (
+    <Text
+      style={[style, { lineHeight }]}
+      // Android réserve au-dessus/en-dessous du texte un padding calculé sur
+      // les métriques de la police ; combiné au grand lineHeight ci-dessus,
+      // il décalait le texte vers le bas dans son cadre.
+      {...(Platform.OS === 'android' ? { includeFontPadding: false } : null)}
+    >
+      {children}
+    </Text>
+  );
 }
