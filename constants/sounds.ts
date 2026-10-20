@@ -253,17 +253,19 @@ const FINISH_PULSES: { at: number; force: 'rigid' | 'medium' | 'heavy' }[] = [
   // 355 ms : ouverture par notificationAsync(Success), voir finishFeedback —
   // un motif a deux temps bien plus marque qu'une impulsion seule. Il occupe
   // ~180 ms, d'ou la pulsation suivante seulement a 575.
-  { at: 575,  force: 'heavy'  },
-  { at: 830,  force: 'heavy'  }, // (+255) sommet de la montee
+  { at: 575,  force: 'medium' },
+  { at: 830,  force: 'medium' }, // (+255) sommet de la montee
   { at: 1085, force: 'medium' }, // (+255)
   { at: 1335, force: 'medium' }, // (+250)
-  { at: 1710, force: 'rigid'  }, // (+375) ponctuation finale, seche
+  { at: 1710, force: 'medium' }, // (+375) ponctuation finale
 ];
 
 /*
- * `Rigid` plutot que `Light` : Light est faible par conception, pensee pour
- * un retour discret sous le doigt, pas pour etre senti bras tendu. Rigid est
- * la plus seche et la plus perceptible des cinq.
+ * Les cinq pulsations sont en `medium` : une intensite homogene, sans accent
+ * plus fort que les autres. `Light` est a eviter — faible par conception
+ * (30/255 sur Android), pensee pour un retour discret sous le doigt, pas pour
+ * etre sentie. `rigid` et `heavy` restent disponibles ici pour ajuster une
+ * pulsation sans toucher au reste.
  */
 const IMPACT_BY_FORCE = {
   rigid: Haptics.ImpactFeedbackStyle.Rigid,
