@@ -219,36 +219,54 @@ export function vibrateSuccess() {
  * Vibration rythmée sur la fanfare de fin de leçon.
  *
  * Les instants ci-dessous ne sont pas inventés : ils viennent de l'analyse de
- * l'enveloppe de `lesson_complete.wav` (2,59 s). Chaque entrée est une attaque
- * detectee dans le fichier, avec une force choisie d'apres son amplitude —
- * les trois premiers accents portent la montee, la fin s'allege.
+ * l'enveloppe de `lesson_complete.wav` (2,59 s). Chaque entrée tombe sur une
+ * attaque reellement presente dans le fichier.
+ *
+ * On ne suit PAS chaque note. Le materiel impose son rythme : le moteur
+ * haptique met ~50 ms a rendre une impulsion et doit se reposer ensuite. En
+ * demander une toutes les 90 ms, comme le ferait un calage note a note, les
+ * fait se chevaucher et s'annuler — on ne sent plus qu'un ronronnement. On
+ * garde donc les temps FORTS, a 180 ms d'ecart minimum.
  *
  * LIMITE ASSUMEE : `expo-haptics` ne sait pas moduler une vibration en continu
- * sur l'amplitude du son (iOS ne l'expose pas). On joue donc une SUITE
- * d'impulsions calees sur les temps forts, pas un suivi continu de l'onde.
- * C'est ce que font les apps du genre, et le ressenti est juste.
+ * sur l'amplitude du son (iOS ne l'expose pas), et plafonne meme `heavy` a
+ * 70/255 d'amplitude sur Android. On joue donc une SUITE d'impulsions sur les
+ * temps forts, ouverte par le motif de celebration natif.
  *
  * Si le fichier audio change, relancer l'analyse : ces valeurs deviendraient
  * fausses et la vibration se decalerait du son.
  */
-const FINISH_PULSES: { at: number; force: 'light' | 'medium' | 'heavy' }[] = [
-  { at: 265,  force: 'light'  },
-  { at: 355,  force: 'heavy'  },
-  { at: 455,  force: 'light'  },
+/*
+ * ESPACEMENT MINIMAL — 180 ms.
+ *
+ * Premiere version : une impulsion par attaque du fichier audio, soit un
+ * intervalle minimal de 90 ms. On ne sentait presque rien. Le moteur haptique
+ * (Taptic Engine sur iOS) met ~50 ms a rendre une impulsion et doit se
+ * REPOSER avant la suivante : en-dessous de ~150 ms, les impulsions se
+ * chevauchent, s'annulent, et il n'en reste qu'un ronronnement flou.
+ *
+ * On ne suit donc plus chaque note : on garde les temps FORTS, espaces d'au
+ * moins 180 ms, en restant cale sur des attaques reelles du fichier. Mieux
+ * vaut six coups nets que treize coups qui se marchent dessus.
+ */
+const FINISH_PULSES: { at: number; force: 'rigid' | 'medium' | 'heavy' }[] = [
+  // 355 ms : ouverture par notificationAsync(Success), voir finishFeedback —
+  // un motif a deux temps bien plus marque qu'une impulsion seule. Il occupe
+  // ~180 ms, d'ou la pulsation suivante seulement a 575.
   { at: 575,  force: 'heavy'  },
-  { at: 710,  force: 'light'  },
-  { at: 830,  force: 'heavy'  },
-  { at: 955,  force: 'medium' },
-  { at: 1085, force: 'medium' },
-  { at: 1205, force: 'medium' },
-  { at: 1335, force: 'light'  },
-  { at: 1525, force: 'medium' },
-  { at: 1710, force: 'light'  },
-  { at: 1900, force: 'light'  },
+  { at: 830,  force: 'heavy'  }, // (+255) sommet de la montee
+  { at: 1085, force: 'medium' }, // (+255)
+  { at: 1335, force: 'medium' }, // (+250)
+  { at: 1710, force: 'rigid'  }, // (+375) ponctuation finale, seche
 ];
 
+/*
+ * `Rigid` plutot que `Light` : Light est faible par conception, pensee pour
+ * un retour discret sous le doigt, pas pour etre senti bras tendu. Rigid est
+ * la plus seche et la plus perceptible des cinq.
+ */
 const IMPACT_BY_FORCE = {
-  light: Haptics.ImpactFeedbackStyle.Light,
+  rigid: Haptics.ImpactFeedbackStyle.Rigid,
   medium: Haptics.ImpactFeedbackStyle.Medium,
   heavy: Haptics.ImpactFeedbackStyle.Heavy,
 } as const;
@@ -279,15 +297,31 @@ export function finishFeedback(): () => void {
   if (muted) return stopFinishHaptics;
 
   stopFinishHaptics();
-  finishTimers = FINISH_PULSES.map(({ at, force }) =>
+
+  /*
+   * Ouverture sur notificationAsync(Success) plutot qu'une impulsion seule :
+   * c'est le motif de celebration natif (deux temps sur ~180 ms), nettement
+   * plus marque que impactAsync, dont Expo plafonne meme `heavy` a 70/255
+   * d'amplitude sur Android. C'est lui qu'on sent passer.
+   */
+  finishTimers = [
     setTimeout(() => {
       try {
-        void Haptics.impactAsync(IMPACT_BY_FORCE[force]);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e) {
-        console.log('[haptics] pulse failed', e);
+        console.log('[haptics] opening failed', e);
       }
-    }, at),
-  );
+    }, 355),
+    ...FINISH_PULSES.map(({ at, force }) =>
+      setTimeout(() => {
+        try {
+          void Haptics.impactAsync(IMPACT_BY_FORCE[force]);
+        } catch (e) {
+          console.log('[haptics] pulse failed', e);
+        }
+      }, at),
+    ),
+  ];
   return stopFinishHaptics;
 }
 
