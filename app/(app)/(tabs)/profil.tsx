@@ -8,6 +8,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import Otter from '../../../components/Otter';
 import PrayerCard from '../../../components/PrayerCard';
+import {
+  QuranIcon, TajwidIcon, StarIslamIcon,
+  FlameIcon, TrophyIcon, PuzzleIcon,
+} from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
 import { useTheme } from '../../../utils/useTheme';
 import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
@@ -15,16 +19,30 @@ import { fetchActivity } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { useT, t, type I18nKey } from '../../../lib/i18n';
 
-type Badge = { emoji: string; bg: string; bgDark: string; border: string; label: string; route?: Href };
+/*
+ * Les badges portent une icône SVG, plus un emoji.
+ *
+ * Même raison que sur l'écran Coran : un emoji est rendu par la police
+ * système, donc il change d'un téléphone à l'autre, ignore la couleur du
+ * badge et devient illisible en petit. Les icônes de IslamicIcons sont
+ * vectorielles, prennent la couleur qu'on leur passe et restent nettes.
+ */
+type Badge = {
+  Icon: (p: { size?: number; color?: string }) => React.ReactElement;
+  /** Couleur de l'icône — le `border` du badge, pour que l'ensemble se tienne. */
+  bg: string; bgDark: string; border: string; label: string; route?: Href;
+};
 
 // Couleurs des stats reprises du palier des badges juste en dessous (or =
 // XP, orange = série, vert = sourates, violet = précision) pour que le
 // bandeau de stats et les badges se lisent comme un seul ensemble cohérent.
+// `icon: null` = la série, rendue par FlameIcon (aucune icône Feather ne
+// convient pour une flamme).
 const STAT_META = [
-  { icon: 'zap' as const,       emoji: null,  color: '#E8A800', bg: '#FFF3CD', bgDark: '#332A14' },
-  { icon: null,                 emoji: '🔥',  color: '#F0820C', bg: '#FFE7D2', bgDark: '#3A2712' },
-  { icon: 'book-open' as const, emoji: null,  color: '#2A9E1C', bg: '#E2F5E1', bgDark: '#1B3220' },
-  { icon: 'target' as const,    emoji: null,  color: '#6B4DFF', bg: '#EDE8FF', bgDark: '#241F3D' },
+  { icon: 'zap' as const,       color: '#E8A800', bg: '#FFF3CD', bgDark: '#332A14' },
+  { icon: null,                 color: '#F0820C', bg: '#FFE7D2', bgDark: '#3A2712' },
+  { icon: 'book-open' as const, color: '#2A9E1C', bg: '#E2F5E1', bgDark: '#1B3220' },
+  { icon: 'target' as const,    color: '#6B4DFF', bg: '#EDE8FF', bgDark: '#241F3D' },
 ];
 
 // Libellé du badge d'objectif de série.
@@ -36,12 +54,12 @@ function streakGoalLabel(streak: number, goal: number | null): string {
 
 function buildBadges(streak: number, streakGoal: number | null): Badge[] {
   return [
-    { emoji: '📚', bg: '#E8E4FF', bgDark: '#241F3D', border: '#6B4DFF', label: t('profil.badge.lectureLibre'), route: '/(app)/lecture-libre' },
-    { emoji: '🔥', bg: '#FFE8E8', bgDark: '#3A1F26', border: '#FF4B4B', label: streakGoalLabel(streak, streakGoal), route: '/(app)/streak-goal' },
-    { emoji: '🎧', bg: '#F0E8FF', bgDark: '#2A2140', border: '#8A5CF0', label: t('profil.badge.tajwid'), route: '/(app)/tajwid' },
-    { emoji: '✨', bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: t('profil.badge.asma'), route: '/(app)/asma' },
-    { emoji: '🏆', bg: '#FFF3CD', bgDark: '#332A14', border: '#E0A02C', label: t('profil.badge.podiums'), route: '/(app)/podiums' },
-    { emoji: '🧩', bg: '#FFE7D2', bgDark: '#3A2712', border: '#F0820C', label: t('profil.badge.widgets'), route: '/(app)/widgets' },
+    { Icon: QuranIcon,     bg: '#E8E4FF', bgDark: '#241F3D', border: '#6B4DFF', label: t('profil.badge.lectureLibre'), route: '/(app)/lecture-libre' },
+    { Icon: FlameIcon,     bg: '#FFE8E8', bgDark: '#3A1F26', border: '#FF4B4B', label: streakGoalLabel(streak, streakGoal), route: '/(app)/streak-goal' },
+    { Icon: TajwidIcon,    bg: '#F0E8FF', bgDark: '#2A2140', border: '#8A5CF0', label: t('profil.badge.tajwid'), route: '/(app)/tajwid' },
+    { Icon: StarIslamIcon, bg: '#E2F5E1', bgDark: '#1B3220', border: '#2A9E1C', label: t('profil.badge.asma'), route: '/(app)/asma' },
+    { Icon: TrophyIcon,    bg: '#FFF3CD', bgDark: '#332A14', border: '#E0A02C', label: t('profil.badge.podiums'), route: '/(app)/podiums' },
+    { Icon: PuzzleIcon,    bg: '#FFE7D2', bgDark: '#3A2712', border: '#F0820C', label: t('profil.badge.widgets'), route: '/(app)/widgets' },
   ];
 }
 
@@ -172,7 +190,7 @@ export default function ProfilScreen() {
                     <View style={[styles.statIconWrap, { backgroundColor: T.isDark ? meta.bgDark : meta.bg }]}>
                       {meta.icon
                         ? <Feather name={meta.icon} size={15} color={meta.color} />
-                        : <Text style={styles.statIconEmoji}>{meta.emoji}</Text>}
+                        : <FlameIcon size={17} color={meta.color} />}
                     </View>
                     <Text style={[styles.statVal, { color: T.text }]}>{s.value}</Text>
                     <Text style={[styles.statLabel, { color: T.textSecondary }]} numberOfLines={1}>{s.label}</Text>
@@ -210,7 +228,7 @@ export default function ProfilScreen() {
                   </View>
                 )}
                 <View style={[styles.badgeMedal, { backgroundColor: T.cardBg, borderColor: b.border }]}>
-                  <Text style={styles.badgeEmoji}>{b.emoji}</Text>
+                  <b.Icon size={26} color={b.border} />
                 </View>
                 <Text style={[styles.badgeLabel, { color: T.isDark ? b.border : T.text }]} numberOfLines={2}>{b.label}</Text>
               </Pressable>
@@ -220,7 +238,7 @@ export default function ProfilScreen() {
           {/* Calendrier du mois en cours */}
           <View style={styles.calTitleRow}>
             <Text style={[styles.sectionTitle, { color: T.text, textTransform: 'capitalize' }]}>{monthLabel}</Text>
-            <Text style={{ fontSize: 20 }}>🔥</Text>
+            <FlameIcon size={20} color="#F0820C" />
           </View>
 
           {/* En-tête jours de la semaine */}
@@ -288,7 +306,6 @@ const styles = StyleSheet.create({
     width: 30, height: 30, borderRadius: 10, marginBottom: 3,
     alignItems: 'center', justifyContent: 'center',
   },
-  statIconEmoji: { fontSize: 15 },
   statVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20 },
   statLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 11.5 },
   statDivider: { width: 1, height: 28, alignSelf: 'center' },
@@ -308,7 +325,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5,
   },
-  badgeEmoji: { fontSize: 24 },
   badgeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, textAlign: 'center', lineHeight: 15 },
   badgeChevron: {
     position: 'absolute', top: 8, right: 8,

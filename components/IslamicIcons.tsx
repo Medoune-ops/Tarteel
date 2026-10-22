@@ -362,3 +362,61 @@ export function MinaretIcon({ size = 32 }: { size?: number }) {
     </Svg>
   );
 }
+
+/** Flamme — série de jours consécutifs.
+ *
+ *  Deux flammes imbriquées : la grande en `color`, la petite au cœur en
+ *  clair, ce qui donne la profondeur qu'un aplat unique n'a pas. Les deux
+ *  partent de la même base pour que le dégradé visuel reste lisible même à
+ *  20 px, taille à laquelle l'emoji 🔥 devient illisible. */
+export function FlameIcon({ size = 28, color = '#F0820C', inner = '#FFD95E' }: { size?: number; color?: string; inner?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* flamme externe */}
+      <Path
+        d="M14 2 Q15 7 11.5 10.5 Q7.5 14.5 7.5 18 A6.5 6.5 0 0 0 20.5 18 Q20.5 13.5 17 10 Q16.5 12 15 13 Q16.5 8.5 14 2 Z"
+        fill={color}
+      />
+      {/* cœur de flamme */}
+      <Path
+        d="M14 13 Q15 16 13.3 17.8 Q11.5 19.6 11.5 21 A3 3 0 0 0 17 22.4 Q17.2 18.5 14 13 Z"
+        fill={inner}
+      />
+    </Svg>
+  );
+}
+
+/** Coupe de trophée — podiums et classements. */
+export function TrophyIcon({ size = 28, color = '#E0A02C' }: { size?: number; color?: string }) {
+  const cd = color;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* anses */}
+      <Path d="M8 7 Q4 7 4 10.5 Q4 14 8 14.5" stroke={cd} strokeWidth={2} fill="none" opacity={0.75} />
+      <Path d="M20 7 Q24 7 24 10.5 Q24 14 20 14.5" stroke={cd} strokeWidth={2} fill="none" opacity={0.75} />
+      {/* coupe */}
+      <Path d="M8 4 L20 4 L20 12 A6 6 0 0 1 8 12 Z" fill={cd} />
+      {/* tige */}
+      <Rect x={12.6} y={18} width={2.8} height={4} rx={0.6} fill={cd} opacity={0.85} />
+      {/* socle */}
+      <Rect x={8.5} y={22} width={11} height={2.6} rx={1.3} fill={cd} />
+      {/* étoile gravée */}
+      <Polygon points="14,7 15.1,9.6 17.9,9.8 15.7,11.6 16.4,14.3 14,12.8 11.6,14.3 12.3,11.6 10.1,9.8 12.9,9.6" fill="#fff" opacity={0.55} />
+    </Svg>
+  );
+}
+
+/** Pièce de puzzle — widgets d'écran d'accueil. */
+export function PuzzleIcon({ size = 28, color = '#F0820C' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* corps avec un téton à droite et une encoche en bas */}
+      <Path
+        d="M4 5.5 Q4 4 5.5 4 L11 4 Q11 1.6 13 1.6 Q15 1.6 15 4 L20.5 4 Q22 4 22 5.5 L22 11 Q24.4 11 24.4 13 Q24.4 15 22 15 L22 20.5 Q22 22 20.5 22 L15 22 Q15 24.4 13 24.4 Q11 24.4 11 22 L5.5 22 Q4 22 4 20.5 Z"
+        fill={color}
+      />
+      {/* reflet haut, pour le relief */}
+      <Path d="M4 5.5 Q4 4 5.5 4 L11 4 Q11 1.6 13 1.6 Q15 1.6 15 4 L20.5 4 Q22 4 22 5.5 L22 9 L4 9 Z" fill="#fff" opacity={0.22} />
+    </Svg>
+  );
+}
