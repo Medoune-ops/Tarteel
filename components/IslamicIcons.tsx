@@ -420,3 +420,21 @@ export function PuzzleIcon({ size = 28, color = '#F0820C' }: { size?: number; co
     </Svg>
   );
 }
+
+/** Gemme — monnaie de l'app. Facettes marquées pour rester lisible en petit. */
+export function GemIcon({ size = 28, color = '#1CB0F6' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* corps */}
+      <Path d="M7 5 L21 5 L25.5 11 L14 24.5 L2.5 11 Z" fill={color} />
+      {/* facette gauche, plus claire */}
+      <Path d="M7 5 L14 5 L14 24.5 L2.5 11 Z" fill="#fff" opacity={0.18} />
+      {/* table du haut */}
+      <Path d="M7 5 L21 5 L25.5 11 L2.5 11 Z" fill="#fff" opacity={0.26} />
+      {/* arêtes */}
+      <Path d="M2.5 11 L25.5 11" stroke="#fff" strokeWidth={0.9} opacity={0.4} />
+      <Path d="M11 5 L9 11 L14 24.5" stroke="#fff" strokeWidth={0.9} opacity={0.3} fill="none" />
+      <Path d="M17 5 L19 11 L14 24.5" stroke="#fff" strokeWidth={0.9} opacity={0.3} fill="none" />
+    </Svg>
+  );
+}

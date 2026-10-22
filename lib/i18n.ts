@@ -48,6 +48,11 @@ const fr = {
   'tabs.profil': 'Profil',
 
   // ─── Parcours ──────────────────────────────────────────────────────────────
+  // En-tête : bloc série + tuiles XP / gemmes / cœurs.
+  'parcours.daysInARow': 'jours de suite',
+  'parcours.xpLabel': 'XP',
+  'parcours.gemsLabel': 'Gemmes',
+  'parcours.heartsLabel': 'Cœurs',
   'parcours.loading': 'Chargement du parcours…',
   'parcours.loadError': 'Impossible de charger le parcours.',
   'parcours.lessons': '{done}/{total} leçons',
@@ -1421,6 +1426,10 @@ const en: Dict = {
   'tabs.coran': 'Quran',
   'tabs.profil': 'Profile',
 
+  'parcours.daysInARow': 'days in a row',
+  'parcours.xpLabel': 'XP',
+  'parcours.gemsLabel': 'Gems',
+  'parcours.heartsLabel': 'Hearts',
   'parcours.loading': 'Loading your path…',
   'parcours.loadError': 'Could not load your path.',
   'parcours.lessons': '{done}/{total} lessons',

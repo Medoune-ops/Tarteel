@@ -9,7 +9,8 @@ import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Rect, Path, Circle, Ellipse, Line, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import DeviceStatusBar from '../../../components/StatusBar';
-import { MosqueIcon } from '../../../components/IslamicIcons';
+import { MosqueIcon, FlameIcon, GemIcon } from '../../../components/IslamicIcons';
+import { getTodayActiveDays } from '../../../utils/widgetData';
 import { useUserStore } from '../../../store/userStore';
 import { useGiftModalStore } from '../../../store/giftModalStore';
 import { useTheme } from '../../../utils/useTheme';
@@ -21,7 +22,14 @@ import {
 import { fetchSections } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { fetchDailyChestAvailable, claimDailyChestApi } from '../../../lib/api/rewards';
-import { useT, t } from '../../../lib/i18n';
+import { useT, t, type I18nKey } from '../../../lib/i18n';
+
+/** Initiales des jours, lundi → dimanche. Réutilise les clés du profil. */
+const WEEK_KEYS: I18nKey[] = [
+  'profil.weekday.mon', 'profil.weekday.tue', 'profil.weekday.wed',
+  'profil.weekday.thu', 'profil.weekday.fri', 'profil.weekday.sat',
+  'profil.weekday.sun',
+];
 import { playSound } from '../../../constants/sounds';
 
 // Icônes SVG pros pour les nodes complétés
@@ -1261,6 +1269,11 @@ export default function ParcoursScreen() {
   const gems = useUserStore((s) => s.gems);
   const isPremium = useUserStore((s) => s.isPremium);
   const syncHearts = useUserStore((s) => s.syncHearts);
+  // Semaine affichée sous le compteur de série. Même calcul que les widgets
+  // (getTodayActiveDays) pour que les deux ne divergent jamais.
+  const activeDays = getTodayActiveDays(streak);
+  // Index du jour courant en base lundi (0=lun … 6=dim), comme activeDays.
+  const todayIdx = (new Date().getDay() + 6) % 7;
   const { width, height } = useWindowDimensions();
   const listRef = useRef<FlatList<ParcoursSection>>(null);
 
@@ -1461,22 +1474,83 @@ export default function ParcoursScreen() {
       </View>
 
       <View style={[styles.statsBar, { backgroundColor: T.cardBg }]}>
-        <Pressable style={styles.stat} onPress={() => router.push('/(app)/streak')} hitSlop={8}>
-          <Text style={{ fontSize: 22 }}>🔥</Text>
-          <Text style={[styles.statText, { color: '#F0820C' }]}>{streak}</Text>
+        {/* Bloc série — la pastille flamme, le compteur, et la semaine en
+            cours. C'est la seule statistique qui demande une action AUJOURD'HUI,
+            d'où sa mise en avant par rapport aux trois tuiles. */}
+        <Pressable style={styles.heroRow} onPress={() => router.push('/(app)/streak')} hitSlop={6}>
+          <View style={styles.flameBadge}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.34)', 'rgba(255,255,255,0)']}
+              style={StyleSheet.absoluteFill}
+            />
+            <FlameIcon size={27} color="#fff" inner="#FFE3A8" />
+          </View>
+          <View style={styles.heroTexts}>
+            <Text style={[styles.heroNum, { color: T.isDark ? '#FFB868' : '#C25A08' }]}>{streak}</Text>
+            <Text style={[styles.heroCap, { color: T.isDark ? '#A8803F' : '#E09440' }]}>
+              {t('parcours.daysInARow')}
+            </Text>
+            <View style={styles.week}>
+              {activeDays.map((on, i) => {
+                const today = i === todayIdx;
+                return (
+                  <View
+                    key={i}
+                    style={[
+                      styles.day,
+                      { backgroundColor: T.isDark ? '#2E2A3A' : '#EFE4D6' },
+                      on && styles.dayOn,
+                      today && [styles.dayToday, { backgroundColor: T.cardBg }],
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayTxt,
+                        { color: T.isDark ? '#6B6A88' : '#C9A882' },
+                        on && { color: '#fff' },
+                        today && { color: '#F0820C' },
+                      ]}
+                    >
+                      {t(WEEK_KEYS[i]!)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
         </Pressable>
-        <View style={styles.stat}>
-          <Feather name="zap" size={22} color="#E8A800" />
-          <Text style={[styles.statText, { color: '#E8A800' }]}>{xp} XP</Text>
+
+        {/* XP, gemmes, cœurs — tuiles pleines, même ombre basse que les
+            boutons de l'app pour garder la signature tactile. */}
+        <View style={styles.tiles}>
+          <View style={[styles.tile, styles.tileXp]}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.34)', 'rgba(255,255,255,0)']}
+              style={StyleSheet.absoluteFill}
+            />
+            <Feather name="zap" size={18} color="#fff" />
+            <Text style={styles.tileVal}>{xp}</Text>
+            <Text style={styles.tileLbl}>{t('parcours.xpLabel')}</Text>
+          </View>
+          <Pressable style={[styles.tile, styles.tileGem]} onPress={() => router.push('/(app)/gems')}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.34)', 'rgba(255,255,255,0)']}
+              style={StyleSheet.absoluteFill}
+            />
+            <GemIcon size={18} color="#fff" />
+            <Text style={styles.tileVal}>{gems}</Text>
+            <Text style={styles.tileLbl}>{t('parcours.gemsLabel')}</Text>
+          </Pressable>
+          <Pressable style={[styles.tile, styles.tileHp]} onPress={() => router.push('/(app)/hearts')}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.34)', 'rgba(255,255,255,0)']}
+              style={StyleSheet.absoluteFill}
+            />
+            <Feather name="heart" size={18} color="#fff" />
+            <Text style={styles.tileVal}>{isPremium ? '∞' : hearts}</Text>
+            <Text style={styles.tileLbl}>{t('parcours.heartsLabel')}</Text>
+          </Pressable>
         </View>
-        <Pressable style={styles.stat} onPress={() => router.push('/(app)/gems')} hitSlop={8}>
-          <Text style={{ fontSize: 20 }}>💎</Text>
-          <Text style={[styles.statText, { color: '#1CB0F6' }]}>{gems}</Text>
-        </Pressable>
-        <Pressable style={styles.stat} onPress={() => router.push('/(app)/hearts')} hitSlop={8}>
-          <Feather name="heart" size={22} color="#FF4B4B" />
-          <Text style={[styles.statText, { color: '#FF4B4B' }]}>{isPremium ? '∞' : hearts}</Text>
-        </Pressable>
       </View>
 
       {isLoading && sections.length === 0 ? (
@@ -1523,12 +1597,42 @@ export default function ParcoursScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   statusWrap: {},
-  statsBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 26, paddingVertical: 14,
+  statsBar: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14 },
+
+  // ── Bloc série ───────────────────────────────────────────────────────────
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  flameBadge: {
+    width: 54, height: 54, borderRadius: 18, backgroundColor: '#F0820C',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    // Ombre basse pleine : la signature tactile des boutons de l'app.
+    borderBottomWidth: 5, borderBottomColor: '#C25A08',
   },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 21 },
+  heroTexts: { flex: 1 },
+  heroNum: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 31, lineHeight: 34 },
+  heroCap: {
+    fontFamily: 'Nunito_900Black', fontSize: 9.5, letterSpacing: 1.3,
+    textTransform: 'uppercase', marginTop: 1,
+  },
+  week: { flexDirection: 'row', gap: 4, marginTop: 6 },
+  day: { width: 16, height: 16, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  dayOn: { backgroundColor: '#F0820C' },
+  dayToday: { borderWidth: 2, borderColor: '#F0820C' },
+  dayTxt: { fontFamily: 'Nunito_900Black', fontSize: 7.5 },
+
+  // ── Tuiles XP / gemmes / cœurs ───────────────────────────────────────────
+  tiles: { flexDirection: 'row', gap: 8, marginTop: 11 },
+  tile: {
+    flex: 1, borderRadius: 16, paddingTop: 9, paddingBottom: 8,
+    alignItems: 'center', gap: 4, overflow: 'hidden',
+  },
+  tileXp: { backgroundColor: '#E8A800', borderBottomWidth: 4, borderBottomColor: '#B98500' },
+  tileGem: { backgroundColor: '#1CB0F6', borderBottomWidth: 4, borderBottomColor: '#0E8FCC' },
+  tileHp: { backgroundColor: '#FF4B4B', borderBottomWidth: 4, borderBottomColor: '#D43A3A' },
+  tileVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, lineHeight: 22, color: '#fff' },
+  tileLbl: {
+    fontFamily: 'Nunito_900Black', fontSize: 7.5, letterSpacing: 0.9,
+    textTransform: 'uppercase', color: 'rgba(255,255,255,0.93)',
+  },
   scroll: { flexGrow: 1 },
   centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
