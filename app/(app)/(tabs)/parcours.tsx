@@ -1251,6 +1251,66 @@ const chestStyles = StyleSheet.create({
   emoji: { fontSize: 30 },
 });
 
+/**
+ * Couleur d'ombre/contour de chaque accent — la même que celle des boutons
+ * de l'app (voir CTAButton), pour que l'en-tête parle le même langage.
+ */
+const CHIP_DARK: Record<string, string> = {
+  '#F0820C': '#C25A08',
+  '#E8A800': '#B98500',
+  '#1CB0F6': '#0E8FCC',
+  '#FF4B4B': '#D43A3A',
+};
+
+/**
+ * Un compteur de l'en-tête : série, XP, gemmes ou cœurs.
+ *
+ * Rendu en pastille pleine, cerclée d'un trait plus foncé de la même famille
+ * et posée sur une ombre basse. La rangée plate d'avant ne disait pas que ces
+ * valeurs s'ouvrent ; là, la forme annonce le bouton.
+ *
+ * Sans `onPress` — le cas des XP, qui n'ouvrent aucun écran — on rend une
+ * View : pas de retour tactile sur un élément qui ne fait rien.
+ */
+function StatChip({
+  Icon, icon, tint, value, onPress,
+}: {
+  Icon?: (p: { size?: number; color?: string }) => React.ReactElement;
+  icon?: 'zap' | 'heart';
+  tint: string;
+  value: string;
+  onPress?: () => void;
+}) {
+  const fonce = CHIP_DARK[tint] ?? tint;
+  const style = [
+    styles.chip,
+    { backgroundColor: tint, borderColor: fonce, shadowColor: fonce },
+  ];
+
+  const corps = (
+    <>
+      {Icon ? <Icon size={17} color="#fff" /> : <Feather name={icon!} size={16} color="#fff" />}
+      <Text style={styles.chipVal} numberOfLines={1}>{value}</Text>
+    </>
+  );
+
+  if (!onPress) return <View style={style}>{corps}</View>;
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={6}
+      // L'enfoncement reprend celui des boutons : la pastille descend sur son
+      // ombre au lieu de simplement pâlir.
+      style={({ pressed }) => [
+        style,
+        pressed && { transform: [{ translateY: 2 }], borderBottomWidth: 0.5 },
+      ]}
+    >
+      {corps}
+    </Pressable>
+  );
+}
+
 export default function ParcoursScreen() {
   const router = useRouter();
   const navigation = useNavigation();
@@ -1461,24 +1521,22 @@ export default function ParcoursScreen() {
       </View>
 
       <View style={[styles.statsBar, { backgroundColor: T.cardBg }]}>
-        <Pressable style={styles.stat} onPress={() => router.push('/(app)/streak')} hitSlop={8}>
-          <FlameIcon size={21} color="#F0820C" />
-          <Text style={[styles.statText, { color: T.isDark ? '#FFB868' : '#C25A08' }]}>{streak}</Text>
-        </Pressable>
-        <View style={styles.stat}>
-          <Feather name="zap" size={19} color="#E8A800" />
-          <Text style={[styles.statText, { color: T.isDark ? '#F5C33B' : '#B98500' }]}>{xp}</Text>
-        </View>
-        <Pressable style={styles.stat} onPress={() => router.push('/(app)/gems')} hitSlop={8}>
-          <GemIcon size={19} color="#1CB0F6" />
-          <Text style={[styles.statText, { color: T.isDark ? '#4FC3F7' : '#0E8FCC' }]}>{gems}</Text>
-        </Pressable>
-        <Pressable style={styles.stat} onPress={() => router.push('/(app)/hearts')} hitSlop={8}>
-          <Feather name="heart" size={19} color="#FF4B4B" />
-          <Text style={[styles.statText, { color: T.isDark ? '#FF7070' : '#E03434' }]}>
-            {isPremium ? '∞' : hearts}
-          </Text>
-        </Pressable>
+        <StatChip
+          Icon={FlameIcon} tint="#F0820C"
+          value={String(streak)} onPress={() => router.push('/(app)/streak')}
+        />
+        <StatChip
+          icon="zap" tint="#E8A800" value={String(xp)}
+        />
+        <StatChip
+          Icon={GemIcon} tint="#1CB0F6"
+          value={String(gems)} onPress={() => router.push('/(app)/gems')}
+        />
+        <StatChip
+          icon="heart" tint="#FF4B4B"
+          value={isPremium ? '∞' : String(hearts)}
+          onPress={() => router.push('/(app)/hearts')}
+        />
       </View>
 
       {isLoading && sections.length === 0 ? (
@@ -1527,10 +1585,16 @@ const styles = StyleSheet.create({
   statusWrap: {},
   statsBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 26, paddingVertical: 14,
+    paddingHorizontal: 14, paddingVertical: 11,
   },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 21 },
+  // Pastille d'un compteur. Le fond, le contour et l'ombre viennent de
+  // l'accent (voir StatChip) ; seule la géométrie est ici.
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 11, paddingVertical: 7, borderRadius: 13,
+    borderWidth: 1.5, borderBottomWidth: 3,
+  },
+  chipVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, color: '#fff', lineHeight: 20 },
   scroll: { flexGrow: 1 },
   centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
