@@ -75,6 +75,18 @@ const WIDE: CollectionId[] = ['nawawi', 'qudsi', 'bukhari', 'muslim'];
 const BATCH = 12;
 const REFILL_THRESHOLD = 4;
 
+/**
+ * Longueur au-delà de laquelle la carte de partage tronque le texte.
+ *
+ * Calculé depuis HadithShareCard : 718 px de hauteur utile, et au palier
+ * `< 400` une police de 52 px sur un interlignage de 82 — soit 8 lignes
+ * d'environ 32 caractères. Un texte plus long sort avec un « … ».
+ *
+ * 36 % du corpus passe sous cette barre (5 404 hadiths sur 14 978), de quoi
+ * alimenter le flux sans resservir sans cesse les mêmes.
+ */
+const COURT_PARTAGE = 250;
+
 export default function HadithsScreen() {
   const router = useRouter();
   const T = useTheme();
@@ -160,6 +172,26 @@ export default function HadithsScreen() {
       const h = list[Math.floor(Math.random() * list.length)];
       const key = `${collectionId}:${h.n}`;
       if (seen.current.has(key)) continue;
+
+      /*
+       * Tirage BIAISE vers les textes courts.
+       *
+       * Un tirage uniforme sort surtout des textes longs : la mediane du
+       * corpus est de 326 caracteres, et la carte de partage ne peut en
+       * afficher qu'environ 250 sans tronquer (hauteur disponible 718 px,
+       * voir layoutFor/maxLines dans HadithShareCard). On tombait donc le
+       * plus souvent sur des cartes coupees par un « … ».
+       *
+       * On ne FILTRE pas les longs : le flux sert aussi a lire, et les
+       * ecarter reviendrait a amputer l'app des deux tiers du corpus. On
+       * leur laisse une chance sur trois d'etre retenus a chaque tirage,
+       * ce qui les rarefie sans les faire disparaitre.
+       *
+       * La borne `guard` plus haut garantit que la boucle se termine meme
+       * si le vivier charge ne contient que des textes longs.
+       */
+      if (h.t.length > COURT_PARTAGE && Math.random() > 0.34) continue;
+
       seen.current.add(key);
       out.push(toItem(collectionId, h));
     }
