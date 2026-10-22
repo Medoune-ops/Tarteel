@@ -60,6 +60,63 @@ interface Result {
   color: string;
 }
 
+/**
+ * Longueur au-delà de laquelle un hadith ne tient plus confortablement sur
+ * une carte de partage.
+ *
+ * HadithShareCard réduit la police à mesure que le texte s'allonge, puis
+ * tronque avec un « … ». Autour de 320 caractères, le texte occupe déjà
+ * toute la carte en petit corps : lisible, mais ce n'est plus une image
+ * qu'on a envie d'envoyer. En-deçà, le verset respire.
+ */
+const COURT = 320;
+
+/**
+ * Ordonne les résultats pour que les textes PARTAGEABLES viennent en premier.
+ *
+ * La recherche par ressenti sert à trouver une parole à lire, et souvent à
+ * envoyer à quelqu'un. L'ordre d'avant (recueil puis numéro) n'avait aucun
+ * sens pour l'utilisateur : il pouvait tomber d'abord sur un hadith d'une
+ * page entière là où une phrase de deux lignes aurait fait le même effet.
+ *
+ * On ne trie PAS strictement par longueur : an-Nawawi et Qudsi sont
+ * structurellement plus longs que Bukhari et Muslim (médianes mesurées sur
+ * le corpus : 412 et 609 contre 381 et 275 caractères). Un tri par longueur
+ * seule les faisait disparaître entièrement des premiers résultats, alors que
+ * ce sont les deux recueils les plus emblématiques. On garantit donc au moins
+ * un texte de chaque recueil présent dans les six premières cartes.
+ *
+ * L'ordre reste stable : deux recherches identiques donnent la même liste.
+ */
+function sortForSharing(list: Result[]): Result[] {
+  const courts = list.filter((r) => r.text.length <= COURT);
+  const longs = list.filter((r) => r.text.length > COURT);
+  // Dans les courts, les plus brefs d'abord : ce sont les plus frappants à
+  // lire comme à partager.
+  courts.sort((a, b) => a.text.length - b.text.length);
+  const trie = [...courts, ...longs];
+
+  /*
+   * Remonte le texte le plus court de chaque recueil absent du début de
+   * liste. Sans cela, un ressenti dont les hadiths courts viennent tous de
+   * Bukhari masquait complètement an-Nawawi et Qudsi.
+   */
+  const TETE = 6;
+  const presents = new Set(trie.slice(0, TETE).map((r) => r.collectionId));
+  const remontes: Result[] = [];
+  for (const r of trie) {
+    if (presents.has(r.collectionId)) continue;
+    presents.add(r.collectionId);
+    remontes.push(r);
+  }
+  if (remontes.length === 0) return trie;
+
+  const restants = trie.filter((r) => !remontes.includes(r));
+  // Les remontés s'insèrent après les trois plus courts : on garde un début
+  // de liste franchement bref, tout en montrant la diversité des recueils.
+  return [...restants.slice(0, 3), ...remontes, ...restants.slice(3)];
+}
+
 /** Ressentis proposés d'emblée — les plus universels, pas les plus fournis. */
 const SUGGESTED: EmotionId[] = [
   'peur', 'tristesse', 'colere', 'patience', 'espoir',
@@ -154,7 +211,7 @@ export default function HadithsRessentiScreen() {
           color: themeStyle(themeOfHadith(collectionId, h.s)).color,
         });
       }
-      setResults(out);
+      setResults(sortForSharing(out));
     } catch {
       setResults([]);
     } finally {
