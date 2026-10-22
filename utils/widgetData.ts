@@ -53,13 +53,7 @@ export function currentMotivationMsg(): string {
   return t(MOTIVATION_KEYS[idx]!);
 }
 
-/**
- * Les 7 jours de la semaine (lun→dim), actifs d'après la série.
- *
- * Exporté : l'en-tête de l'écran Apprendre affiche la même semaine que le
- * widget, et deux calculs séparés finiraient par diverger.
- */
-export function getTodayActiveDays(streak: number): boolean[] {
+function getTodayActiveDays(streak: number): boolean[] {
   // On considère que les <streak> derniers jours jusqu'à aujourd'hui sont actifs
   const today = new Date().getDay(); // 0=dim, 1=lun…
   // Convertir en index lun-dim (0=lun … 6=dim)
