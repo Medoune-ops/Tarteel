@@ -48,6 +48,9 @@ const fr = {
   'tabs.profil': 'Profil',
 
   // ─── Parcours ──────────────────────────────────────────────────────────────
+  // En-tête de l'écran Apprendre.
+  'parcours.greeting': 'As-salāmu ʿalaykum',
+  'parcours.greetingSub': 'Prêt pour aujourd’hui ?',
   'parcours.loading': 'Chargement du parcours…',
   'parcours.loadError': 'Impossible de charger le parcours.',
   'parcours.lessons': '{done}/{total} leçons',
@@ -1421,6 +1424,8 @@ const en: Dict = {
   'tabs.coran': 'Quran',
   'tabs.profil': 'Profile',
 
+  'parcours.greeting': 'As-salāmu ʿalaykum',
+  'parcours.greetingSub': 'Ready for today?',
   'parcours.loading': 'Loading your path…',
   'parcours.loadError': 'Could not load your path.',
   'parcours.lessons': '{done}/{total} lessons',

@@ -8,7 +8,8 @@ import Animated, {
 import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Rect, Path, Circle, Ellipse, Line, Defs, RadialGradient, Stop, G } from 'react-native-svg';
-import DeviceStatusBar from '../../../components/StatusBar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import HeaderPattern from '../../../components/HeaderPattern';
 import { MosqueIcon, FlameIcon, GemIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
 import { useGiftModalStore } from '../../../store/giftModalStore';
@@ -1252,45 +1253,39 @@ const chestStyles = StyleSheet.create({
 });
 
 /**
- * Couleur d'ombre/contour de chaque accent — la même que celle des boutons
- * de l'app (voir CTAButton), pour que l'en-tête parle le même langage.
- */
-const CHIP_DARK: Record<string, string> = {
-  '#F0820C': '#C25A08',
-  '#E8A800': '#B98500',
-  '#1CB0F6': '#0E8FCC',
-  '#FF4B4B': '#D43A3A',
-};
-
-/**
- * Un compteur de l'en-tête : série, XP, gemmes ou cœurs.
+ * Un compteur de l'en-tete : serie, XP, gemmes ou coeurs.
  *
- * Rendu en pastille pleine, cerclée d'un trait plus foncé de la même famille
- * et posée sur une ombre basse. La rangée plate d'avant ne disait pas que ces
- * valeurs s'ouvrent ; là, la forme annonce le bouton.
+ * Pose sur le degrade, il est en VERRE : un fond blanc tres translucide
+ * cercle d'un lisere clair. Une pastille opaque aurait fait tache sur le
+ * motif ; translucide, elle le laisse transparaitre.
  *
- * Sans `onPress` — le cas des XP, qui n'ouvrent aucun écran — on rend une
- * View : pas de retour tactile sur un élément qui ne fait rien.
+ * `hero` inverse le traitement — fond blanc plein, texte orange — pour que
+ * la serie, la seule statistique qui appelle une action aujourd'hui, se
+ * detache sans avoir besoin d'etre plus grosse.
+ *
+ * Sans `onPress` (le cas des XP, qui n'ouvrent aucun ecran), on rend une
+ * View : pas de retour tactile sur un element qui ne fait rien.
  */
 function StatChip({
-  Icon, icon, tint, value, onPress,
+  Icon, icon, glyphe = '#fff', value, onPress, hero,
 }: {
   Icon?: (p: { size?: number; color?: string }) => React.ReactElement;
   icon?: 'zap' | 'heart';
-  tint: string;
+  /** Couleur de l'icone. Ignoree quand `hero` est vrai. */
+  glyphe?: string;
   value: string;
   onPress?: () => void;
+  hero?: boolean;
 }) {
-  const fonce = CHIP_DARK[tint] ?? tint;
-  const style = [
-    styles.chip,
-    { backgroundColor: tint, borderColor: fonce, shadowColor: fonce },
-  ];
-
+  const style = [styles.chip, hero && styles.chipHero];
   const corps = (
     <>
-      {Icon ? <Icon size={17} color="#fff" /> : <Feather name={icon!} size={16} color="#fff" />}
-      <Text style={styles.chipVal} numberOfLines={1}>{value}</Text>
+      {Icon
+        ? <Icon size={17} color={hero ? '#F0820C' : glyphe} />
+        : <Feather name={icon!} size={16} color={hero ? '#F0820C' : glyphe} />}
+      <Text style={[styles.chipVal, hero && styles.chipValHero]} numberOfLines={1}>
+        {value}
+      </Text>
     </>
   );
 
@@ -1298,13 +1293,8 @@ function StatChip({
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={6}
-      // L'enfoncement reprend celui des boutons : la pastille descend sur son
-      // ombre au lieu de simplement pâlir.
-      style={({ pressed }) => [
-        style,
-        pressed && { transform: [{ translateY: 2 }], borderBottomWidth: 0.5 },
-      ]}
+      hitSlop={8}
+      style={({ pressed }) => [style, pressed && { opacity: 0.72, transform: [{ scale: 0.95 }] }]}
     >
       {corps}
     </Pressable>
@@ -1321,10 +1311,21 @@ export default function ParcoursScreen() {
   const gems = useUserStore((s) => s.gems);
   const isPremium = useUserStore((s) => s.isPremium);
   const syncHearts = useUserStore((s) => s.syncHearts);
+  const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const listRef = useRef<FlatList<ParcoursSection>>(null);
 
   const [sections, setSections] = useState<ParcoursSection[]>([]);
+
+  /*
+   * Section dont releve la PROCHAINE lecon : celle que l'utilisateur est en
+   * train de faire, pas forcement la premiere de la liste. C'est elle qui
+   * donne sa couleur a l'en-tete, qui change donc a mesure qu'on avance.
+   */
+  const sectionCourante = sections.find((sec) => sec.nodes.some((n) => n.state === 'active'))
+    ?? sections[0];
+  // Repli violet Tarteel tant que les sections ne sont pas chargees.
+  const enteteDegrade = sectionCourante?.degrade ?? ['#7C5CFF', '#5B3FD6'];
   const [loadError, setLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [canLoadMore, setCanLoadMore] = useState(true);
@@ -1516,27 +1517,48 @@ export default function ParcoursScreen() {
         lit={isPremium}
         isDark={T.isDark}
       />
-      <View style={[styles.statusWrap, { backgroundColor: T.cardBg }]}>
-        <DeviceStatusBar />
-      </View>
 
-      <View style={[styles.statsBar, { backgroundColor: T.cardBg }]}>
-        <StatChip
-          Icon={FlameIcon} tint="#F0820C"
-          value={String(streak)} onPress={() => router.push('/(app)/streak')}
+      {/* En-tete : le degrade de la SECTION EN COURS, pas une couleur figee.
+          Il change donc de teinte a mesure qu'on avance dans le parcours. */}
+      <View style={styles.header}>
+        <LinearGradient
+          colors={enteteDegrade}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
         />
-        <StatChip
-          icon="zap" tint="#E8A800" value={String(xp)}
-        />
-        <StatChip
-          Icon={GemIcon} tint="#1CB0F6"
-          value={String(gems)} onPress={() => router.push('/(app)/gems')}
-        />
-        <StatChip
-          icon="heart" tint="#FF4B4B"
-          value={isPremium ? '∞' : String(hearts)}
-          onPress={() => router.push('/(app)/hearts')}
-        />
+        {/* Motif rub el hizb — le meme vocabulaire que les autres ecrans. */}
+        <HeaderPattern width={width} height={150} variant="stars" opacity={0.15} />
+        {/* Halo qui eclaire le coin haut gauche, pour que le degrade ne soit
+            pas une surface morte. */}
+        <View style={styles.halo} pointerEvents="none" />
+
+        <View style={[styles.headerTop, { paddingTop: insets.top + 6 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.salut} numberOfLines={1}>{t('parcours.greeting')}</Text>
+            <Text style={styles.salutSous} numberOfLines={1}>
+              {sectionCourante
+                ? `${sectionCourante.kicker} · ${sectionCourante.titre}`
+                : t('parcours.greetingSub')}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.statsBar}>
+          <StatChip
+            Icon={FlameIcon} value={String(streak)} hero
+            onPress={() => router.push('/(app)/streak')}
+          />
+          <StatChip icon="zap" glyphe="#FFE07A" value={String(xp)} />
+          <StatChip
+            Icon={GemIcon} glyphe="#8FDCFF" value={String(gems)}
+            onPress={() => router.push('/(app)/gems')}
+          />
+          <StatChip
+            icon="heart" glyphe="#FFA0A0"
+            value={isPremium ? '∞' : String(hearts)}
+            onPress={() => router.push('/(app)/hearts')}
+          />
+        </View>
       </View>
 
       {isLoading && sections.length === 0 ? (
@@ -1582,19 +1604,51 @@ export default function ParcoursScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  statusWrap: {},
+  // ── En-tete ──────────────────────────────────────────────────────────────
+  // Les coins bas arrondis detachent l'en-tete du parcours, comme sur les
+  // autres ecrans de l'app. overflow cache le motif et le halo qui debordent.
+  header: {
+    overflow: 'hidden',
+    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
+    paddingBottom: 14,
+  },
+  // Lueur diffuse dans le coin haut gauche : sans elle, le degrade est une
+  // surface morte. Un disque largement hors cadre, dont seule la frange
+  // interieure se voit.
+  halo: {
+    position: 'absolute', top: -150, left: -90,
+    width: 300, height: 300, borderRadius: 150,
+    backgroundColor: 'rgba(255,255,255,0.13)',
+  },
+  headerTop: { paddingHorizontal: 18, paddingBottom: 13 },
+  salut: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 19, color: '#fff', lineHeight: 24 },
+  salutSous: {
+    fontFamily: 'Nunito_800ExtraBold', fontSize: 11,
+    color: 'rgba(255,255,255,0.74)', marginTop: 1, letterSpacing: 0.2,
+  },
   statsBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingVertical: 11,
+    paddingHorizontal: 16, gap: 7,
   },
   // Pastille d'un compteur. Le fond, le contour et l'ombre viennent de
   // l'accent (voir StatChip) ; seule la géométrie est ici.
+  // Verre : fond blanc tres translucide + lisere clair. Laisse passer le
+  // motif, contrairement a une pastille opaque.
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 11, paddingVertical: 7, borderRadius: 13,
-    borderWidth: 1.5, borderBottomWidth: 3,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.17)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)',
   },
-  chipVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, color: '#fff', lineHeight: 20 },
+  // La serie : traitement inverse, pour se detacher sans grossir.
+  chipHero: {
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: '#fff',
+    shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 }, elevation: 3,
+  },
+  chipVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#fff', lineHeight: 19 },
+  chipValHero: { color: '#E0560E', fontSize: 17 },
   scroll: { flexGrow: 1 },
   centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
