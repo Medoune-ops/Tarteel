@@ -1318,14 +1318,67 @@ export default function ParcoursScreen() {
   const [sections, setSections] = useState<ParcoursSection[]>([]);
 
   /*
-   * Section dont releve la PROCHAINE lecon : celle que l'utilisateur est en
-   * train de faire, pas forcement la premiere de la liste. C'est elle qui
-   * donne sa couleur a l'en-tete, qui change donc a mesure qu'on avance.
+   * Index de la section EN HAUT DE L'ECRAN — c'est elle qui colore l'en-tete.
+   *
+   * On part de celle qui porte la prochaine lecon (l'ecran s'y positionne au
+   * chargement), puis `onViewableItemsChanged` prend le relais des que
+   * l'utilisateur defile.
    */
-  const sectionCourante = sections.find((sec) => sec.nodes.some((n) => n.state === 'active'))
-    ?? sections[0];
+  const [sectionVisible, setSectionVisible] = useState(0);
+
+  const sectionCourante = sections[sectionVisible] ?? sections[0];
   // Repli violet Tarteel tant que les sections ne sont pas chargees.
-  const enteteDegrade = sectionCourante?.degrade ?? ['#7C5CFF', '#5B3FD6'];
+  const degradeCible = sectionCourante?.degrade ?? ['#7C5CFF', '#5B3FD6'];
+
+  /*
+   * Fondu entre deux degrades superposes.
+   *
+   * `LinearGradient` n'anime pas ses `colors` : changer le tableau bascule la
+   * couleur d'un coup. On garde donc le degrade PRECEDENT en fond et on fait
+   * apparaitre le nouveau par-dessus en opacite — seule propriete que le
+   * compositeur sait interpoler sans redessiner.
+   */
+  const [degradeFond, setDegradeFond] = useState(degradeCible);
+  const [degradeHaut, setDegradeHaut] = useState(degradeCible);
+  const fondu = useSharedValue(1);
+
+  useEffect(() => {
+    // Rien a faire si la couleur n'a pas change (meme section, ou retour sur
+    // une section de meme teinte).
+    if (degradeCible[0] === degradeHaut[0] && degradeCible[1] === degradeHaut[1]) return;
+
+    /*
+     * Le degrade SORTANT est celui qu'on voit a cet instant — pas forcement
+     * `degradeHaut`, si un fondu est encore en cours. En defilement rapide a
+     * travers plusieurs sections, ecraser le fond par le haut provoquait une
+     * coupure : la couche basse sautait d'un coup a mi-animation.
+     *
+     * On ne remplace donc le fond que lorsque le fondu precedent est termine
+     * (fondu.value === 1). Sinon on le laisse en place et on redirige
+     * seulement la couche haute, qui repart de son opacite courante.
+     */
+    if (fondu.value === 1) setDegradeFond(degradeHaut);
+    setDegradeHaut(degradeCible);
+    fondu.value = 0;
+    fondu.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.quad) });
+  }, [degradeCible[0], degradeCible[1]]);
+
+  const hautStyle = useAnimatedStyle(() => ({ opacity: fondu.value }));
+
+  /*
+   * Section consideree comme « en haut de l'ecran ».
+   *
+   * `itemVisiblePercentThreshold: 60` evite que l'en-tete clignote entre deux
+   * couleurs quand la frontiere de deux sections traverse l'ecran : il faut
+   * qu'une section occupe vraiment la vue pour prendre la main.
+   */
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
+      const premier = viewableItems[0]?.index;
+      if (premier != null) setSectionVisible(premier);
+    },
+  ).current;
   const [loadError, setLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [canLoadMore, setCanLoadMore] = useState(true);
@@ -1336,6 +1389,14 @@ export default function ParcoursScreen() {
   const shownRef = useRef(0);
   // Index (dans la liste affichée) de la section active — pour l'auto-scroll.
   const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
+  /*
+   * Au chargement, l'ecran se positionne sur la section de la prochaine lecon
+   * (voir scrollToActiveSection). L'en-tete doit partir de SA couleur, sinon
+   * il s'ouvre sur celle de la section 0 puis saute.
+   */
+  useEffect(() => {
+    if (activeSectionIndex != null) setSectionVisible(activeSectionIndex);
+  }, [activeSectionIndex]);
   const hasAutoScrolledRef = useRef(false);
 
   /** Applique la liste complète en gardant le nb de sections déjà affichées. */
@@ -1521,11 +1582,20 @@ export default function ParcoursScreen() {
       {/* En-tete : le degrade de la SECTION EN COURS, pas une couleur figee.
           Il change donc de teinte a mesure qu'on avance dans le parcours. */}
       <View style={styles.header}>
+        {/* Degrade sortant, en dessous — voir le fondu plus haut. */}
         <LinearGradient
-          colors={enteteDegrade}
+          colors={degradeFond}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
+        {/* Degrade entrant, qui apparait par-dessus en opacite. */}
+        <Animated.View style={[StyleSheet.absoluteFill, hautStyle]}>
+          <LinearGradient
+            colors={degradeHaut}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
         {/* Motif rub el hizb — le meme vocabulaire que les autres ecrans. */}
         <HeaderPattern width={width} height={150} variant="stars" opacity={0.15} />
         {/* Halo qui eclaire le coin haut gauche, pour que le degrade ne soit
@@ -1578,6 +1648,9 @@ export default function ParcoursScreen() {
           ListFooterComponent={renderFooter}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          // L'en-tete prend la couleur de la section qui occupe l'ecran.
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           scrollIndicatorInsets={{ bottom: 0 }}
           showsVerticalScrollIndicator={false}
           // Chaque section est très haute (~10 nœuds) : on rend peu d'items
