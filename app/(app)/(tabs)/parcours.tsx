@@ -1778,7 +1778,23 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
-  chipVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#fff', lineHeight: 19, flexShrink: 1 },
+  /*
+   * Pas de lineHeight, et includeFontPadding desactive sur Android.
+   *
+   * Avec lineHeight 19 sur une police 16, les 3 px de blanc ne se
+   * repartissaient pas egalement : Baloo 2 a une forte ascendante et peu de
+   * descendante, donc le chiffre se posait HAUT dans sa boite. Comme la
+   * pastille centre les deux boites (icone 17 px et texte), elle alignait
+   * leurs centres et pas les glyphes — le chiffre paraissait monter
+   * au-dessus de l'icone.
+   *
+   * Sans lineHeight, la boite epouse le glyphe et le centrage tombe juste.
+   */
+  chipVal: {
+    fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#fff',
+    flexShrink: 1,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+  },
   chipValHero: { color: '#E0560E', fontSize: 17 },
   scroll: { flexGrow: 1 },
   centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
