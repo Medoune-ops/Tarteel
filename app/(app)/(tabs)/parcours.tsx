@@ -1366,15 +1366,24 @@ export default function ParcoursScreen() {
   const hautStyle = useAnimatedStyle(() => ({ opacity: fondu.value }));
 
   /*
-   * Section consideree comme « en haut de l'ecran ».
+   * Section qui colore l'en-tete : celle qui occupe la plus grande part de
+   * l'ecran.
    *
-   * `itemVisiblePercentThreshold: 60` evite que l'en-tete clignote entre deux
-   * couleurs quand la frontiere de deux sections traverse l'ecran : il faut
-   * qu'une section occupe vraiment la vue pour prendre la main.
+   * `viewAreaCoveragePercentThreshold` et NON `itemVisiblePercentThreshold` :
+   * le second mesure la part de l'ITEM visible, or une section fait ~790 px
+   * pour ~620 px d'ecran utile. Elle ne peut donc jamais depasser ~78 % d'
+   * elle-meme, et entre deux positions centrees aucune section n'atteignait
+   * le seuil — le callback ne partait pas et la couleur restait figee.
+   *
+   * Le premier mesure la part de l'ECRAN couverte, ce qui a un sens quel que
+   * soit la taille des items. A 50 %, la section qui remplit la moitie haute
+   * de la vue prend la main.
    */
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
+      // viewableItems peut arriver vide pendant un defilement rapide : on
+      // garde alors la derniere couleur plutot que de revenir au repli.
       const premier = viewableItems[0]?.index;
       if (premier != null) setSectionVisible(premier);
     },
@@ -1390,12 +1399,20 @@ export default function ParcoursScreen() {
   // Index (dans la liste affichée) de la section active — pour l'auto-scroll.
   const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
   /*
-   * Au chargement, l'ecran se positionne sur la section de la prochaine lecon
-   * (voir scrollToActiveSection). L'en-tete doit partir de SA couleur, sinon
-   * il s'ouvre sur celle de la section 0 puis saute.
+   * Couleur de depart : l'ecran s'ouvre sur la section de la prochaine lecon
+   * (voir scrollToActiveSection), l'en-tete doit partir de SA teinte plutot
+   * que de sauter depuis celle de la section 0.
+   *
+   * UNE SEULE FOIS. `setActiveSectionIndex` est rappele a chaque rechargement
+   * des sections — retour sur l'onglet, revalidation SWR — et reecrasait
+   * alors `sectionVisible` pose par le defilement : la couleur se figeait sur
+   * la section active et ne suivait plus le scroll.
    */
+  const couleurInitialisee = useRef(false);
   useEffect(() => {
-    if (activeSectionIndex != null) setSectionVisible(activeSectionIndex);
+    if (couleurInitialisee.current || activeSectionIndex == null) return;
+    couleurInitialisee.current = true;
+    setSectionVisible(activeSectionIndex);
   }, [activeSectionIndex]);
   const hasAutoScrolledRef = useRef(false);
 
