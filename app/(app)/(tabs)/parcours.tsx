@@ -1253,6 +1253,31 @@ const chestStyles = StyleSheet.create({
 });
 
 /**
+ * Abrege un compteur pour qu'il tienne dans sa pastille.
+ *
+ * Au-dela de 9 999, un XP ou un solde de gemmes occupe trop de place : a
+ * quatre pastilles sur une rangee, « 124500 » faisait deborder la barre sur
+ * un ecran de 360 px. « 124k » dit la meme chose en trois signes.
+ *
+ * Le seuil est a 10 000 et pas plus bas : en-dessous, le chiffre exact est
+ * une information que l'utilisateur suit de pres (il voit ses XP monter).
+ * Au-dela, l'ordre de grandeur suffit.
+ */
+function abrege(n: number): string {
+  if (!Number.isFinite(n) || n < 10000) return String(n);
+  // Seuil a 999 500 et non 1 000 000 : au-dessus, l'arrondi au millier
+  // afficherait « 1000k » la ou « 1M » est attendu.
+  if (n < 999500) {
+    const milliers = n / 1000;
+    // Une decimale jusqu'a 99,9k ; au-dela elle n'apporte plus rien.
+    return milliers < 100
+      ? `${milliers.toFixed(1).replace(/\.0$/, '')}k`
+      : `${Math.round(milliers)}k`;
+  }
+  return `${(n / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+}
+
+/**
  * Un compteur de l'en-tete : serie, XP, gemmes ou coeurs.
  *
  * Pose sur le degrade, il est en VERRE : un fond blanc tres translucide
@@ -1283,7 +1308,18 @@ function StatChip({
       {Icon
         ? <Icon size={17} color={hero ? '#F0820C' : glyphe} />
         : <Feather name={icon!} size={16} color={hero ? '#F0820C' : glyphe} />}
-      <Text style={[styles.chipVal, hero && styles.chipValHero]} numberOfLines={1}>
+      <Text
+        style={[styles.chipVal, hero && styles.chipValHero]}
+        numberOfLines={1}
+        /*
+         * Sur un ecran etroit (iPhone SE, 320 px), quatre pastilles ne
+         * tiennent pas a pleine taille. Plutot que de tronquer le chiffre par
+         * un « … » — un compteur a moitie lu ne veut rien dire — on laisse la
+         * police descendre jusqu'a 75 % de sa taille.
+         */
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         {value}
       </Text>
     </>
@@ -1635,9 +1671,9 @@ export default function ParcoursScreen() {
             Icon={FlameIcon} value={String(streak)} hero
             onPress={() => router.push('/(app)/streak')}
           />
-          <StatChip icon="zap" glyphe="#FFE07A" value={String(xp)} />
+          <StatChip icon="zap" glyphe="#FFE07A" value={abrege(xp)} />
           <StatChip
-            Icon={GemIcon} glyphe="#8FDCFF" value={String(gems)}
+            Icon={GemIcon} glyphe="#8FDCFF" value={abrege(gems)}
             onPress={() => router.push('/(app)/gems')}
           />
           <StatChip
@@ -1724,11 +1760,16 @@ const styles = StyleSheet.create({
   // l'accent (voir StatChip) ; seule la géométrie est ici.
   // Verre : fond blanc tres translucide + lisere clair. Laisse passer le
   // motif, contrairement a une pastille opaque.
+  // `flexShrink` autorise la pastille a se resserrer plutot qu'a pousser ses
+  // voisines hors de l'ecran ; `minWidth: 0` est ce qui permet au texte de
+  // retrecir a l'interieur (sans lui, flex refuse de passer sous la largeur
+  // du contenu).
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 9, paddingVertical: 6, borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.17)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)',
+    flexShrink: 1, minWidth: 0,
   },
   // La serie : traitement inverse, pour se detacher sans grossir.
   chipHero: {
@@ -1737,7 +1778,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
-  chipVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#fff', lineHeight: 19 },
+  chipVal: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#fff', lineHeight: 19, flexShrink: 1 },
   chipValHero: { color: '#E0560E', fontSize: 17 },
   scroll: { flexGrow: 1 },
   centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
