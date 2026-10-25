@@ -438,3 +438,71 @@ export function GemIcon({ size = 28, color = '#1CB0F6' }: { size?: number; color
     </Svg>
   );
 }
+
+/** Cœur plein — vies restantes dans une leçon.
+ *
+ *  Le tracé est en un seul morceau (deux arcs qui se rejoignent en pointe),
+ *  ce qui donne une silhouette nette dès 14 px là où un cœur en courbes de
+ *  Bézier s'épaissit et perd sa pointe. Le reflet n'est pas décoratif : sans
+ *  lui, l'aplat rouge se lit comme une tache une fois posé sur un fond
+ *  coloré, le cas du héros de la page « Mes cœurs ». */
+export function HeartIcon({
+  size = 28, color = '#FF4B4B', glare = true, outline = false, strokeWidth = 1.6,
+}: { size?: number; color?: string; glare?: boolean; outline?: boolean; strokeWidth?: number }) {
+  const D = 'M14 25.2 L4.1 15.1 A6.3 6.3 0 0 1 14 7.3 A6.3 6.3 0 0 1 23.9 15.1 Z';
+  // En mode contour, le cœur n'est qu'un trait : c'est lui qui rend lisible
+  // une jauge de remplissage, dont la coupe franche se lirait sinon comme un
+  // bug plutôt que comme un niveau.
+  if (outline) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+        <Path d={D} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+      </Svg>
+    );
+  }
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <Path d={D} fill={color} />
+      {/* reflet en haut à gauche — donne le galbe */}
+      {glare && (
+        <Path d="M8.4 8.6 A5.4 5.4 0 0 1 13.2 7.4 A7.4 7.4 0 0 0 7.2 12.4 A4.6 4.6 0 0 1 8.4 8.6 Z" fill="#fff" opacity={0.42} />
+      )}
+    </Svg>
+  );
+}
+
+/** Flocon — gel de série (le jour manqué ne casse pas la flamme).
+ *
+ *  Six branches avec leurs barbes, plutôt qu'un flocon détaillé : à la taille
+ *  où on l'affiche (16-20 px dans une pastille), les cristaux fins se
+ *  referment en une bouillie grise. Les barbes suffisent à dire « givre ». */
+export function FreezeIcon({ size = 28, color = '#1CB0F6' }: { size?: number; color?: string }) {
+  const branches = [0, 60, 120];
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {branches.map((a) => (
+        <Path
+          key={a}
+          d="M14 3.2 L14 24.8"
+          stroke={color}
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          transform={`rotate(${a} 14 14)`}
+        />
+      ))}
+      {/* barbes : deux par demi-branche, en haut et en bas */}
+      {branches.map((a) => (
+        <Path
+          key={`b${a}`}
+          d="M14 6.4 L10.9 4.2 M14 6.4 L17.1 4.2 M14 21.6 L10.9 23.8 M14 21.6 L17.1 23.8"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinecap="round"
+          transform={`rotate(${a} 14 14)`}
+        />
+      ))}
+      {/* noyau — masque le croisement des trois traits, qui épaississait le centre */}
+      <Circle cx={14} cy={14} r={2.6} fill={color} />
+    </Svg>
+  );
+}
