@@ -16,7 +16,22 @@ jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 jest.mock('../components/StatusBar', () => () => null);
 jest.mock('../lib/api', () => ({ fetchSourates: () => Promise.resolve(mockSourates) }));
 jest.mock('../lib/api/swr', () => ({ swrFetch: (_k: string, fn: () => Promise<unknown>) => fn() }));
-jest.mock('../constants/trackPlayer', () => ({ AUDIO_AVAILABLE: false, playSurates: jest.fn() }));
+jest.mock('../constants/trackPlayer', () => ({
+  AUDIO_AVAILABLE: false,
+  playSurates: jest.fn(),
+  changeReciter: jest.fn(),
+  getCurrentReciterId: () => 'basit',
+  getCurrentSourates: () => [],
+  useActiveTrack: () => undefined,
+  useProgress: () => ({ position: 0, duration: 0, buffered: 0 }),
+  useIsPlaying: () => ({ playing: false }),
+  audioControls: {},
+  refreshLocalSudaisCache: jest.fn(),
+}));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+jest.mock('../constants/audioDownload', () => ({ fetchSudaisTotalMb: () => Promise.resolve(null) }));
 jest.mock('../utils/useTheme', () => ({
   useTheme: () => ({ pageBg: '#fff', cardBg: '#fff', text: '#000', textSecondary: '#666', textTertiary: '#999', border: '#eee', divider: '#eee', isDark: false }),
 }));

@@ -1,19 +1,17 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, Pressable, TextInput, FlatList, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, TextInput, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import Animated, {
-  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle,
-  interpolate, Extrapolation,
-} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import HeaderPattern from '../../components/HeaderPattern';
+import Svg, { Path } from 'react-native-svg';
+import DeviceStatusBar from '../../components/StatusBar';
 import { fetchSourates, type SourateListItem } from '../../lib/api';
 import { swrFetch } from '../../lib/api/swr';
 import { useTheme } from '../../utils/useTheme';
 import { fatihaFirstThenDesc } from '../../constants/sourateOrder';
-import { sourateMeaning } from '../../constants/sourateMeaning';
+import { sourateMeaningLine } from '../../constants/sourateMeaning';
 import { useUserStore } from '../../store/userStore';
+import { useLectureProgressStore } from '../../store/lectureProgressStore';
 import { useT } from '../../lib/i18n';
 import OfflineState from '../../components/OfflineState';
 import { readPersisted, writePersisted, SOURATES_CACHE_KEY } from '../../lib/api/persistentCache';
@@ -24,67 +22,45 @@ function normalize(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-// « Lecture libre » — catalogue COMPLET des 114 sourates du Coran (en arabe),
-// indépendant de la progression du parcours. Une barre de recherche filtre les
-// sourates dès la première lettre (par nom, numéro ou nom arabe). Chaque ligne
-// ouvre le lecteur audio qui récite la sourate en entier, sans arrêt.
+// ─── Palette de la maquette (Tarteel Lecture Libre) ────────────────────────
+type Palette = {
+  bg: string; card: string; ink: string; muted: string; track: string; chip: string;
+  accent: string; accentSoft: string;
+  hero: readonly [string, string, string];
+  art: readonly [string, string, string];
+};
+const LIGHT: Palette = {
+  bg: '#F4F3F8', card: '#FFFFFF', ink: '#1A1730', muted: '#6F6B84', track: '#E3DFF0', chip: '#F2F0F7',
+  accent: '#6B4DFF', accentSoft: '#EEEAFF',
+  hero: ['#4A31C2', '#6B4DFF', '#8A6CFF'], art: ['#9A7DFF', '#6B4DFF', '#4A31C2'],
+};
+const DARK: Palette = {
+  bg: '#0C0B12', card: '#17151F', ink: '#EEEDF5', muted: '#918DA6', track: '#2A2638', chip: '#211E2B',
+  accent: '#9A82FF', accentSoft: 'rgba(139,112,255,0.16)',
+  hero: ['#130D2C', '#22165A', '#33227E'], art: ['#7A5CF5', '#5034C8', '#2E1D7A'],
+};
+const G160 = { start: { x: 0.33, y: 0 }, end: { x: 0.67, y: 1 } };
+const G150 = { start: { x: 0.25, y: 0 }, end: { x: 0.75, y: 1 } };
+
+function PlayIcon({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" style={{ marginLeft: 2 }}>
+      <Path d="M6 3.5 20 12 6 20.5z" fill={color} />
+    </Svg>
+  );
+}
+
+// « Lecture libre » — catalogue COMPLET des 114 sourates du Coran, indépendant
+// de la progression du parcours. Recherche dans l'en-tête (nom, numéro, nom
+// arabe), carte « Reprendre la lecture » (dernière sourate ouverte), puis la
+// liste. Chaque ligne ouvre le lecteur de la sourate.
 export default function LectureLibreScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
+  const P = T.isDark ? DARK : LIGHT;
   const language = useUserStore((s) => s.language);
-  const { width } = useWindowDimensions();
-
-  /*
-   * En-tête qui se comprime au défilement : de 190 à 86 pixels.
-   *
-   * Le médaillon, le filet et le sous-titre replient leur HAUTEUR, pas
-   * seulement leur opacité — un élément transparent occupe toujours sa place
-   * et pousserait le reste hors du cadre. Le titre, lui, est posé à une
-   * coordonnée animée plutôt que laissé au flux : il glisse de sa position
-   * centrée vers la barre, sans rien devoir à ses voisins.
-   */
-  const OUVERT = 190;
-  const FERME = 86;
-  const COURSE = OUVERT - FERME;
-
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollY.value = e.contentOffset.y;
-  });
-
-  const hdrHauteur = useAnimatedStyle(() => ({
-    height: interpolate(scrollY.value, [0, COURSE], [OUVERT, FERME], Extrapolation.CLAMP),
-  }));
-  const hdrMedaillon = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, COURSE], [72, 0], Extrapolation.CLAMP),
-  }));
-  const hdrRule = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.4], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, COURSE], [3, 0], Extrapolation.CLAMP),
-    // Le titre étant posé en absolu, il ne pousse plus rien : le filet réserve
-    // lui-même la hauteur du titre (32) plus sa respiration, sinon les trois
-    // éléments se superposent.
-    marginTop: interpolate(scrollY.value, [0, COURSE], [44, 0], Extrapolation.CLAMP),
-  }));
-  const hdrSous = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, COURSE], [20, 0], Extrapolation.CLAMP),
-    marginTop: interpolate(scrollY.value, [0, COURSE], [8, 0], Extrapolation.CLAMP),
-  }));
-  /*
-   * Position du titre au repos : sous le médaillon.
-   *   52 (marge haute du corps) + 72 (médaillon) + 12 (respiration) = 136.
-   * Le filet et le sous-titre réservent ensuite leur propre place sous lui.
-   */
-  const hdrTitre = useAnimatedStyle(() => ({
-    top: interpolate(scrollY.value, [0, COURSE], [126, 48], Extrapolation.CLAMP),
-    left: interpolate(scrollY.value, [0, COURSE], [24, 54], Extrapolation.CLAMP),
-    transform: [
-      { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.78], Extrapolation.CLAMP) },
-    ],
-  }));
+  const last = useLectureProgressStore((s) => s.last);
 
   const [sourates, setSourates] = useState<SourateListItem[] | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -102,8 +78,7 @@ export default function LectureLibreScreen() {
       writePersisted(SOURATES_CACHE_KEY, fresh);
     } catch (e) {
       // Même contenu que l'écran Tajwid (les 114 sourates, immuables) : on
-      // réutilise son cache disque plutôt que d'afficher une erreur alors
-      // que la liste a déjà été vue au moins une fois.
+      // réutilise son cache disque plutôt que d'afficher une erreur.
       const cached = await readPersisted<SourateListItem[]>(SOURATES_CACHE_KEY);
       if (cached && cached.length > 0) setSourates(cached);
       else setError(e);
@@ -127,134 +102,161 @@ export default function LectureLibreScreen() {
     );
   }, [sourates, query]);
 
-  const renderRow = useCallback(
-    ({ item, index }: { item: SourateListItem; index: number }) => (
-      <Pressable
-        style={({ pressed }) => [
-          styles.row,
-          index > 0 && [styles.divider, { borderTopColor: T.divider }],
-          pressed && { opacity: 0.6 },
+  const shadow = T.isDark ? styles.borderDark : styles.shadow;
+  const lastIndex = filtered.length - 1;
+
+  const renderRow = ({ item, index }: { item: SourateListItem; index: number }) => {
+    const cur = last?.numero === item.numero;
+    const sens = sourateMeaningLine(item.numero, language);
+    const place =
+      item.revelation === 'madinah' ? tr('lectureLibre.medinan')
+        : item.revelation === 'makkah' ? tr('lectureLibre.meccan') : null;
+    return (
+      <View
+        style={[
+          styles.listCard,
+          { backgroundColor: P.card },
+          index === 0 && styles.listFirst,
+          index === lastIndex && styles.listLast,
         ]}
-        onPress={() => router.push(`/(app)/lecture/${item.numero}` as never)}
       >
-        <View style={styles.numBadge}>
-          <Text style={styles.numText}>{item.numero}</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.row,
+            { backgroundColor: cur ? P.accentSoft : 'transparent' },
+            pressed && { opacity: 0.6 },
+          ]}
+          onPress={() => router.push(`/(app)/lecture/${item.numero}` as never)}
+        >
+          {/* Étoile à 8 branches : deux carrés superposés, l'un tourné de 45°. */}
+          <View style={styles.star}>
+            <View style={[styles.starSq, { backgroundColor: cur ? P.accent : P.accentSoft }]} />
+            <View style={[styles.starSq, { backgroundColor: cur ? P.accent : P.accentSoft, transform: [{ rotate: '45deg' }] }]} />
+            <Text style={[styles.starNum, { color: cur ? '#fff' : P.accent }]}>{item.numero}</Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={styles.rowTop}>
+              <Text style={[styles.nom, { color: P.ink }]} numberOfLines={1}>{item.nom}</Text>
+              <Text style={[styles.arabe, { color: P.ink }]} numberOfLines={1}>{item.nomArabe}</Text>
+            </View>
+            {sens ? <Text style={[styles.sens, { color: P.muted }]}>{sens}</Text> : null}
+            <View style={styles.chips}>
+              <Text style={[styles.chip, { backgroundColor: P.chip, color: P.muted }]}>
+                {tr('lectureLibre.versetsCount', { n: item.nombreVersets })}
+              </Text>
+              {place ? (
+                <Text style={[styles.chip, { backgroundColor: P.chip, color: P.muted }]}>{place}</Text>
+              ) : null}
+            </View>
+          </View>
+        </Pressable>
+      </View>
+    );
+  };
+
+  const resumePct = last ? Math.min(100, (last.verset / Math.max(1, last.total)) * 100) : 0;
+
+  const header = (
+    <View>
+      <LinearGradient colors={P.hero} locations={[0, 0.6, 1]} {...G160} style={styles.hero}>
+        <View style={styles.circleBig} />
+        <View style={styles.circleSmall} />
+        <DeviceStatusBar />
+        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
+          <Feather name="chevron-left" size={24} color="#3B2A99" />
+        </Pressable>
+        <Text style={styles.heroTitle}>{tr('lectureLibre.headerTitle')}</Text>
+        <Text style={styles.heroSub}>{tr('lectureLibre.headerSub')}</Text>
+
+        <View style={styles.search}>
+          <Feather name="search" size={18} color="rgba(255,255,255,0.85)" />
+          <TextInput
+            style={styles.searchInput}
+            value={query}
+            onChangeText={setQuery}
+            placeholder={tr('lectureLibre.searchPlaceholder')}
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')} hitSlop={8}>
+              <Feather name="x" size={18} color="rgba(255,255,255,0.85)" />
+            </Pressable>
+          )}
         </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          {/* Nom de la sourate — permet de la reconnaître d'un coup d'œil. */}
-          <Text style={[styles.nom, { color: T.text }]}>{item.nom}</Text>
-          {/* Sens/thème de la sourate, sous le nom (ex. « Les Hypocrites » — …). */}
-          {(() => {
-            const sens = sourateMeaning(item.numero, language);
-            return sens ? (
-              <Text style={[styles.sens, { color: T.textSecondary }]}>{sens}</Text>
-            ) : null;
-          })()}
-          <Text style={[styles.arabe, { color: T.text }]}>{item.nomArabe}</Text>
-          <Text style={[styles.versets, { color: T.textTertiary }]}>{tr('lectureLibre.versetsCount', { n: item.nombreVersets })}</Text>
-        </View>
-        <Feather name="play-circle" size={26} color="#6B4DFF" style={{ alignSelf: 'center' }} />
-      </Pressable>
-    ),
-    [T, router, tr, language],
+      </LinearGradient>
+
+      {last && sourates ? (
+        <Pressable
+          onPress={() => router.push(`/(app)/lecture/${last.numero}?verset=${last.verset}` as never)}
+          style={({ pressed }) => [styles.resume, { backgroundColor: P.card }, shadow, pressed && { opacity: 0.85 }]}
+        >
+          <LinearGradient colors={P.art} {...G150} style={styles.resumeArt}>
+            <Text style={styles.resumeArtText} numberOfLines={1} adjustsFontSizeToFit>{last.nomArabe}</Text>
+          </LinearGradient>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.resumeLabel, { color: P.muted }]}>{tr('lectureLibre.resumeLabel')}</Text>
+            <Text style={[styles.resumeName, { color: P.ink }]} numberOfLines={1}>{last.numero}. {last.nom}</Text>
+            <View style={styles.resumeProgRow}>
+              <View style={[styles.resumeTrack, { backgroundColor: P.track }]}>
+                <View style={[styles.resumeFill, { width: `${resumePct}%`, backgroundColor: P.accent }]} />
+              </View>
+              <Text style={[styles.resumeCount, { color: P.muted }]}>
+                {tr('lectureLibre.verseOf', { v: last.verset, n: last.total })}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.resumePlay, { backgroundColor: P.accent }]}>
+            <PlayIcon size={15} color="#fff" />
+          </View>
+        </Pressable>
+      ) : null}
+
+      {sourates ? (
+        <Text style={[styles.section, { color: P.muted }]}>{tr('lectureLibre.sectionTitle')}</Text>
+      ) : null}
+    </View>
   );
 
   return (
-    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
-      {/*
-        Header — dégradé + trame géométrique + médaillon.
-
-        Il se comprime au défilement : le médaillon, le filet et le sous-titre
-        se replient, le titre rétrécit et vient se poser à côté de la flèche
-        de retour. Une centaine de pixels rendus à la liste des sourates.
-      */}
-      <Animated.View style={[styles.headerWrap, hdrHauteur]}>
-        <LinearGradient
-          colors={['#8B5CF6', '#6B4DFF', '#4A2FB8']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <HeaderPattern width={width} height={180} variant="waves" />
-
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
-          <Feather name="chevron-left" size={26} color="#fff" />
-        </Pressable>
-
-        <View style={styles.headerBody}>
-          <Animated.View style={[styles.headerMedallionWrap, hdrMedaillon]}>
-            <View style={styles.headerMedallion}>
-              <Text style={styles.headerEmoji}>🎧</Text>
-            </View>
-          </Animated.View>
-
-          <Animated.View style={[styles.headerRule, hdrRule]} />
-          <Animated.Text style={[styles.headerSub, hdrSous]} numberOfLines={1}>
-            {tr('lectureLibre.headerSub')}
-          </Animated.Text>
-        </View>
-
-        {/* Posé en absolu : sa place ne dépend plus du repli de ses voisins. */}
-        <Animated.Text style={[styles.headerTitle, styles.headerTitleAbs, hdrTitre]} numberOfLines={1}>
-          {tr('lectureLibre.headerTitle')}
-        </Animated.Text>
-      </Animated.View>
-
+    <View style={[styles.screen, { backgroundColor: P.bg }]}>
       {error ? (
-        <OfflineState error={error} onRetry={load} showOfflineExits />
-      ) : !sourates ? (
-        <View style={styles.stateBox}>
-          <ActivityIndicator size="large" color="#6B4DFF" />
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>{tr('lectureLibre.loading')}</Text>
-        </View>
-      ) : (
         <>
-          {/* Barre de recherche */}
-          <View style={[styles.searchBar, { backgroundColor: T.inputBg, borderColor: T.border }]}>
-            <Feather name="search" size={18} color={T.textTertiary} />
-            <TextInput
-              style={[styles.searchInput, { color: T.text }]}
-              value={query}
-              onChangeText={setQuery}
-              placeholder={tr('lectureLibre.searchPlaceholder')}
-              placeholderTextColor={T.textTertiary}
-              autoCorrect={false}
-              autoCapitalize="none"
-              returnKeyType="search"
-            />
-            {query.length > 0 && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                <Feather name="x" size={18} color={T.textTertiary} />
-              </Pressable>
-            )}
-          </View>
-
-          <Animated.FlatList
-            onScroll={onScroll}
-            // 16 ms : un evenement par image a 60 Hz.
-            scrollEventThrottle={16}
-            data={filtered}
-            keyExtractor={(s) => String(s.numero)}
-            renderItem={renderRow}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            ListEmptyComponent={
-              <View style={styles.emptyBox}>
-                <Text style={{ fontSize: 34 }}>🔍</Text>
-                <Text style={[styles.emptyText, { color: T.textSecondary }]}>{tr('lectureLibre.noResults')}</Text>
-              </View>
-            }
-            ListFooterComponent={<View style={{ height: 24 }} />}
-            // Défilement infini fluide : la liste virtualise les lignes et n'en
-            // rend qu'un écran à la fois, puis d'autres au fil du défilement.
-            initialNumToRender={12}
-            maxToRenderPerBatch={12}
-            windowSize={11}
-            removeClippedSubviews
-          />
+          {header}
+          <OfflineState error={error} onRetry={load} showOfflineExits />
         </>
+      ) : !sourates ? (
+        <>
+          {header}
+          <View style={styles.stateBox}>
+            <ActivityIndicator size="large" color={P.accent} />
+            <Text style={[styles.stateText, { color: P.muted }]}>{tr('lectureLibre.loading')}</Text>
+          </View>
+        </>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(s) => String(s.numero)}
+          renderItem={renderRow}
+          extraData={[last, lastIndex, P]}
+          ListHeaderComponent={header}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 30 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          ListEmptyComponent={
+            <View style={[styles.listCard, styles.listFirst, styles.listLast, { backgroundColor: P.card }]}>
+              <Text style={[styles.empty, { color: P.muted }]}>
+                {tr('lectureLibre.noResultsFor', { q: query.trim() })}
+              </Text>
+            </View>
+          }
+          initialNumToRender={10}
+          maxToRenderPerBatch={12}
+          windowSize={11}
+        />
       )}
     </View>
   );
@@ -262,56 +264,77 @@ export default function LectureLibreScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  // Enveloppe de hauteur animee ; rogne son contenu pendant la compression.
-  headerWrap: {
-    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+  shadow: {
+    shadowColor: '#1E1446', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 24, elevation: 2,
   },
-  headerBody: { flex: 1, paddingTop: 44, paddingHorizontal: 24, alignItems: 'center' },
-  // Le medaillon se replie en hauteur : son enveloppe rogne pendant l'animation.
-  headerMedallionWrap: { overflow: 'hidden', alignItems: 'center' },
-  // Titre pose a une coordonnee animee (voir hdrTitre) : sa place ne depend
-  // plus du repli du medaillon, du filet ni du sous-titre.
-  headerTitleAbs: { position: 'absolute', right: 24, zIndex: 2, textAlign: 'center', transformOrigin: 'left center' },
-  header: {
-    paddingTop: 52, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center',
-    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+  borderDark: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' },
+
+  hero: {
+    paddingHorizontal: 20, paddingBottom: 22, overflow: 'hidden',
+    borderBottomLeftRadius: 30, borderBottomRightRadius: 30,
   },
-  backBtn: { position: 'absolute', top: 54, left: 16, zIndex: 2 },
-  headerMedallion: {
-    width: 68, height: 68, borderRadius: 34,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+  circleBig: {
+    position: 'absolute', right: -70, top: 30, width: 240, height: 240, borderRadius: 120,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  circleSmall: {
+    position: 'absolute', right: -20, top: 80, width: 140, height: 140, borderRadius: 70,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  backBtn: {
+    marginTop: 12, width: 42, height: 42, borderRadius: 14, backgroundColor: '#fff',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.32)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 4,
   },
-  headerEmoji: { fontSize: 32 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff' },
-  headerRule: { width: 46, borderRadius: 2, backgroundColor: '#F6B100' },
-  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', textAlign: 'center' },
+  heroTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, lineHeight: 36, color: '#fff', marginTop: 18 },
+  heroSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  search: {
+    marginTop: 18, height: 48, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.14)',
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14,
+  },
+  searchInput: { flex: 1, minWidth: 0, fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#fff', paddingVertical: 0 },
+
+  resume: {
+    marginHorizontal: 18, marginTop: 16, padding: 14, borderRadius: 22,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+  },
+  resumeArt: {
+    width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+  },
+  resumeArtText: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 17, color: '#fff' },
+  resumeLabel: { fontFamily: 'Nunito_900Black', fontSize: 11, letterSpacing: 1.1 },
+  resumeName: { fontFamily: 'Nunito_900Black', fontSize: 16, marginTop: 1 },
+  resumeProgRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  resumeTrack: { flex: 1, height: 5, borderRadius: 3, overflow: 'hidden' },
+  resumeFill: { height: '100%', borderRadius: 3 },
+  resumeCount: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12 },
+  resumePlay: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+
+  section: {
+    fontFamily: 'Nunito_900Black', fontSize: 12, letterSpacing: 1,
+    paddingTop: 24, paddingBottom: 10, paddingHorizontal: 22,
+  },
+
+  // La liste forme une seule carte : chaque ligne porte le fond, la première
+  // et la dernière arrondissent les coins.
+  listCard: { marginHorizontal: 18, paddingHorizontal: 6 },
+  listFirst: { borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 6 },
+  listLast: { borderBottomLeftRadius: 22, borderBottomRightRadius: 22, paddingBottom: 6 },
+  row: { flexDirection: 'row', gap: 12, paddingVertical: 14, paddingHorizontal: 12, borderRadius: 16 },
+  star: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  starSq: { position: 'absolute', top: 5, left: 5, right: 5, bottom: 5, borderRadius: 7 },
+  starNum: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 12, lineHeight: 16 },
+  rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  nom: { flexShrink: 1, fontFamily: 'Nunito_900Black', fontSize: 16 },
+  arabe: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 24, lineHeight: 34, writingDirection: 'rtl' },
+  sens: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, lineHeight: 18, marginTop: 2 },
+  chips: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  chip: {
+    fontFamily: 'Nunito_800ExtraBold', fontSize: 11, paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 8, overflow: 'hidden',
+  },
 
   stateBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
-  retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#6B4DFF' },
-  retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
-
-  searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginHorizontal: 18, marginTop: 14, marginBottom: 2,
-    paddingHorizontal: 14, height: 48, borderRadius: 14, borderWidth: 1,
-  },
-  searchInput: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 15, paddingVertical: 0 },
-
-  content: { paddingHorizontal: 18, paddingTop: 12 },
-  emptyBox: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-  emptyText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingVertical: 14 },
-  divider: { borderTopWidth: 1 },
-  numBadge: {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: '#EDE8FF',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  numText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, color: '#6B4DFF' },
-  nom: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16 },
-  sens: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, lineHeight: 16, marginTop: 2 },
-  arabe: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 24, marginTop: 2, writingDirection: 'rtl' },
-  versets: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: 2 },
+  empty: { fontFamily: 'Nunito_700Bold', fontSize: 14, textAlign: 'center', paddingVertical: 26, paddingHorizontal: 10 },
 });

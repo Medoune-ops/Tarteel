@@ -20,6 +20,9 @@ jest.mock('expo-router', () => ({
   },
 }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
 jest.mock('../lib/api', () => ({ fetchSourates: (...a: unknown[]) => mockFetchSourates(...a) }));
 // swrFetch → appelle simplement le fetcher (pas de cache en test).
 jest.mock('../lib/api/swr', () => ({
@@ -154,9 +157,9 @@ describe('Écran « Lecture libre » (catalogue des sourates)', () => {
     expect(all).not.toContain('Al-Fatiha');
   });
 
-  it('affiche « Aucune sourate trouvée » quand rien ne correspond', async () => {
+  it('affiche un message vide avec la requête quand rien ne correspond', async () => {
     const r = await renderScreen();
     await type(r, 'zzzzz');
-    expect(textOf(r.root)).toContain('Aucune sourate trouvée');
+    expect(textOf(r.root)).toContain('Aucune sourate ne correspond à « zzzzz »');
   });
 });

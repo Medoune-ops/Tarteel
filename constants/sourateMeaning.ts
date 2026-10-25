@@ -132,3 +132,9 @@ export function sourateMeaning(numero: number, lang: 'fr' | 'en' | 'ar'): string
   if (!m) return null;
   return lang === 'en' ? m.en : m.fr;
 }
+
+/** Variante au format « Nom » · thème (catalogue et lecteur de Lecture libre). */
+export function sourateMeaningLine(numero: number, lang: 'fr' | 'en' | 'ar'): string | null {
+  const m = sourateMeaning(numero, lang);
+  return m ? m.replace(' — ', ' · ') : null;
+}

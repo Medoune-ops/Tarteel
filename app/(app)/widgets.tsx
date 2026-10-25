@@ -1,21 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Platform, View, Text, Pressable, ScrollView, StyleSheet, Linking, Image, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { Platform, View, Text, Pressable, ScrollView, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle,
-  interpolate, Extrapolation,
-} from 'react-native-reanimated';
-import HeaderPattern from '../../components/HeaderPattern';
+import Svg, { Path } from 'react-native-svg';
 import DeviceStatusBar from '../../components/StatusBar';
 import Otter from '../../components/Otter';
+import { FlameIcon } from '../../components/IslamicIcons';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
 import { currentMotivationMsg } from '../../utils/widgetData';
 import { nameOfTheDay } from '../../utils/nameOfDay';
-import { useT } from '../../lib/i18n';
+import { useT, type I18nKey } from '../../lib/i18n';
 
 // `expo-alternate-app-icons` est un module NATIF : dans Expo Go (pas de code
 // natif custom), le simple `import` déclenche `requireNativeModule` qui plante
@@ -47,8 +44,29 @@ try {
   }
 }
 
+// ─── Palette de la maquette (Tarteel Widgets et Podiums) ───────────────────
+type Palette = {
+  bg: string; card: string; ink: string; muted: string; line: string; accent: string;
+  wall: readonly [string, string];
+  hero: readonly [string, string, string];
+};
+const LIGHT: Palette = {
+  bg: '#F5F4F1', card: '#FFFFFF', ink: '#1C1A26', muted: '#6F6C7A', line: '#EEECE8', accent: '#6B4DFF',
+  wall: ['#E9E4F7', '#F7E7DA'] as const,
+  hero: ['#FFA43A', '#F27A1A', '#E0601A'] as const,
+};
+const DARK: Palette = {
+  bg: '#0D0C11', card: '#17161E', ink: '#EFEEF4', muted: '#9290A2', line: '#25232E', accent: '#9A82FF',
+  wall: ['#1C1838', '#2A1A1A'],
+  hero: ['#C9661A', '#A8481A', '#7E3216'],
+};
+
+// Angle CSS 160° ≈ du haut-gauche léger vers le bas-droite léger.
+const G160 = { start: { x: 0.33, y: 0 }, end: { x: 0.67, y: 1 } };
+const G155 = { start: { x: 0.29, y: 0 }, end: { x: 0.71, y: 1 } };
+
 // null = icône par défaut (Soleil, celle déclarée dans app.json → icon/ios.icon/
-// android.adaptiveIcon), 'Night' = alternative déclarée via le plugin
+// android.adaptiveIcon), sinon nom d'alternative déclaré via le plugin
 // expo-alternate-app-icons (voir app.json → plugins). Le nom DOIT correspondre
 // exactement (PascalCase) à celui déclaré dans la config du plugin.
 //
@@ -56,18 +74,20 @@ try {
 // l'alternative 'Sun'. Ceux qui l'avaient choisie sont toujours sur cet alias
 // (gardé dans app.json : le retirer ferait disparaître leur icône du lanceur
 // Android) — on le reconnaît donc comme « Soleil actif ».
-type AppIconChoice = { key: string; name: string | null; legacyName?: string; source: number; labelKey: 'widgets.icon.night' | 'widgets.icon.sun' | 'widgets.icon.duo' | 'widgets.icon.fille' | 'widgets.icon.garcon' };
+type AppIconChoice = {
+  key: string; name: string | null; legacyName?: string; source: number;
+  labelKey: 'widgets.icon.night' | 'widgets.icon.sun' | 'widgets.icon.fille' | 'widgets.icon.garcon';
+  bg: readonly [string, string];
+};
 const APP_ICON_CHOICES: AppIconChoice[] = [
-  { key: 'sun', name: null, legacyName: 'Sun', source: require('../../assets/icon-sun.png'), labelKey: 'widgets.icon.sun' },
-  { key: 'night', name: 'Night', source: require('../../assets/icon.png'), labelKey: 'widgets.icon.night' },
-  { key: 'duo', name: 'Duo', source: require('../../assets/icon-duo.png'), labelKey: 'widgets.icon.duo' },
-  { key: 'fille', name: 'Fille', source: require('../../assets/icon-fille.png'), labelKey: 'widgets.icon.fille' },
-  { key: 'garcon', name: 'Garcon', source: require('../../assets/icon-garcon.png'), labelKey: 'widgets.icon.garcon' },
+  { key: 'sun', name: null, legacyName: 'Sun', source: require('../../assets/icon-sun.png'), labelKey: 'widgets.icon.sun', bg: ['#FFE3A6', '#FFB36B'] },
+  { key: 'night', name: 'Night', source: require('../../assets/icon.png'), labelKey: 'widgets.icon.night', bg: ['#2A2F6E', '#10143A'] },
+  { key: 'garcon', name: 'Garcon', source: require('../../assets/icon-garcon.png'), labelKey: 'widgets.icon.garcon', bg: ['#FFF4E2', '#FFF4E2'] },
+  { key: 'fille', name: 'Fille', source: require('../../assets/icon-fille.png'), labelKey: 'widgets.icon.fille', bg: ['#FFF4E2', '#FFF4E2'] },
 ];
 
-/** Sélecteur d'icône d'app (Nuit/Soleil) — natif iOS/Android, hors Expo Go. */
-function AppIconPicker() {
-  const T = useTheme();
+/** Sélecteur d'icône d'app — natif iOS/Android, hors Expo Go. */
+function AppIconPicker({ P }: { P: Palette }) {
   const tr = useT();
   const [active, setActive] = useState<string | null | undefined>(undefined); // undefined = pas encore lu
   const [busy, setBusy] = useState<string | null>(null);
@@ -99,100 +119,143 @@ function AppIconPicker() {
     }
   }, [busy, active]);
 
-  // On affiche TOUJOURS les aperçus des icônes (ce sont de simples images
-  // locales, disponibles partout). Si le changement d'icône n'est pas supporté
-  // (Expo Go, iOS ancien), les aperçus restent visibles mais non cliquables
-  // (grisés) avec une note explicative — l'utilisateur voit à quoi ressemblent
-  // les options même sans pouvoir encore les activer.
+  // Les aperçus restent TOUJOURS visibles (images locales) ; si le changement
+  // d'icône n'est pas supporté (Expo Go, iOS ancien), ils sont grisés et non
+  // cliquables, avec une note explicative.
   return (
     <View>
-      {/* Défilement horizontal : 5 icônes de 72 px ne tiennent pas dans la
-          largeur d'un téléphone. En rangée fixe, elles étaient serrées et les
-          dernières sortaient de l'écran — on peut maintenant les faire
-          glisser pour toutes les voir avant de choisir. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.iconRow}
-      >
+      <View style={styles.iconGrid}>
         {APP_ICON_CHOICES.map((choice) => {
-          const isActive = active === choice.name || (choice.legacyName != null && active === choice.legacyName);
+          const isActive = supportsAlternateIcons
+            && (active === choice.name || (choice.legacyName != null && active === choice.legacyName));
           return (
             <Pressable
               key={choice.key}
-              style={[
-                styles.iconOption,
-                isActive && supportsAlternateIcons && styles.iconOptionActive,
-                !supportsAlternateIcons && styles.iconOptionDisabled,
-              ]}
+              style={[styles.iconCell, !supportsAlternateIcons && { opacity: 0.55 }]}
               onPress={() => choose(choice)}
               disabled={busy != null || !supportsAlternateIcons}
             >
-              <View style={[styles.iconPreviewWrap, isActive && supportsAlternateIcons && styles.iconPreviewWrapActive]}>
-                <Image source={choice.source} style={styles.iconPreviewImg} />
-                {busy === choice.key && (
-                  <View style={styles.iconPreviewOverlay}>
-                    <ActivityIndicator size="small" color="#fff" />
-                  </View>
-                )}
-                {isActive && busy == null && supportsAlternateIcons && (
-                  <View style={styles.iconCheckBadge}>
-                    <Feather name="check" size={12} color="#fff" />
+              <View style={[styles.iconTile, { borderColor: isActive ? P.accent : 'transparent' }]}>
+                <LinearGradient colors={choice.bg} {...G160} style={styles.iconTileInner}>
+                  <Image source={choice.source} style={styles.iconImg} />
+                  {busy === choice.key && (
+                    <View style={styles.iconOverlay}>
+                      <ActivityIndicator size="small" color="#fff" />
+                    </View>
+                  )}
+                </LinearGradient>
+                {isActive && busy == null && (
+                  <View style={[styles.iconCheck, { backgroundColor: P.accent, borderColor: P.bg }]}>
+                    <Feather name="check" size={13} color="#fff" />
                   </View>
                 )}
               </View>
-              <Text style={[styles.iconOptionLabel, { color: T.text }]}>{tr(choice.labelKey)}</Text>
+              <Text style={[styles.iconLabel, { color: isActive ? P.ink : P.muted }]}>{tr(choice.labelKey)}</Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
       {!supportsAlternateIcons && (
-        <Text style={[styles.iconUnsupportedNote, { color: T.textSecondary }]}>
-          {tr('widgets.icon.unsupported')}
-        </Text>
+        <Text style={[styles.iconNote, { color: P.muted }]}>{tr('widgets.icon.unsupported')}</Text>
       )}
-      {error && <Text style={styles.iconErrorText}>{tr('widgets.icon.error')}</Text>}
+      {error && <Text style={styles.iconError}>{tr('widgets.icon.error')}</Text>}
     </View>
   );
 }
 
-const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-
+// ─── Semaine : jours faits, arrondis fusionnés pour les jours consécutifs ──
 function todayIndex(): number {
   const wd = new Date().getDay(); // 0=dim … 6=sam
   return wd === 0 ? 6 : wd - 1;
 }
 
-function weekActiveDays(streak: number): boolean[] {
+/** Jours faits de la semaine (lun→dim) déduits de la série en cours. */
+function weekDone(streak: number): boolean[] {
   const idx = todayIndex();
   return Array.from({ length: 7 }, (_, i) => i <= idx && (idx - i) < Math.min(streak, 7));
 }
 
-// ─── Preview fidèle du widget natif "Série" (petit, iOS/Android) ───────────
-function StreakPreview({ streak }: { streak: number }) {
-  const tr = useT();
+type DayCell = { done: boolean; today: boolean; pl: number; pr: number; radius: { tl: number; tr: number; br: number; bl: number } };
+
+function weekCells(done: boolean[], big: boolean): DayCell[] {
   const idx = todayIndex();
-  const active = weekActiveDays(streak);
+  const r = big ? 12 : 7;
+  return done.map((d, i) => {
+    const pd = !!done[i - 1];
+    const nd = !!done[i + 1];
+    return {
+      done: d,
+      today: i === idx,
+      pl: d && pd ? 0 : 2,
+      pr: d && nd ? 0 : 2,
+      radius: d
+        ? { tl: pd ? 0 : r, tr: nd ? 0 : r, br: nd ? 0 : r, bl: pd ? 0 : r }
+        : { tl: r, tr: r, br: r, bl: r },
+    };
+  });
+}
+
+function cellRadius(c: DayCell) {
+  return {
+    borderTopLeftRadius: c.radius.tl, borderTopRightRadius: c.radius.tr,
+    borderBottomRightRadius: c.radius.br, borderBottomLeftRadius: c.radius.bl,
+  };
+}
+
+function CheckMark({ size = 11 }: { size?: number }) {
   return (
-    <LinearGradient colors={['#FF9A3D', '#F5731F', '#E0560E']} start={{ x: 0.65, y: 0 }} end={{ x: 0.15, y: 0.9 }} style={pv.streakBox}>
-      <Text style={pv.streakGhostFlame}>🔥</Text>
-      <View style={pv.streakOtterWrap}><Otter size={64} /></View>
-      <View style={pv.streakHeaderRow}>
-        <Text style={pv.streakFlame}>🔥</Text>
-        <Text style={pv.streakLabel}>{tr('widgets.preview.streakLabel')}</Text>
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M5 12l5 5 9-10" stroke="#fff" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// ─── Aperçu « Rappel » (petit) ──────────────────────────────────────────────
+function ReminderWidget({ reminderHour }: { reminderHour: number }) {
+  const tr = useT();
+  return (
+    <LinearGradient colors={['#8A6CFF', '#5B3FD6']} {...G160} style={pv.small}>
+      <View style={pv.rowBetween}>
+        <View style={pv.row4}>
+          <Feather name="bell" size={12} color="#FFD37A" />
+          <Text style={pv.reminderLabel}>{tr('widgets.preview.reminder')}</Text>
+        </View>
+        <Text style={pv.reminderTime}>{String(reminderHour).padStart(2, '0')}:00</Text>
       </View>
       <View style={{ flex: 1 }} />
+      <View style={pv.reminderMsgRow}>
+        <Otter size={52} />
+        <Text style={pv.reminderMsg} numberOfLines={2}>{tr('widgets.preview.streakAwaits')}</Text>
+      </View>
+      <View style={{ flex: 1 }} />
+      <View style={pv.reminderPill}>
+        <Feather name="clock" size={12} color="#FFD37A" />
+        <Text style={pv.reminderPillText}>{tr('widgets.preview.threeMin')}</Text>
+      </View>
+    </LinearGradient>
+  );
+}
+
+// ─── Aperçu « Série » (petit) ───────────────────────────────────────────────
+function StreakWidget({ streak, done }: { streak: number; done: boolean[] }) {
+  const tr = useT();
+  const cells = weekCells(done, false);
+  return (
+    <LinearGradient colors={['#FF9A3D', '#F4633A', '#E5484D']} locations={[0, 0.6, 1]} {...G160} style={pv.small}>
+      <View style={pv.streakGhost}><FlameIcon size={96} color="#fff" inner="#fff" /></View>
       <Text style={pv.streakNumber} numberOfLines={1} adjustsFontSizeToFit>{streak}</Text>
       <Text style={pv.streakSub}>{tr('widgets.preview.daysInARow')}</Text>
       <View style={{ flex: 1 }} />
-      <View style={pv.streakDotsRow}>
-        {DAYS.map((d, i) => (
-          <View key={i} style={pv.streakDotCol}>
-            <View style={[
-              pv.dotBase,
-              i === idx ? pv.dotToday : active[i] ? pv.dotActive : pv.dotInactive,
-            ]} />
-            <Text style={[pv.streakDayLabel, i === idx && pv.streakDayLabelToday]}>{d}</Text>
+      <View style={pv.row}>
+        {cells.map((c, i) => (
+          <View key={i} style={{ flex: 1, paddingLeft: c.pl, paddingRight: c.pr }}>
+            <View
+              style={[
+                { height: 14, backgroundColor: c.done ? '#FFFFFF' : 'rgba(255,255,255,0.25)' },
+                cellRadius(c),
+                c.today && !c.done && { borderWidth: 2, borderColor: '#fff' },
+              ]}
+            />
           </View>
         ))}
       </View>
@@ -200,480 +263,311 @@ function StreakPreview({ streak }: { streak: number }) {
   );
 }
 
-// ─── Preview fidèle du widget natif "Rappel" (petit) ────────────────────────
-function ContinuePreview({ streak, reminderHour }: { streak: number; reminderHour: number }) {
+// ─── Aperçu « Semaine » (moyen) ─────────────────────────────────────────────
+function WeekWidget({ streak, xp, done, motivation }: { streak: number; xp: number; done: boolean[]; motivation: string }) {
   const tr = useT();
+  const cells = weekCells(done, true);
+  const letters = tr('widgets.preview.dayLetters').split('');
   return (
-    <LinearGradient colors={['#8A6BFF', '#6244DE', '#4A2FBE']} start={{ x: 0.22, y: 0 }} end={{ x: 0.8, y: 1 }} style={pv.contBox}>
-      <View style={pv.contHeaderRow}>
-        <View style={pv.contReminderRow}>
-          <Feather name="bell" size={12} color="#FFD37A" />
-          <Text style={pv.contReminderText}>{tr('widgets.preview.reminder')}</Text>
-        </View>
-        <Text style={pv.contTime}>{String(reminderHour).padStart(2, '0')}:00</Text>
-      </View>
-      <View style={{ flex: 1 }} />
-      <View style={pv.contMessageRow}>
-        <Otter size={40} />
-        <Text style={pv.contMessageText} numberOfLines={2}>{tr('widgets.preview.streakAwaits')}</Text>
-      </View>
-      <View style={{ flex: 1 }} />
-      <View style={pv.contButton}>
-        <Feather name="clock" size={12} color="#FFD37A" />
-        <Text style={pv.contButtonText}>{tr('widgets.preview.threeMin')}</Text>
-      </View>
-    </LinearGradient>
-  );
-}
-
-// ─── Preview fidèle du widget natif "Ma semaine" (moyen) ───────────────────
-function WeekPreview({ streak, xp, motivationMsg }: { streak: number; xp: number; motivationMsg: string }) {
-  const tr = useT();
-  const idx = todayIndex();
-  const active = weekActiveDays(streak);
-  // Ligne de connexion : orange jusqu'à aujourd'hui, gris clair après (maquette).
-  const lineProgressPct = (idx / 6) * 100;
-  return (
-    <View style={pv.weekBox}>
-      <LinearGradient colors={['#FF9A3D', '#F5731F', '#E0560E']} start={{ x: 0.6, y: 0 }} end={{ x: 0.15, y: 0.9 }} style={pv.weekHero}>
-        <Text style={pv.weekGhostFlame}>🔥</Text>
-        <View style={pv.contOtterWrap}><Otter size={50} /></View>
-        <Text style={pv.weekHeroNumber}>{streak}</Text>
-        <Text style={pv.weekHeroSub}>{tr('widgets.preview.daysInARow')}</Text>
+    <View style={pv.medium}>
+      <LinearGradient colors={['#FF9A3D', '#F4633A', '#E5484D']} locations={[0, 0.6, 1]} {...G160} style={pv.weekLeft}>
+        <FlameIcon size={30} color="#fff" inner="#FFD37A" />
+        <Text style={pv.weekStreak} numberOfLines={1} adjustsFontSizeToFit>{streak}</Text>
+        <Text style={pv.weekStreakSub}>{tr('widgets.preview.daysInARow')}</Text>
       </LinearGradient>
       <View style={pv.weekRight}>
-        <View style={pv.weekTitleRow}>
+        <View style={pv.rowBetween}>
           <Text style={pv.weekTitle}>{tr('widgets.preview.weekTitle')}</Text>
-          <View style={pv.weekXpPill}>
+          <View style={pv.xpPill}>
             <Feather name="zap" size={11} color="#6B4DFF" />
-            <Text style={pv.weekXpText}>{xp} XP</Text>
+            <Text style={pv.xpText}>{xp} XP</Text>
           </View>
         </View>
-        <View style={pv.weekTimelineRow}>
-          <View style={pv.weekTimelineLineTrack}>
-            <View style={[pv.weekTimelineLineFill, { width: `${lineProgressPct}%` }]} />
-          </View>
-          {DAYS.map((d, i) => {
-            const isToday = i === idx;
-            const isActive = active[i];
-            return (
-              <View key={i} style={pv.weekDotCol}>
-                <View style={[
-                  pv.weekDot,
-                  isToday ? pv.weekDotToday : isActive ? pv.weekDotActive : pv.weekDotInactive,
-                ]}>
-                  {isToday && <Feather name="play" size={12} color="#6B4DFF" />}
-                  {!isToday && isActive && <Text style={pv.weekDotFlame}>🔥</Text>}
-                </View>
+        <View style={[pv.row, { marginTop: 10 }]}>
+          {cells.map((c, i) => (
+            <View key={i} style={pv.weekCol}>
+              <View style={{ alignSelf: 'stretch', paddingLeft: c.pl, paddingRight: c.pr }}>
+                {c.done ? (
+                  <LinearGradient colors={['#FF9A3D', '#F4633A']} style={[pv.weekCell, cellRadius(c)]}>
+                    <CheckMark />
+                  </LinearGradient>
+                ) : (
+                  <View
+                    style={[
+                      pv.weekCell, cellRadius(c), { backgroundColor: '#EFEDF4' },
+                      c.today && { borderWidth: 2, borderColor: '#F4633A' },
+                    ]}
+                  />
+                )}
               </View>
-            );
-          })}
-        </View>
-        <View style={pv.weekLabelsRow}>
-          {DAYS.map((d, i) => (
-            <Text key={i} style={[pv.weekDayLabel, i === idx && pv.weekDayLabelToday]}>{d}</Text>
+              <Text style={[pv.weekLetter, { color: c.today ? '#F4633A' : '#A4A0B4' }]}>{letters[i]}</Text>
+            </View>
           ))}
         </View>
         <View style={{ flex: 1 }} />
-        <View style={pv.weekQuoteBox}>
-          <Text style={pv.weekQuoteFlame}>🔥</Text>
-          <Text style={pv.weekQuoteText} numberOfLines={1} adjustsFontSizeToFit>{motivationMsg}</Text>
+        <View style={pv.motivPill}>
+          <Text style={pv.motivText} numberOfLines={1} adjustsFontSizeToFit>{motivation}</Text>
         </View>
       </View>
     </View>
   );
 }
 
-// ─── Preview fidèle du widget natif "Mot du jour" (petit) ──────────────────
-function WordOfDayPreview() {
+// ─── Aperçu « Nom du jour » (petit) ─────────────────────────────────────────
+function NameOfDayWidget() {
   const tr = useT();
+  const lang = useUserStore((s) => s.language);
   const name = nameOfTheDay();
   return (
-    <LinearGradient colors={['#FFFFFF', '#FFF7EA']} start={{ x: 0.5, y: -0.2 }} end={{ x: 0.5, y: 1.2 }} style={pv.wodBox}>
-      <View style={pv.wodHeaderRow}>
-        <Feather name="star" size={12} color="#C2860C" />
-        <Text style={pv.wodHeaderText}>{tr('widgets.preview.wordOfDay')}</Text>
+    <LinearGradient colors={['#FFFBF2', '#FFF1D6']} {...G160} style={pv.small}>
+      <View style={pv.rowBetween}>
+        <View style={pv.row4}>
+          <Feather name="star" size={11} color="#E0A02C" />
+          <Text style={pv.nodLabel}>{tr('widgets.preview.wordOfDay')}</Text>
+        </View>
+        <Text style={pv.nodCount}>{name.numero}/99</Text>
       </View>
       <View style={{ flex: 1 }} />
-      <View>
-        <Text style={pv.wodArabic}>{name.arabe}</Text>
-        <Text style={pv.wodTranslit}>{name.translitteration}</Text>
-        <Text style={pv.wodTranslation} numberOfLines={2}>{name.fr}</Text>
-      </View>
-      <View style={{ flex: 1 }} />
-      <View style={pv.wodBadge}>
-        <Feather name="star" size={11} color="#96660A" />
-        <Text style={pv.wodBadgeText}>{tr('widgets.preview.nameOf', { n: name.numero })}</Text>
-      </View>
+      <Text style={pv.nodArabic} numberOfLines={1} adjustsFontSizeToFit>{name.arabe}</Text>
+      <Text style={pv.nodTranslit} numberOfLines={1}>{name.translitteration}</Text>
+      <Text style={pv.nodFr} numberOfLines={2}>{lang === 'fr' ? name.fr : name.en}</Text>
     </LinearGradient>
   );
 }
 
-type WidgetPreview = {
-  key: string;
-  size: string;
-  titleKey: 'widgets.continue.title' | 'widgets.streak.title' | 'widgets.week.title' | 'widgets.wordOfDay.title';
-  descKey: 'widgets.continue.desc' | 'widgets.streak.desc' | 'widgets.week.desc' | 'widgets.wordOfDay.desc';
-  render: () => React.ReactElement;
-};
+function WidgetCaption({ P, title, desc }: { P: Palette; title: string; desc: string }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={[styles.capTitle, { color: P.ink }]}>{title}</Text>
+      <Text style={[styles.capDesc, { color: P.muted }]}>{desc}</Text>
+    </View>
+  );
+}
+
+type Filter = 'all' | 's' | 'm';
+
+const HOWTO_IOS: I18nKey[] = ['widgets.howTo.ios.1', 'widgets.howTo.ios.2', 'widgets.howTo.ios.3', 'widgets.howTo.ios.4'];
+const HOWTO_ANDROID: I18nKey[] = ['widgets.howTo.android.1', 'widgets.howTo.android.2', 'widgets.howTo.android.3', 'widgets.howTo.android.4'];
 
 export default function WidgetsScreen() {
   const router = useRouter();
   const T = useTheme();
   const tr = useT();
-  const { width } = useWindowDimensions();
+  const P = T.isDark ? DARK : LIGHT;
+  const [filter, setFilter] = useState<Filter>('all');
 
-  /*
-   * En-tête qui se comprime au défilement : de 182 à 50 pixels.
-   *
-   * Le sous-titre tient sur deux lignes ici, d'où une hauteur un peu plus
-   * généreuse que sur l'écoute du Coran, qui partage les mêmes dimensions.
-   */
-  const OUVERT = 182;
-  const FERME = 50;
-  const COURSE = OUVERT - FERME;
-
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollY.value = e.contentOffset.y;
-  });
-
-  const hdrHauteur = useAnimatedStyle(() => ({
-    height: interpolate(scrollY.value, [0, COURSE], [OUVERT, FERME], Extrapolation.CLAMP),
-  }));
-  const hdrMedaillon = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, COURSE], [72, 0], Extrapolation.CLAMP),
-  }));
-  const hdrRule = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.4], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, COURSE], [3, 0], Extrapolation.CLAMP),
-    // Le titre étant posé en absolu, il ne pousse plus rien : le filet réserve
-    // lui-même la hauteur du titre plus sa respiration.
-    marginTop: interpolate(scrollY.value, [0, COURSE], [48, 0], Extrapolation.CLAMP),
-  }));
-  const hdrSous = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
-    // Deux lignes, d'où 36 et non 20.
-    height: interpolate(scrollY.value, [0, COURSE], [36, 0], Extrapolation.CLAMP),
-    marginTop: interpolate(scrollY.value, [0, COURSE], [8, 0], Extrapolation.CLAMP),
-  }));
-  // Position au repos : 10 (marge haute) + 72 (médaillon) + 12 (respiration).
-  const hdrTitre = useAnimatedStyle(() => ({
-    top: interpolate(scrollY.value, [0, COURSE], [94, 12], Extrapolation.CLAMP),
-    left: interpolate(scrollY.value, [0, COURSE], [24, 54], Extrapolation.CLAMP),
-    transform: [
-      { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.78], Extrapolation.CLAMP) },
-    ],
-  }));
   const streak = useUserStore((s) => s.streak);
   const xp = useUserStore((s) => s.xp);
   const reminderHour = useUserStore((s) => s.reminderHour);
+  const done = weekDone(streak);
 
-  const howTo = Platform.OS === 'ios' ? tr('widgets.howTo.ios') : tr('widgets.howTo.android');
+  const showS = filter !== 'm';
+  const showM = filter !== 's';
+  const steps = Platform.OS === 'ios' ? HOWTO_IOS : HOWTO_ANDROID;
+  const cardShadow = T.isDark ? null : styles.cardShadow;
 
-  const WIDGET_PREVIEWS: WidgetPreview[] = [
-    { key: 'continue', size: 'S', titleKey: 'widgets.continue.title', descKey: 'widgets.continue.desc', render: () => <ContinuePreview streak={streak} reminderHour={reminderHour} /> },
-    { key: 'streak', size: 'S', titleKey: 'widgets.streak.title', descKey: 'widgets.streak.desc', render: () => <StreakPreview streak={streak} /> },
-    { key: 'week', size: 'M', titleKey: 'widgets.week.title', descKey: 'widgets.week.desc', render: () => <WeekPreview streak={streak} xp={xp} motivationMsg={currentMotivationMsg()} /> },
-    { key: 'wordOfDay', size: 'S', titleKey: 'widgets.wordOfDay.title', descKey: 'widgets.wordOfDay.desc', render: () => <WordOfDayPreview /> },
+  const FILTERS: { key: Filter; label: string }[] = [
+    { key: 'all', label: tr('widgets.filter.all') },
+    { key: 's', label: tr('widgets.filter.small') },
+    { key: 'm', label: tr('widgets.filter.medium') },
   ];
 
   return (
-    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
-      <DeviceStatusBar />
+    <View style={[styles.screen, { backgroundColor: P.bg }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        {/* ── Héros orange ── */}
+        <LinearGradient colors={P.hero} locations={[0, 0.55, 1]} {...G155} style={styles.hero}>
+          <View style={[styles.deco, { width: 150, height: 150, top: -40, right: -30 }]} />
+          <View style={[styles.deco, { width: 90, height: 90, bottom: 26, right: 70, opacity: 0.6 }]} />
+          <DeviceStatusBar />
+          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
+            <Feather name="chevron-left" size={24} color="#B4560A" />
+          </Pressable>
+          <Text style={styles.heroTitle}>{tr('widgets.title')}</Text>
+          <Text style={styles.heroSub}>{tr('widgets.subtitle')}</Text>
 
-      {/*
-        Header — il se comprime au défilement : le médaillon, le filet et le
-        sous-titre replient leur HAUTEUR (pas seulement leur opacité — un
-        élément transparent occupe toujours sa place), et le titre, posé à une
-        coordonnée animée, glisse vers la barre à hauteur de la flèche.
-      */}
-      <Animated.View style={[styles.headerWrap, hdrHauteur]}>
-        <LinearGradient
-          colors={['#FFA733', '#F0820C', '#D96E00']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <HeaderPattern width={width} height={180} variant="grid" />
-
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
-          <Feather name="chevron-left" size={26} color="#fff" />
-        </Pressable>
-
-        <View style={styles.headerBody}>
-          <Animated.View style={[styles.headerMedallionWrap, hdrMedaillon]}>
-            <View style={styles.headerMedallion}>
-              <Text style={styles.headerEmoji}>🧩</Text>
-            </View>
-          </Animated.View>
-
-          <Animated.View style={[styles.headerRule, hdrRule]} />
-          <Animated.Text style={[styles.headerSub, hdrSous]} numberOfLines={2}>
-            {tr('widgets.subtitle')}
-          </Animated.Text>
-        </View>
-
-        <Animated.Text style={[styles.headerTitle, styles.headerTitleAbs, hdrTitre]} numberOfLines={1}>
-          {tr('widgets.title')}
-        </Animated.Text>
-      </Animated.View>
-
-      <Animated.ScrollView
-        onScroll={onScroll}
-        // 16 ms : un événement par image à 60 Hz.
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
-        {WIDGET_PREVIEWS.map((w) => (
-          <View key={w.key} style={[styles.card, { backgroundColor: T.cardBg, borderColor: T.border }]}>
-            <View style={styles.previewWrap}>
-              {w.render()}
-              <View style={styles.sizeBadge}><Text style={styles.sizeBadgeText}>{w.size}</Text></View>
-            </View>
-            <Text style={[styles.cardTitle, { color: T.text }]}>{tr(w.titleKey)}</Text>
-            <Text style={[styles.cardDesc, { color: T.textSecondary }]}>{tr(w.descKey)}</Text>
+          <View style={styles.segment}>
+            {FILTERS.map((f) => {
+              const sel = filter === f.key;
+              return (
+                <Pressable key={f.key} onPress={() => setFilter(f.key)} style={[styles.segItem, sel && styles.segItemSel]}>
+                  <Text style={[styles.segText, { color: sel ? '#B4560A' : '#fff' }]}>{f.label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
-        ))}
+        </LinearGradient>
 
-        <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('widgets.iconTitle')}</Text>
-        <Text style={[styles.iconSubtitle, { color: T.textSecondary }]}>{tr('widgets.iconSubtitle')}</Text>
-        <AppIconPicker />
+        <View style={styles.body}>
+          {showS && (
+            <View style={[styles.card, { backgroundColor: P.card }, cardShadow]}>
+              <LinearGradient colors={P.wall} {...G160} style={styles.wall}>
+                <ReminderWidget reminderHour={reminderHour} />
+                <StreakWidget streak={streak} done={done} />
+              </LinearGradient>
+              <View style={styles.capRow}>
+                <WidgetCaption P={P} title={tr('widgets.continue.title')} desc={tr('widgets.continue.desc')} />
+                <WidgetCaption P={P} title={tr('widgets.streak.title')} desc={tr('widgets.streak.desc')} />
+              </View>
+            </View>
+          )}
 
-        <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('widgets.howToTitle')}</Text>
-        <View style={[styles.howToBox, { backgroundColor: T.cardBg, borderColor: T.border }]}>
-          <Text style={[styles.howToText, { color: T.text }]}>{howTo}</Text>
+          {showM && (
+            <View style={[styles.card, { backgroundColor: P.card }, cardShadow]}>
+              <LinearGradient colors={P.wall} {...G160} style={styles.wall}>
+                <WeekWidget streak={streak} xp={xp} done={done} motivation={currentMotivationMsg()} />
+              </LinearGradient>
+              <View style={styles.capRow}>
+                <WidgetCaption P={P} title={tr('widgets.week.title')} desc={tr('widgets.week.desc')} />
+              </View>
+            </View>
+          )}
+
+          {showS && (
+            <View style={[styles.card, { backgroundColor: P.card }, cardShadow]}>
+              <LinearGradient colors={P.wall} {...G160} style={styles.wall}>
+                <NameOfDayWidget />
+              </LinearGradient>
+              <View style={styles.capRow}>
+                <WidgetCaption P={P} title={tr('widgets.wordOfDay.title')} desc={tr('widgets.wordOfDay.desc')} />
+              </View>
+            </View>
+          )}
+
+          {/* ── Icône de l'app ── */}
+          <Text style={[styles.sectionTitle, { color: P.ink }]}>{tr('widgets.iconTitle')}</Text>
+          <Text style={[styles.sectionSub, { color: P.muted }]}>{tr('widgets.iconSubtitle')}</Text>
+          <View style={[styles.card, styles.cardPad, { backgroundColor: P.card }, cardShadow]}>
+            <AppIconPicker P={P} />
+          </View>
+
+          {/* ── Comment l'ajouter ── */}
+          <Text style={[styles.sectionTitle, { color: P.ink }]}>{tr('widgets.howToTitle')}</Text>
+          <View style={[styles.card, styles.cardPad, { backgroundColor: P.card, gap: 14 }, cardShadow]}>
+            {steps.map((k, i) => (
+              <View key={k} style={styles.stepRow}>
+                <View style={[styles.stepNum, { backgroundColor: T.isDark ? 'rgba(255,140,50,0.15)' : '#FFEEDD' }]}>
+                  <Text style={[styles.stepNumText, { color: T.isDark ? '#FFA35A' : '#D0660C' }]}>{i + 1}</Text>
+                </View>
+                <Text style={[styles.stepText, { color: P.ink }]}>{tr(k)}</Text>
+              </View>
+            ))}
+          </View>
         </View>
-
-        <Pressable
-          style={[styles.settingsBtn, { backgroundColor: T.isDark ? '#332A14' : '#FFF3CD' }]}
-          onPress={() => Linking.openSettings()}
-        >
-          <Feather name="external-link" size={18} color="#E8A800" />
-          <Text style={styles.settingsLabel}>{tr('widgets.openSettings')}</Text>
-        </Pressable>
-
-        <View style={{ height: 24 }} />
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  // Enveloppe de hauteur animee ; rogne son contenu pendant la compression.
-  headerWrap: {
-    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
-  },
-  headerBody: { flex: 1, paddingTop: 10, paddingHorizontal: 24, alignItems: 'center' },
-  // Le medaillon se replie en hauteur : son enveloppe rogne pendant l'animation.
-  headerMedallionWrap: { overflow: 'hidden', alignItems: 'center' },
-  // Titre pose a une coordonnee animee (voir hdrTitre) : sa place ne depend
-  // plus du repli du medaillon, du filet ni du sous-titre.
-  headerTitleAbs: {
-    position: 'absolute', right: 24, zIndex: 2,
-    textAlign: 'center', transformOrigin: 'left center',
-  },
-  header: {
-    paddingTop: 16, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center',
-    overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
-  },
-  backBtn: { position: 'absolute', top: 16, left: 16, zIndex: 2 },
-  headerMedallion: {
-    width: 68, height: 68, borderRadius: 34,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
-  },
-  headerEmoji: { fontSize: 32 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff' },
-  headerRule: { width: 46, borderRadius: 2, backgroundColor: '#fff' },
-  headerSub: {
-    fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center', paddingHorizontal: 12,
-  },
 
-  content: { padding: 18 },
-  card: {
-    borderRadius: 20, borderWidth: 1.5, padding: 16, marginBottom: 16,
-    alignItems: 'center',
+  hero: {
+    paddingHorizontal: 20, paddingBottom: 22,
+    borderBottomLeftRadius: 30, borderBottomRightRadius: 30, overflow: 'hidden',
   },
-  previewWrap: { position: 'relative', marginBottom: 12 },
-  sizeBadge: {
-    position: 'absolute', top: -6, right: -6,
-    backgroundColor: '#1B2333', borderRadius: 8,
-    paddingHorizontal: 6, paddingVertical: 2,
+  deco: {
+    position: 'absolute', borderRadius: 28, borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.18)', transform: [{ rotate: '24deg' }],
   },
-  sizeBadgeText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: '#fff' },
-  cardTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16 },
-  cardDesc: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: 2, textAlign: 'center' },
+  backBtn: {
+    width: 42, height: 42, borderRadius: 14, backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center', marginTop: 8,
+  },
+  heroTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, color: '#fff', marginTop: 14, lineHeight: 36 },
+  heroSub: {
+    fontFamily: 'Nunito_600SemiBold', fontSize: 14, lineHeight: 20,
+    color: 'rgba(255,255,255,0.92)', marginTop: 2,
+  },
+  segment: {
+    flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.14)',
+    padding: 4, borderRadius: 14, marginTop: 18,
+  },
+  segItem: { flex: 1, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  segItemSel: { backgroundColor: '#fff' },
+  segText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13.5 },
 
-  sectionTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 18, marginTop: 14, marginBottom: 10 },
-  howToBox: { borderRadius: 16, borderWidth: 1.5, padding: 16, width: '100%' },
-  howToText: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, lineHeight: 22 },
+  body: { paddingHorizontal: 16, paddingTop: 18, gap: 16 },
+  card: { borderRadius: 26, overflow: 'hidden' },
+  cardPad: { padding: 18 },
+  cardShadow: {
+    shadowColor: '#28200A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 24, elevation: 2,
+  },
+  wall: { paddingVertical: 22, paddingHorizontal: 18, flexDirection: 'row', justifyContent: 'center', gap: 18 },
+  capRow: { flexDirection: 'row', gap: 18, paddingTop: 14, paddingHorizontal: 18, paddingBottom: 16 },
+  capTitle: { fontFamily: 'Nunito_900Black', fontSize: 15 },
+  capDesc: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, lineHeight: 17 },
 
-  iconSubtitle: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: -6, marginBottom: 14 },
-  // Rangée défilante : `paddingHorizontal` remplace `justifyContent: center`,
-  // qui empêcherait le défilement de partir du bord.
-  iconRow: { flexDirection: 'row', gap: 20, paddingHorizontal: 4, paddingVertical: 2 },
-  iconOption: { alignItems: 'center', gap: 8 },
-  iconOptionActive: {},
-  // Aperçu visible mais fonctionnalité pas encore dispo (Expo Go / iOS ancien).
-  iconOptionDisabled: { opacity: 0.55 },
-  iconUnsupportedNote: {
-    fontFamily: 'Nunito_600SemiBold', fontSize: 12, lineHeight: 18,
-    textAlign: 'center', marginTop: 12,
-  },
-  iconPreviewWrap: {
-    width: 72, height: 72, borderRadius: 18, overflow: 'hidden',
-    borderWidth: 2.5, borderColor: 'transparent',
-  },
-  iconPreviewWrapActive: { borderColor: '#6B4DFF' },
-  iconPreviewImg: { width: '100%', height: '100%' },
-  iconPreviewOverlay: {
+  sectionTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, marginTop: 8, marginBottom: -10 },
+  sectionSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, lineHeight: 18, marginBottom: -4 },
+
+  iconGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+  iconCell: { alignItems: 'center', gap: 8, width: '25%' },
+  iconTile: { width: 74, height: 74, borderRadius: 20, padding: 3, borderWidth: 2.5 },
+  iconTileInner: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+  iconImg: { width: '100%', height: '100%' },
+  iconOverlay: {
     ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center', justifyContent: 'center',
   },
-  iconCheckBadge: {
-    position: 'absolute', bottom: 4, right: 4,
-    width: 18, height: 18, borderRadius: 9, backgroundColor: '#6B4DFF',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#fff',
+  iconCheck: {
+    position: 'absolute', top: -6, right: -6, width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 2,
   },
-  iconOptionLabel: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
-  iconErrorText: {
-    fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#FF4B4B',
-    textAlign: 'center', marginTop: 10,
-  },
+  iconLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12.5 },
+  iconNote: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 14 },
+  iconError: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#FF4B4B', textAlign: 'center', marginTop: 10 },
 
-  settingsBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    borderRadius: 16, paddingVertical: 15, marginTop: 18, width: '100%',
-  },
-  settingsLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#E8A800' },
+  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepNum: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  stepNumText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15 },
+  stepText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 14.5 },
 });
 
-// ─── Styles des previews (dimensions ≈ ratio réel des widgets iOS) ─────────
-const SMALL_W = 155;
-const SMALL_H = 155;
-
+// ─── Styles des aperçus (dimensions de la maquette : 150² et 318×150) ──────
 const pv = StyleSheet.create({
-  // Streak (small) — proportions de design_handoff_tarteel/Tarteel Widgets.dc.html
-  // (bloc 175px), mises à l'échelle sur SMALL_W/H (155px, ratio ~0.886).
-  streakBox: {
-    width: SMALL_W, height: SMALL_H, borderRadius: 23, padding: 15,
-    overflow: 'hidden',
-  },
-  streakGhostFlame: {
-    position: 'absolute', fontSize: 124, opacity: 0.18,
-    right: -26, bottom: -23,
-  },
-  streakOtterWrap: { position: 'absolute', top: 30, right: 5 },
-  streakHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  streakFlame: { fontSize: 14 },
-  streakLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: '#fff' },
-  streakNumber: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 64, color: '#fff', lineHeight: 58 },
-  streakSub: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: 'rgba(255,255,255,0.95)', marginTop: 2 },
-  streakDotsRow: { flexDirection: 'row' },
-  streakDotCol: { flex: 1, alignItems: 'center', gap: 3 },
-  dotBase: { width: 8, height: 8, borderRadius: 4 },
-  dotToday: { width: 11, height: 11, borderRadius: 6, backgroundColor: '#fff' },
-  dotActive: { backgroundColor: '#FFE08A' },
-  dotInactive: { backgroundColor: 'rgba(255,255,255,0.32)' },
-  streakDayLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 8, color: 'rgba(255,255,255,0.6)' },
-  streakDayLabelToday: { color: '#fff' },
+  small: { width: 150, height: 150, borderRadius: 24, padding: 13, overflow: 'hidden' },
+  medium: { width: 318, height: 150, borderRadius: 24, overflow: 'hidden', flexDirection: 'row', backgroundColor: '#fff' },
+  row: { flexDirection: 'row' },
+  row4: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
-  // Rappel (small)
-  contBox: {
-    width: SMALL_W, height: SMALL_H, borderRadius: 26, padding: 12,
-    overflow: 'hidden',
-  },
-  contHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  contReminderRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  contReminderText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10.5, color: '#fff' },
-  contTime: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: 'rgba(255,255,255,0.7)' },
-  contOtterWrap: { alignSelf: 'center' },
-  contMessageRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  contMessageText: { flex: 1, fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: '#fff' },
-  contButton: {
+  reminderLabel: { fontFamily: 'Nunito_900Black', fontSize: 11, color: '#fff' },
+  reminderTime: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10.5, color: 'rgba(255,255,255,0.75)' },
+  reminderMsgRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  reminderMsg: { flex: 1, fontFamily: 'Baloo2_800ExtraBold', fontSize: 14, lineHeight: 16, color: '#fff' },
+  reminderPill: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 11, paddingVertical: 7,
   },
-  contButtonText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5, color: '#fff' },
+  reminderPillText: { fontFamily: 'Nunito_900Black', fontSize: 11, color: '#fff' },
 
-  // Week (medium) — proportions de design_handoff_tarteel/Tarteel Widgets.dc.html
-  // (bloc 372×175px), mises à l'échelle (ratio ~0.886).
-  weekBox: {
-    width: SMALL_W * 2 + 12, height: SMALL_H, borderRadius: 26,
-    flexDirection: 'row', overflow: 'hidden',
-  },
-  weekHero: {
-    width: 119, alignItems: 'center', justifyContent: 'center', gap: 2, padding: 10,
-    overflow: 'hidden',
-  },
-  weekGhostFlame: {
-    position: 'absolute', fontSize: 106, opacity: 0.2,
-    right: -23, bottom: -25,
-  },
-  weekHeroNumber: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 37, color: '#fff' },
-  weekHeroSub: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: 'rgba(255,255,255,0.95)', textAlign: 'center' },
-  weekRight: { flex: 1, backgroundColor: '#FBFAFD', padding: 13, paddingBottom: 12 },
-  weekTitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  weekTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#1B2333' },
-  weekXpPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#EFEBFF', borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3,
-  },
-  weekXpText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: '#6B4DFF' },
-  weekTimelineRow: { flexDirection: 'row', alignItems: 'center', height: 34, marginTop: 4 },
-  weekTimelineLineTrack: {
-    position: 'absolute', left: 14, right: 14, height: 3, borderRadius: 2,
-    backgroundColor: '#E7E2F2',
-  },
-  weekTimelineLineFill: {
-    position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2,
-    backgroundColor: '#F0720F',
-  },
-  weekDotCol: { flex: 1, alignItems: 'center' },
-  weekDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  weekDotToday: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#fff', borderWidth: 3, borderColor: '#6B4DFF',
-  },
-  weekDotActive: { backgroundColor: '#F0720F', borderWidth: 3, borderColor: '#fff' },
-  weekDotInactive: { backgroundColor: '#EFECF7', borderWidth: 3, borderColor: '#fff' },
-  weekDotFlame: { fontSize: 12 },
-  weekLabelsRow: { flexDirection: 'row' },
-  weekDayLabel: { flex: 1, textAlign: 'center', fontFamily: 'Nunito_800ExtraBold', fontSize: 10, color: '#C2C6CE' },
-  weekDayLabelToday: { color: '#6B4DFF', fontFamily: 'Nunito_900Black' },
-  weekQuoteBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#FFF2E6', borderRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 6, marginTop: 6,
-  },
-  weekQuoteFlame: { fontSize: 13 },
-  weekQuoteText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 10.5, color: '#B5571A' },
+  streakGhost: { position: 'absolute', right: -18, bottom: -10, opacity: 0.16 },
+  streakNumber: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 46, lineHeight: 50, color: '#fff', marginTop: 4 },
+  streakSub: { fontFamily: 'Nunito_900Black', fontSize: 12, color: 'rgba(255,255,255,0.95)', marginTop: -4 },
 
-  // Mot du jour (small)
-  wodBox: {
-    width: SMALL_W, height: SMALL_H, borderRadius: 26, padding: 16,
-    overflow: 'hidden',
+  weekLeft: { width: 108, alignItems: 'center', justifyContent: 'center', padding: 8 },
+  weekStreak: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 40, lineHeight: 44, color: '#fff', marginTop: 2 },
+  weekStreakSub: { fontFamily: 'Nunito_900Black', fontSize: 10.5, color: 'rgba(255,255,255,0.95)', textAlign: 'center' },
+  weekRight: { flex: 1, paddingTop: 13, paddingHorizontal: 13, paddingBottom: 12 },
+  weekTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, color: '#1A1730' },
+  xpPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: '#EEEAFF',
   },
-  wodHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  wodHeaderText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5, color: '#C2860C' },
-  wodArabic: {
-    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 32, lineHeight: 38,
-    color: '#1B2333', textAlign: 'right', writingDirection: 'rtl',
+  xpText: { fontFamily: 'Nunito_900Black', fontSize: 11, color: '#6B4DFF' },
+  weekCol: { flex: 1, alignItems: 'center', gap: 4 },
+  weekCell: { height: 24, alignItems: 'center', justifyContent: 'center' },
+  weekLetter: { fontFamily: 'Nunito_900Black', fontSize: 10 },
+  motivPill: { backgroundColor: '#FFF1E6', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  motivText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10.5, color: '#B4560A' },
+
+  nodLabel: { fontFamily: 'Nunito_900Black', fontSize: 10, letterSpacing: 0.5, color: '#E0A02C', textTransform: 'uppercase' },
+  nodCount: { fontFamily: 'Nunito_900Black', fontSize: 10, color: '#B07A00' },
+  nodArabic: {
+    fontFamily: 'ScheherazadeNew_700Bold', fontSize: 38, lineHeight: 50,
+    color: '#1A1730', textAlign: 'center', writingDirection: 'rtl',
   },
-  wodTranslit: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: '#8A7A5C', marginTop: 2 },
-  wodTranslation: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, color: '#1B2333', lineHeight: 18 },
-  wodBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFF1D6', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 7, alignSelf: 'flex-start',
-  },
-  wodBadgeText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 10.5, color: '#96660A' },
+  nodTranslit: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5, color: '#8A6A2A', textAlign: 'center' },
+  nodFr: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, lineHeight: 19, color: '#1A1730', textAlign: 'center', marginTop: 2 },
 });

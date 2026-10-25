@@ -15,6 +15,7 @@ function currentConfig(): ReminderConfig {
     latitude: s.latitude,
     longitude: s.longitude,
     prayers: s.reminderPrayers,
+    beforeMinutes: s.reminderBefore,
   };
 }
 
@@ -43,7 +44,8 @@ export function usePrayerRemindersSync() {
         s.remindersEnabled !== prev.remindersEnabled ||
         s.latitude !== prev.latitude ||
         s.longitude !== prev.longitude ||
-        s.reminderPrayers !== prev.reminderPrayers
+        s.reminderPrayers !== prev.reminderPrayers ||
+        s.reminderBefore !== prev.reminderBefore
       ) {
         sync();
       }

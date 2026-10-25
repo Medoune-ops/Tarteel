@@ -25,7 +25,19 @@ jest.mock('../lib/api/swr', () => ({ swrFetch: (_k: string, fn: () => Promise<un
 jest.mock('../constants/trackPlayer', () => ({
   AUDIO_AVAILABLE: true,
   playSurates: (...a: unknown[]) => mockPlaySurates(...a),
+  changeReciter: jest.fn(() => Promise.resolve()),
+  getCurrentReciterId: () => 'basit',
+  getCurrentSourates: () => [],
+  useActiveTrack: () => undefined,
+  useProgress: () => ({ position: 0, duration: 0, buffered: 0 }),
+  useIsPlaying: () => ({ playing: false }),
+  audioControls: { play: jest.fn(), pause: jest.fn(), skipToNext: jest.fn(), skipToPrevious: jest.fn() },
+  refreshLocalSudaisCache: jest.fn(),
 }));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+jest.mock('../constants/audioDownload', () => ({ fetchSudaisTotalMb: () => Promise.resolve(576) }));
 jest.mock('../utils/useTheme', () => ({
   useTheme: () => ({
     pageBg: '#fff', cardBg: '#fff', text: '#000', textSecondary: '#666', textTertiary: '#999',
@@ -66,12 +78,20 @@ describe('Écran Tajwid (écoute du Coran)', () => {
     expect(all).toContain('الفاتحة');
   });
 
-  it('taper une sourate lance la lecture et ouvre le lecteur', async () => {
+  it('taper une sourate lance la lecture sans quitter la liste', async () => {
     const r = await renderScreen();
     await press(r, 'الفاتحة');
     expect(mockPlaySurates).toHaveBeenCalled();
     // 3e argument = index de départ (0 pour Al-Fatiha).
     expect(mockPlaySurates.mock.calls[0][2]).toBe(0);
-    expect(mockPush).toHaveBeenCalledWith('/(app)/coran-player');
+    // Maquette : la liste reste affichée, le mini-lecteur ouvre le plein écran.
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('affiche la carte « Mode hors-ligne » avec le poids annoncé', async () => {
+    const r = await renderScreen();
+    const all = textOf(r.root);
+    expect(all).toContain('Mode hors-ligne');
+    expect(all).toContain('576 Mo');
   });
 });
