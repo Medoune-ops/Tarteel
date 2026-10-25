@@ -26,6 +26,9 @@ jest.mock('expo-router', () => ({
   },
 }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
 jest.mock('expo-keep-awake', () => ({
   activateKeepAwakeAsync: (...a: unknown[]) => mockActivateKeepAwake(...a),
   deactivateKeepAwake: (...a: unknown[]) => mockDeactivateKeepAwake(...a),
@@ -61,7 +64,7 @@ async function renderScreen() {
 
 async function press(r: TestRenderer.ReactTestRenderer, label: string) {
   const target = r.root
-    .findAll((n: ReactTestInstance) => typeof n.props?.onPress === 'function' && textOf(n).includes(label))
+    .findAll((n: ReactTestInstance) => typeof n.props?.onPress === 'function' && n.props.accessibilityLabel === label)
     .at(0);
   if (!target) throw new Error(`Aucun bouton contenant « ${label} »`);
   await act(async () => { await target.props.onPress(); });
@@ -88,7 +91,8 @@ describe('Lecteur « Lecture libre » (sourate en entier)', () => {
     expect(all).toContain('الفاتحة');
     expect(all).toContain('بِسْمِ اللَّهِ');
     expect(all).toContain('الْحَمْدُ لِلَّهِ');
-    expect(all).toContain('Écouter la sourate en entier');
+    expect(all).toContain('En pause');
+    expect(all).toContain('Verset 1/2');
   });
 
   it('affiche le sens de chaque verset dans la langue de l\'utilisateur', async () => {
@@ -123,7 +127,7 @@ describe('Lecteur « Lecture libre » (sourate en entier)', () => {
 
   it('lit chaque verset dans l\'ordre et garde l\'écran allumé', async () => {
     const r = await renderScreen();
-    await press(r, 'Écouter la sourate en entier');
+    await press(r, 'Lire');
     expect(mockActivateKeepAwake).toHaveBeenCalled();
     expect(mockPlayAsync).toHaveBeenCalledTimes(2);
     expect(mockPlayAsync).toHaveBeenNthCalledWith(1, 'https://cdn/1.mp3');
