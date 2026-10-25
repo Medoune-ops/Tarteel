@@ -7,10 +7,10 @@ const mockNext = jest.fn((..._a: unknown[]) => Promise.resolve());
 const mockPrev = jest.fn((..._a: unknown[]) => Promise.resolve());
 const mockSetRate = jest.fn((..._a: unknown[]) => Promise.resolve());
 const mockSetRepeat = jest.fn((..._a: unknown[]) => Promise.resolve());
-const mockChangeReciter = jest.fn((..._a: unknown[]) => Promise.resolve());
+const mockSeek = jest.fn();
 let mockPlaying = false;
 
-// L'écran importe tout via le wrapper constants/trackPlayer (jamais RNTP direct).
+// L'écran importe tout via le wrapper constants/trackPlayer (jamais le moteur direct).
 jest.mock('../constants/trackPlayer', () => ({
   AUDIO_AVAILABLE: true,
   useActiveTrack: () => ({ id: '1', title: '1. Al-Fatiha', artist: 'Abdul Basit' }),
@@ -24,10 +24,23 @@ jest.mock('../constants/trackPlayer', () => ({
     skipToPrevious: (...a: unknown[]) => mockPrev(...a),
     setRate: (...a: unknown[]) => mockSetRate(...a),
     setRepeatMode: (...a: unknown[]) => mockSetRepeat(...a),
+    seekTo: (...a: unknown[]) => mockSeek(...a),
   },
-  changeReciter: (...a: unknown[]) => mockChangeReciter(...a),
-  getCurrentReciterId: () => 'basit',
-  getCurrentSourates: () => [{ numero: 1, nom: 'Al-Fatiha', nomArabe: 'الفاتحة' }],
+  getCurrentSourates: () => [
+    { numero: 1, nom: 'Al-Fatiha', nomArabe: 'الفاتحة', nombreVersets: 7, revelation: 'makkah' },
+  ],
+}));
+const mockVersets = {
+  sourate: { numero: 1 },
+  versets: Array.from({ length: 7 }, (_, i) => ({
+    id: String(i + 1), numero: i + 1, texteArabe: `AR${i + 1}`, audioUrl: null,
+    traduction: { texte: `FR${i + 1}`, langue: 'fr', source: 'x' }, translitteration: null, mots: [],
+  })),
+};
+jest.mock('../lib/api', () => ({ fetchVersets: () => Promise.resolve(mockVersets) }));
+jest.mock('../lib/api/swr', () => ({ swrFetch: (_k: string, fn: () => Promise<unknown>) => fn() }));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn() }) }));
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
@@ -37,93 +50,88 @@ jest.mock('../utils/useTheme', () => ({
 }));
 
 import CoranPlayerScreen from '../app/(app)/coran-player';
+import { useCoranListenStore } from '../store/coranListenStore';
 
 function textOf(inst: ReactTestInstance | string): string {
   if (typeof inst === 'string') return inst;
   return (inst.children ?? []).map(textOf).join('');
 }
 let current: TestRenderer.ReactTestRenderer | undefined;
-function renderScreen() { act(() => { current = TestRenderer.create(<CoranPlayerScreen />); }); return current!; }
-async function press(r: TestRenderer.ReactTestRenderer, label: string) {
-  const t = r.root.findAll((n: ReactTestInstance) => typeof n.props?.onPress === 'function' && textOf(n).includes(label)).at(0);
+async function renderScreen() {
+  await act(async () => { current = TestRenderer.create(<CoranPlayerScreen />); });
+  return current!;
+}
+function byLabel(r: TestRenderer.ReactTestRenderer, label: string) {
+  const t = r.root.findAll((n: ReactTestInstance) => typeof n.props?.onPress === 'function' && n.props?.accessibilityLabel === label).at(0);
   if (!t) throw new Error(`bouton « ${label} » introuvable`);
-  await act(async () => { await t.props.onPress(); });
+  return t;
+}
+async function press(r: TestRenderer.ReactTestRenderer, label: string) {
+  const t = byLabel(r, label);
+  await act(async () => { await t.props.onPress({ nativeEvent: { locationX: 0 } }); });
 }
 
 describe('Lecteur Coran (contrôles)', () => {
   beforeEach(() => {
-    mockPlay.mockClear(); mockPause.mockClear(); mockNext.mockClear(); mockPrev.mockClear();
-    mockSetRate.mockClear(); mockSetRepeat.mockClear(); mockChangeReciter.mockClear();
+    jest.clearAllMocks();
     mockPlaying = false;
+    useCoranListenStore.setState({ speed: 1, loop: false, favorites: [] });
   });
   afterEach(() => { act(() => { current?.unmount(); }); current = undefined; });
 
-  it('affiche la sourate en cours et le récitateur', () => {
-    const r = renderScreen();
+  it('affiche la sourate en cours, le récitateur, le badge et le verset estimé', async () => {
+    const r = await renderScreen();
     const all = textOf(r.root);
-    expect(all).toContain('Al-Fatiha');
+    expect(all).toContain('1. Al-Fatiha');
     expect(all).toContain('الفاتحة');
+    expect(all).toContain('Abdul Basit');
+    expect(all).toContain('MECQUOISE');
+    // 30 s / 120 s = 25 % de 7 versets → verset 2.
+    expect(all).toContain('Verset 2/7');
+    expect(all).toContain('AR2');
+    expect(all).toContain('FR2');
   });
 
-  it('le bouton lecture appelle TrackPlayer.play', async () => {
-    const r = renderScreen();
-    // Trouve le gros bouton play (Pressable avec onPress mais sans texte).
-    const btns = r.root.findAll((n: ReactTestInstance) => typeof n.props?.onPress === 'function');
-    // Le bouton play/pause est le premier sans hitSlop après les skip — on déclenche tous et on vérifie play.
-    await act(async () => { for (const b of btns) { try { await b.props.onPress(); } catch { /* ignore */ } } });
+  it('à l’arrêt, le bouton central lance la lecture', async () => {
+    const r = await renderScreen();
+    await press(r, 'Lire');
     expect(mockPlay).toHaveBeenCalled();
-    expect(mockNext).toHaveBeenCalled();
-    expect(mockPrev).toHaveBeenCalled();
-  });
-
-  /**
-   * Signalé sur Android : « quand on met sur pause l'affichage ne le montre
-   * pas ». Le bouton doit refléter l'état réel du lecteur, et rebasculer en
-   * lecture au second appui — sinon l'utilisateur ne sait plus où il en est.
-   */
-  it("affiche l'icône pause pendant la lecture, play à l'arrêt", () => {
-    mockPlaying = true;
-    const r1 = renderScreen();
-    const pauseIcons = r1.root.findAll(
-      (n: ReactTestInstance) => n.props?.name === 'pause',
-    );
-    expect(pauseIcons.length).toBeGreaterThan(0);
-    act(() => { r1.unmount(); });
-    current = undefined;
-
-    mockPlaying = false;
-    const r2 = renderScreen();
-    const playIcons = r2.root.findAll(
-      (n: ReactTestInstance) => n.props?.name === 'play',
-    );
-    expect(playIcons.length).toBeGreaterThan(0);
+    expect(mockPause).not.toHaveBeenCalled();
   });
 
   it('en cours de lecture, le bouton central met en pause (et non replay)', async () => {
     mockPlaying = true;
-    const r = renderScreen();
-    const btns = r.root.findAll((n: ReactTestInstance) => typeof n.props?.onPress === 'function');
-    await act(async () => { for (const b of btns) { try { await b.props.onPress(); } catch { /* ignore */ } } });
+    const r = await renderScreen();
+    await press(r, 'Pause');
     expect(mockPause).toHaveBeenCalled();
     expect(mockPlay).not.toHaveBeenCalled();
   });
 
-  it('changer la vitesse appelle setRate', async () => {
-    const r = renderScreen();
-    await press(r, '1.5×');
-    expect(mockSetRate).toHaveBeenCalledWith(1.5);
+  it('précédent / suivant changent de sourate', async () => {
+    const r = await renderScreen();
+    await press(r, 'Sourate précédente');
+    await press(r, 'Sourate suivante');
+    expect(mockPrev).toHaveBeenCalled();
+    expect(mockNext).toHaveBeenCalled();
   });
 
-  it('activer la boucle appelle setRepeatMode', async () => {
-    const r = renderScreen();
+  it('le bouton vitesse passe à la vitesse suivante', async () => {
+    const r = await renderScreen();
+    await press(r, 'Vitesse');
+    expect(mockSetRate).toHaveBeenCalledWith(1.25);
+    expect(textOf(r.root)).toContain('1.25×');
+  });
+
+  it('activer la boucle répète la sourate', async () => {
+    const r = await renderScreen();
     mockSetRepeat.mockClear(); // ignore l'appel du useEffect initial
     await press(r, 'Boucle');
-    expect(mockSetRepeat).toHaveBeenCalled();
+    expect(mockSetRepeat).toHaveBeenCalledWith(1);
   });
 
-  it('changer de récitateur appelle changeReciter', async () => {
-    const r = renderScreen();
-    await press(r, 'Cheikh Sudais');
-    expect(mockChangeReciter).toHaveBeenCalled();
+  it('le cœur ajoute la sourate aux favoris', async () => {
+    const r = await renderScreen();
+    await press(r, 'Ajouter aux favoris');
+    expect(useCoranListenStore.getState().favorites).toEqual([1]);
   });
 });

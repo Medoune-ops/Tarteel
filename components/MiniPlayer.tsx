@@ -19,7 +19,9 @@ export default function MiniPlayer() {
   const { position, duration } = useProgress(500);
   const { playing } = useIsPlaying();
 
-  if (!track || pathname === '/coran-player') return null;
+  // Masqué sur le lecteur plein écran, et sur l'Écoute du Coran qui affiche
+  // son propre mini-lecteur (maquette dédiée).
+  if (!track || pathname === '/coran-player' || pathname === '/tajwid') return null;
 
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
   const hasTabBar = TAB_ROUTES.has(pathname);

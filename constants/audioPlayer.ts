@@ -42,7 +42,18 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { surahAudioUrl, DEFAULT_RECITER_ID, type Reciter } from './reciters';
 import { localSudaisPath } from './audioDownload';
 
-export interface SourateLite { numero: number; nom: string; nomArabe: string }
+/**
+ * Sourate de la file de lecture. `nombreVersets` et `revelation` sont
+ * facultatifs : le lecteur plein écran s'en sert pour l'affichage (compteur
+ * de versets, badge Mecquoise/Médinoise) quand l'écran appelant les fournit.
+ */
+export interface SourateLite {
+  numero: number;
+  nom: string;
+  nomArabe: string;
+  nombreVersets?: number;
+  revelation?: string;
+}
 
 /** Piste telle que l'affichent le lecteur et le mini-lecteur. */
 export interface ActiveTrack {
