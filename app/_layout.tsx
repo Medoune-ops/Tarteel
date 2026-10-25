@@ -19,6 +19,7 @@ import { preloadSounds } from '../constants/sounds';
 import { useTheme } from '../utils/useTheme';
 import { useAppConfigStore } from '../store/appConfigStore';
 import { usePrayerRemindersSync } from '../utils/usePrayerRemindersSync';
+import { usePrayerWidgetSync } from '../utils/usePrayerWidgetSync';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -105,6 +106,7 @@ export default function RootLayout() {
 
   useRefreshAppConfigOnForeground();
   usePrayerRemindersSync();
+  usePrayerWidgetSync();
 
   // Le splash natif n'est PAS masqué ici dès que les polices sont prêtes :
   // ça révélerait un frame vide avant que l'écran splash.tsx (mascotte

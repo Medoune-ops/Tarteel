@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Heures de prière en mode sombre (palette « MODE SOMBRE » de la maquette). -->
+<resources>
+    <color name="w_p_card">#151C1A</color>
+    <color name="w_p_ink">#EDF3F0</color>
+    <color name="w_p_muted">#8C9893</color>
+    <color name="w_p_line">#232C29</color>
+    <color name="w_p_accent">#3DCB98</color>
+    <color name="w_p_accent_soft">#243DCB98</color>
+    <color name="w_p_next_bg">#213DCB98</color>
+    <color name="w_p_hero_start">#08201A</color>
+    <color name="w_p_hero_mid">#0D3328</color>
+    <color name="w_p_hero_end">#13503E</color>
+</resources>

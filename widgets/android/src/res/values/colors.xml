@@ -44,4 +44,19 @@
     <color name="w_gold_translit">#8A7A5C</color>
     <color name="w_gold_badge_bg">#FFF1D6</color>
     <color name="w_gold_badge_text">#96660A</color>
+
+    <!-- Heures de prière (mode clair) — repris de PrayerWidgets.swift.
+         Le mode sombre surcharge ces valeurs dans values-night/colors.xml. -->
+    <color name="w_p_card">#FFFFFF</color>
+    <color name="w_p_ink">#16201C</color>
+    <color name="w_p_muted">#6E7873</color>
+    <color name="w_p_line">#ECEEEA</color>
+    <color name="w_p_accent">#1A8F69</color>
+    <color name="w_p_accent_soft">#E2F2EA</color>
+    <color name="w_p_next_bg">#E6F4EC</color>
+    <color name="w_p_hero_start">#166F55</color>
+    <color name="w_p_hero_mid">#1E8E6A</color>
+    <color name="w_p_hero_end">#2BA47D</color>
+    <color name="w_p_sun">#FFD66B</color>
+    <color name="w_p_sun_ink">#1C1A26</color>
 </resources>

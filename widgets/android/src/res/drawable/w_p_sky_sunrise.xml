@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ciel à l heure de sunrise (grand widget). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="7dp" />
+    <gradient android:type="linear" android:angle="315" android:startColor="#F6B26B" android:endColor="#F7D88A" />
+</shape>

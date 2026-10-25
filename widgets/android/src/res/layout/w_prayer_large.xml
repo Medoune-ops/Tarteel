@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Grand · Journée + Qibla (4×4) — maquette « Tarteel Widgets Priere ».
+     La Qibla est donnée en degrés : un widget n'a pas de boussole. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_pl_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/w_p_bg_card">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/w_p_bg_hero_top"
+        android:paddingStart="18dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/w_pl_header"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PROCHAINE PRIÈRE · DAKAR"
+                    android:textColor="@color/w_white_70"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:orientation="horizontal"
+                    android:gravity="bottom">
+
+                    <TextView
+                        android:id="@+id/w_pl_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:text="Dhuhr"
+                        android:textColor="@color/w_white"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/w_pl_arabic"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="الظهر"
+                        android:textColor="@color/w_white_70"
+                        android:textSize="18sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/w_pl_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="12:55"
+                    android:textColor="@color/w_white"
+                    android:textSize="42sp"
+                    android:textStyle="bold"
+                    android:includeFontPadding="false" />
+            </LinearLayout>
+
+            <!-- Qibla -->
+            <LinearLayout
+                android:layout_width="76dp"
+                android:layout_height="76dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/w_p_qibla_bg">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🕋"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/w_p_qibla"
+                    android:textColor="@color/w_white_70"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/w_pl_qibla"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="74° E"
+                    android:textColor="@color/w_white"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="@string/w_p_fajr"
+                android:textColor="@color/w_white_70"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/w_pl_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="6dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="64"
+                android:progressDrawable="@drawable/w_p_progress_light" />
+
+            <Chronometer
+                android:id="@+id/w_pl_countdown"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/w_p_pill_sun"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:textColor="@color/w_p_sun_ink"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="10dp">
+
+        <LinearLayout
+            android:id="@+id/w_pl_row0"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/w_p_sky_fajr"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/w_pl_row0_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Fajr"
+                android:textColor="@color/w_p_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/w_pl_row0_ar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:text="الفجر"
+                android:textColor="@color/w_p_muted"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/w_pl_row0_time"
+                android:layout_width="52dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="05:51"
+                android:textColor="@color/w_p_ink"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/w_pl_row1"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/w_p_sky_sunrise"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/w_pl_row1_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Chourouq"
+                android:textColor="@color/w_p_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/w_pl_row1_ar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:text="الشروق"
+                android:textColor="@color/w_p_muted"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/w_pl_row1_time"
+                android:layout_width="52dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="07:03"
+                android:textColor="@color/w_p_ink"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/w_pl_row2"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/w_p_sky_dhuhr"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/w_pl_row2_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Dhuhr"
+                android:textColor="@color/w_p_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/w_pl_row2_ar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:text="الظهر"
+                android:textColor="@color/w_p_muted"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/w_pl_row2_time"
+                android:layout_width="52dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="12:55"
+                android:textColor="@color/w_p_ink"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/w_pl_row3"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/w_p_sky_asr"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/w_pl_row3_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Asr"
+                android:textColor="@color/w_p_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/w_pl_row3_ar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:text="العصر"
+                android:textColor="@color/w_p_muted"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/w_pl_row3_time"
+                android:layout_width="52dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="16:14"
+                android:textColor="@color/w_p_ink"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/w_pl_row4"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/w_p_sky_maghrib"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/w_pl_row4_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Maghrib"
+                android:textColor="@color/w_p_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/w_pl_row4_ar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:text="المغرب"
+                android:textColor="@color/w_p_muted"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/w_pl_row4_time"
+                android:layout_width="52dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="18:45"
+                android:textColor="@color/w_p_ink"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/w_pl_row5"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/w_p_sky_isha"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/w_pl_row5_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Isha"
+                android:textColor="@color/w_p_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/w_pl_row5_ar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:text="العشاء"
+                android:textColor="@color/w_p_muted"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/w_pl_row5_time"
+                android:layout_width="52dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="19:53"
+                android:textColor="@color/w_p_ink"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+    </LinearLayout>
+</LinearLayout>

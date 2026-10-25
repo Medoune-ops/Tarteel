@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Moyen · Toutes les prières (4×2) — maquette « Tarteel Widgets Priere ». -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_pa_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@drawable/w_p_bg_card">
+
+    <!-- Colonne verte : prochaine prière -->
+    <LinearLayout
+        android:layout_width="128dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/w_p_bg_hero_left"
+        android:padding="14dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/w_p_next_caps"
+            android:textColor="@color/w_white_70"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal"
+            android:gravity="bottom">
+
+            <TextView
+                android:id="@+id/w_pa_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Dhuhr"
+                android:textColor="@color/w_white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/w_pa_arabic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="الظهر"
+                android:textColor="@color/w_white_70"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/w_pa_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12:55"
+            android:textColor="@color/w_white"
+            android:textSize="34sp"
+            android:textStyle="bold"
+            android:includeFontPadding="false"
+            android:maxLines="1" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <Chronometer
+            android:id="@+id/w_pa_countdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/w_pill_light"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:textColor="@color/w_white"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Panneau : progression + 5 prières -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="13dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/w_pa_city"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Dakar"
+            android:textColor="@color/w_p_muted"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/w_pa_prev"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Chourouq 07:03"
+                android:textColor="@color/w_p_muted"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/w_pa_next"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dhuhr 12:55"
+                android:textColor="@color/w_p_accent"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/w_pa_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="6dp"
+            android:max="100"
+            android:progress="64"
+            android:progressDrawable="@drawable/w_p_progress" />
+
+        <TextView
+            android:id="@+id/w_pa_elapsed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text="64 %"
+            android:textColor="@color/w_p_muted"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/w_pa_col0"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="1dp"
+                android:layout_marginEnd="1dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp">
+
+                <TextView
+                    android:id="@+id/w_pa_col0_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="FAJR"
+                    android:textColor="@color/w_p_muted"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/w_pa_col0_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="05:51"
+                    android:textColor="@color/w_p_ink"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/w_pa_col1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="1dp"
+                android:layout_marginEnd="1dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp">
+
+                <TextView
+                    android:id="@+id/w_pa_col1_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DHUHR"
+                    android:textColor="@color/w_p_muted"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/w_pa_col1_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="12:55"
+                    android:textColor="@color/w_p_ink"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/w_pa_col2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="1dp"
+                android:layout_marginEnd="1dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp">
+
+                <TextView
+                    android:id="@+id/w_pa_col2_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ASR"
+                    android:textColor="@color/w_p_muted"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/w_pa_col2_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="16:14"
+                    android:textColor="@color/w_p_ink"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/w_pa_col3"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="1dp"
+                android:layout_marginEnd="1dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp">
+
+                <TextView
+                    android:id="@+id/w_pa_col3_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MAGH"
+                    android:textColor="@color/w_p_muted"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/w_pa_col3_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="18:45"
+                    android:textColor="@color/w_p_ink"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/w_pa_col4"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="1dp"
+                android:layout_marginEnd="1dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp">
+
+                <TextView
+                    android:id="@+id/w_pa_col4_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ISHA"
+                    android:textColor="@color/w_p_muted"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/w_pa_col4_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="19:53"
+                    android:textColor="@color/w_p_ink"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

@@ -36,4 +36,34 @@
     <string name="w_preview_name_translit">Ar-Raḥmān</string>
     <string name="w_preview_name_translation">The Most Compassionate</string>
     <string name="w_preview_name_badge">⭐ Name #1 of 99</string>
+
+    <!-- Heures de prière -->
+    <string name="w_p_fajr">Fajr</string>
+    <string name="w_p_sunrise">Sunrise</string>
+    <string name="w_p_dhuhr">Dhuhr</string>
+    <string name="w_p_asr">Asr</string>
+    <string name="w_p_maghrib">Maghrib</string>
+    <string name="w_p_isha">Isha</string>
+    <string name="w_p_next">Next prayer</string>
+    <string name="w_p_next_caps">NEXT</string>
+    <string name="w_p_next_city_caps">NEXT PRAYER · %1$s</string>
+    <string name="w_p_in_format" formatted="false">in %s</string>
+    <string name="w_p_elapsed">%1$d %% of the time elapsed</string>
+    <string name="w_p_my_location">My location</string>
+    <string name="w_p_empty_title">Prayer times</string>
+    <string name="w_p_empty_body">Pick your city in the app</string>
+    <string name="w_p_qibla">Qibla</string>
+    <string name="w_desc_p_next">The next prayer and the time left</string>
+    <string name="w_desc_p_all">All of today\'s prayers</string>
+    <string name="w_desc_p_large">All of today\'s prayers and the Qibla</string>
+    <string-array name="w_p_cardinals">
+        <item>N</item>
+        <item>NE</item>
+        <item>E</item>
+        <item>SE</item>
+        <item>S</item>
+        <item>SW</item>
+        <item>W</item>
+        <item>NW</item>
+    </string-array>
 </resources>
