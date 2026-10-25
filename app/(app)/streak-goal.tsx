@@ -6,7 +6,12 @@ import {
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DeviceStatusBar from '../../components/StatusBar';
+import { FlameIcon, GemIcon } from '../../components/IslamicIcons';
 import { useUserStore } from '../../store/userStore';
+import { useTheme } from '../../utils/useTheme';
 import { playSound } from '../../constants/sounds';
 import { streakReward } from '../../constants/rewards';
 import { setStreakGoalApi, claimStreakGoal } from '../../lib/api/rewards';
@@ -15,17 +20,47 @@ import { useT } from '../../lib/i18n';
 const PRESETS = [7, 14, 30, 50, 100, 365];
 const MAX_GOAL = 9999;
 
+// ─── Palette de la maquette (Tarteel Noms et Objectif) ─────────────────────
+type Palette = {
+  bg: string; card: string; ink: string; muted: string;
+  fire: readonly [string, string, string];
+  fireSoft: string; fireInk: string; iceBg: string; dockBg: string;
+  xpBg: string; xpFg: string; goldBg: string; goldBorder: string;
+};
+const LIGHT: Palette = {
+  bg: '#F4F3F8', card: '#FFFFFF', ink: '#1A1730', muted: '#6F6B84',
+  fire: ['#FF9A3D', '#F4633A', '#E5484D'],
+  fireSoft: '#FFEDE6', fireInk: '#E5543A', iceBg: '#E5F1FC', dockBg: 'rgba(244,243,248,0)',
+  xpBg: '#FFF4D6', xpFg: '#A86A00', goldBg: '#FFF7E4', goldBorder: '#F0CD7A',
+};
+const DARK: Palette = {
+  bg: '#0C0B12', card: '#17151F', ink: '#EEEDF5', muted: '#918DA6',
+  fire: ['#E2772A', '#C9442E', '#A8303A'],
+  fireSoft: 'rgba(255,120,80,0.14)', fireInk: '#FF8A66', iceBg: 'rgba(58,142,224,0.16)', dockBg: 'rgba(12,11,18,0)',
+  xpBg: 'rgba(255,200,80,0.14)', xpFg: '#FFC850', goldBg: 'rgba(224,160,44,0.12)', goldBorder: 'rgba(224,160,44,0.4)',
+};
+const G150 = { start: { x: 0.25, y: 0 }, end: { x: 0.75, y: 1 } };
+
+const RING = 132;
+const R = 58;
+const C = 2 * Math.PI * R;
+
 export default function StreakGoalScreen() {
   const router = useRouter();
   const tr = useT();
+  const T = useTheme();
+  const P = T.isDark ? DARK : LIGHT;
+  const insets = useSafeAreaInsets();
   const streak = useUserStore((s) => s.streak);
   const streakGoal = useUserStore((s) => s.streakGoal);
   const [saving, setSaving] = useState(false);
   const [claiming, setClaiming] = useState(false);
 
   const defaultGoal = streakGoal ?? PRESETS.find((p) => p > streak) ?? 30;
+  const [picked, setPicked] = useState<number>(
+    streakGoal != null && !PRESETS.includes(streakGoal) ? 30 : defaultGoal,
+  );
   // Si l'objectif courant n'est pas un preset, on le met directement dans le champ libre.
-  const [picked, setPicked] = useState<number>(defaultGoal);
   const [custom, setCustom] = useState<string>(
     streakGoal != null && !PRESETS.includes(streakGoal) ? String(streakGoal) : '',
   );
@@ -34,11 +69,10 @@ export default function StreakGoalScreen() {
   const customNum = parseInt(custom, 10);
   const customValid = custom !== '' && customNum >= 1 && customNum <= MAX_GOAL;
   const target = customValid ? customNum : picked;
-  // Le champ libre doit être > série en cours pour être un vrai défi (sinon déjà atteint).
-  const canSave = target >= 1 && (customValid ? customNum > 0 : true);
 
   const goalReached = streakGoal != null && streak >= streakGoal;
-  const progress = streakGoal ? Math.min(1, streak / streakGoal) : 0;
+  const ringProgress = Math.min(1, streak / target);
+  const left = Math.max(0, target - streak);
 
   const claim = async () => {
     if (claiming) return;
@@ -57,7 +91,7 @@ export default function StreakGoalScreen() {
   };
 
   const save = async () => {
-    if (!canSave || saving) return;
+    if (target < 1 || saving) return;
     setSaving(true);
     try {
       await setStreakGoalApi(target);
@@ -75,176 +109,261 @@ export default function StreakGoalScreen() {
     setCustom(''); // un preset annule la saisie libre
   };
 
-  return (
-    <View style={styles.screen}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Text style={styles.back}>‹</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>{tr('streakGoal.headerTitle')}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+  const shadow = T.isDark ? styles.borderDark : styles.shadow;
+  const presetSub = (d: number) => tr(`streakGoal.preset.${d}` as 'streakGoal.preset.7');
 
+  return (
+    <View style={[styles.screen, { backgroundColor: P.bg }]}>
       {/* Sur Android, `behavior={undefined}` ne fait RIEN : le clavier
           recouvre le champ actif sans que l'écran ne remonte. */}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        {/* Carte série actuelle */}
-        <LinearGradient colors={['#FF8A4B', '#FF4B4B']} style={styles.hero}>
-          <Text style={styles.heroFlame}>🔥</Text>
-          <Text style={styles.heroStreak}>{tr('streakGoal.heroStreak', { n: streak })}</Text>
-          <Text style={styles.heroLabel}>{tr('streakGoal.heroLabel')}</Text>
-
-          {streakGoal != null && (
-            <>
-              <View style={styles.barTrack}>
-                <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
-              </View>
-              <Text style={styles.heroGoal}>
-                {goalReached ? tr('streakGoal.goalReached') : tr('streakGoal.heroGoalProgress', { n: streak, goal: streakGoal })}
-              </Text>
-            </>
-          )}
-        </LinearGradient>
-
-        {/* Cadeau à réclamer si atteint */}
-        {goalReached && (
-          <Pressable style={[styles.claimCard, claiming && { opacity: 0.7 }]} onPress={claim} disabled={claiming}>
-            <View style={styles.giftIcon}>
-              {claiming ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="gift" size={24} color="#fff" />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.claimTitle}>{tr('streakGoal.claimTitle')}</Text>
-              <Text style={styles.claimSub}>{tr('streakGoal.claimSub', { n: streakReward(streakGoal!).toLocaleString('fr-FR') })}</Text>
-            </View>
-            <Feather name="chevron-right" size={22} color="#E0A02C" />
-          </Pressable>
-        )}
-
-        {/* Choix de l'objectif */}
-        <Text style={styles.sectionLabel}>
-          {goalReached ? tr('streakGoal.sectionNewGoal') : tr('streakGoal.sectionChooseGoal')}
-        </Text>
-        <View style={styles.grid}>
-          {PRESETS.map((p) => {
-            const active = !customValid && picked === p;
-            return (
-              <Pressable
-                key={p}
-                style={[styles.preset, active && styles.presetActive]}
-                onPress={() => pickPreset(p)}
-              >
-                <Text style={[styles.presetDays, active && styles.presetTextActive]}>{p}</Text>
-                <Text style={[styles.presetUnit, active && styles.presetTextActive]}>{tr('streakGoal.unitDays')}</Text>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Héros feu ── */}
+          <LinearGradient colors={P.fire} locations={[0, 0.55, 1]} {...G150} style={styles.hero}>
+            <DeviceStatusBar />
+            <View style={styles.heroBar}>
+              <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
+                <Feather name="chevron-left" size={24} color="#B4361C" />
               </Pressable>
-            );
-          })}
-        </View>
+              <Text style={styles.heroTitle}>{tr('streakGoal.headerTitle')}</Text>
+            </View>
 
-        {/* Objectif personnalisé */}
-        <Text style={styles.sectionLabel}>{tr('streakGoal.sectionCustom')}</Text>
-        <View style={[styles.customRow, customValid && styles.customRowActive]}>
-          <Feather name="flag" size={20} color={customValid ? '#FF4B4B' : '#9AA0AA'} />
-          <TextInput
-            style={styles.customInput}
-            value={custom}
-            onChangeText={(v) => setCustom(v.replace(/\D/g, '').slice(0, 4))}
-            placeholder={tr('streakGoal.customPlaceholder')}
-            placeholderTextColor="#B8BCC4"
-            keyboardType="number-pad"
-            maxLength={4}
-          />
-          <Text style={styles.customUnit}>{tr('streakGoal.unitDays')}</Text>
-        </View>
+            <View style={styles.heroBody}>
+              <View style={styles.ring}>
+                <Svg width={RING} height={RING} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+                  <Circle cx={RING / 2} cy={RING / 2} r={R} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={10} />
+                  <Circle
+                    cx={RING / 2} cy={RING / 2} r={R} fill="none" stroke="#fff" strokeWidth={10}
+                    strokeLinecap="round" strokeDasharray={`${Math.max(0.001, ringProgress * C)} ${C}`}
+                  />
+                </Svg>
+                <FlameIcon size={30} color="#FFE07A" inner="#FFF3C2" />
+                <Text style={styles.ringNum}>{streak}</Text>
+                <Text style={styles.ringUnit}>{tr('streakGoal.unitDays')}</Text>
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.heroLabel}>{tr('streakGoal.heroLabelCaps')}</Text>
+                <Text style={styles.goalTitle}>{tr('streakGoal.goalTitle', { n: target })}</Text>
+                <Text style={styles.goalLeft}>
+                  {streak >= target
+                    ? tr('streakGoal.goalReached')
+                    : streak === 0
+                      ? tr('streakGoal.goalStart', { n: target })
+                      : tr('streakGoal.goalLeft', { n: left })}
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
 
-        <Text style={styles.note}>
-          {tr('streakGoal.note')}
-        </Text>
-
-        {/* Aperçu du cadeau */}
-        <View style={styles.rewardPreview}>
-          <Text style={styles.rewardPreviewLabel}>{tr('streakGoal.rewardPreviewLabel')}</Text>
-          <Text style={styles.rewardPreviewValue}>{tr('streakGoal.rewardPreviewValue', { n: streakReward(target).toLocaleString('fr-FR') })}</Text>
-        </View>
-
-        <Pressable style={[styles.cta, (!canSave || saving) && styles.ctaDisabled]} onPress={save} disabled={!canSave || saving}>
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.ctaText}>
-              {streakGoal === target ? tr('streakGoal.ctaKeep') : tr('streakGoal.ctaAim', { n: target })}
-            </Text>
+          {/* ── Cadeau à réclamer si l'objectif enregistré est atteint ── */}
+          {goalReached && (
+            <Pressable
+              style={[styles.claim, { backgroundColor: P.goldBg, borderColor: P.goldBorder }, claiming && { opacity: 0.7 }]}
+              onPress={claim}
+              disabled={claiming}
+            >
+              <GemIcon size={26} color="#E0A02C" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.claimTitle, { color: P.ink }]}>{tr('streakGoal.claimTitle')}</Text>
+                <Text style={[styles.claimSub, { color: P.muted }]}>
+                  {tr('streakGoal.claimSub', { n: streakReward(streakGoal!).toLocaleString('fr-FR') })}
+                </Text>
+              </View>
+              <View style={styles.claimBtn}>
+                {claiming ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="gift" size={16} color="#fff" />}
+              </View>
+            </Pressable>
           )}
-        </Pressable>
 
-        <View style={{ height: 24 }} />
-      </ScrollView>
+          {/* ── Choix de l'objectif ── */}
+          <Text style={[styles.section, { color: P.muted }]}>
+            {goalReached ? tr('streakGoal.sectionNewGoal') : tr('streakGoal.sectionChooseGoal')}
+          </Text>
+          <View style={styles.grid}>
+            {PRESETS.map((d) => {
+              const sel = !customValid && picked === d;
+              return (
+                <Pressable
+                  key={d}
+                  onPress={() => pickPreset(d)}
+                  style={[
+                    styles.preset, shadow,
+                    { backgroundColor: sel ? P.fireSoft : P.card, borderColor: sel ? P.fireInk : 'transparent' },
+                  ]}
+                >
+                  <Text style={[styles.presetNum, { color: sel ? P.fireInk : P.ink }]}>{d}</Text>
+                  <Text style={[styles.presetSub, { color: P.muted }]}>{presetSub(d)}</Text>
+                  <View style={[styles.xpPill, { backgroundColor: P.xpBg }]}>
+                    <Text style={[styles.xpText, { color: P.xpFg }]}>
+                      +{streakReward(d).toLocaleString('fr-FR')} XP
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* ── Objectif personnalisé ── */}
+          <Text style={[styles.section, { color: P.muted }]}>{tr('streakGoal.sectionCustom')}</Text>
+          <View
+            style={[
+              styles.custom, shadow,
+              { backgroundColor: P.card, borderColor: customValid ? P.fireInk : 'transparent' },
+            ]}
+          >
+            <Feather name="flag" size={20} color={P.muted} />
+            <TextInput
+              style={[styles.customInput, { color: P.ink }]}
+              value={custom}
+              onChangeText={(v) => setCustom(v.replace(/\D/g, '').slice(0, 4))}
+              placeholder={tr('streakGoal.customPlaceholder')}
+              placeholderTextColor={P.muted}
+              keyboardType="number-pad"
+              maxLength={4}
+            />
+            <Text style={[styles.customUnit, { color: P.muted }]}>{tr('streakGoal.unitDays')}</Text>
+          </View>
+
+          {/* ── Comment ça marche ── */}
+          <View style={[styles.howCard, { backgroundColor: P.card }, shadow]}>
+            <Text style={[styles.howTitle, { color: P.ink }]}>{tr('streakGoal.howTitle')}</Text>
+            <View style={styles.howRow}>
+              <View style={[styles.howIcon, { backgroundColor: P.iceBg }]}>
+                <Feather name="wind" size={16} color="#3A8EE0" />
+              </View>
+              <Text style={[styles.howText, { color: P.muted }]}>
+                <Text style={[styles.howBold, { color: P.ink }]}>{tr('streakGoal.howFreezeBold')}</Text>
+                {tr('streakGoal.howFreezeRest')}
+              </Text>
+            </View>
+            <View style={styles.howRow}>
+              <View style={[styles.howIcon, { backgroundColor: P.fireSoft }]}>
+                <Feather name="rotate-ccw" size={16} color={P.fireInk} />
+              </View>
+              <Text style={[styles.howText, { color: P.muted }]}>
+                <Text style={[styles.howBold, { color: P.ink }]}>{tr('streakGoal.howResetBold')}</Text>
+                {tr('streakGoal.howResetRest')}
+              </Text>
+            </View>
+            <Text style={[styles.howNote, { color: P.muted }]}>{tr('streakGoal.howNote')}</Text>
+          </View>
+        </ScrollView>
+
+        {/* ── Barre d'action fixe ── */}
+        <LinearGradient
+          colors={[P.dockBg, P.bg, P.bg]}
+          locations={[0, 0.3, 1]}
+          style={[styles.dock, { paddingBottom: 16 + insets.bottom }]}
+          pointerEvents="box-none"
+        >
+          <Pressable onPress={save} disabled={saving} style={[styles.ctaWrap, saving && { opacity: 0.7 }]}>
+            <LinearGradient colors={P.fire} locations={[0, 0.55, 1]} {...G150} style={styles.cta}>
+              {saving ? (
+                <ActivityIndicator color="#fff" style={{ flex: 1 }} />
+              ) : (
+                <>
+                  <Text style={styles.ctaText}>
+                    {streakGoal == null || streakGoal === target
+                      ? tr('streakGoal.ctaKeep')
+                      : tr('streakGoal.ctaAim', { n: target })}
+                  </Text>
+                  <View style={styles.ctaXp}>
+                    <GemIcon size={15} color="#FFE07A" />
+                    <Text style={styles.ctaXpText}>+{streakReward(target).toLocaleString('fr-FR')} XP</Text>
+                  </View>
+                </>
+              )}
+            </LinearGradient>
+          </Pressable>
+        </LinearGradient>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EDEDF2' },
-  header: {
-    backgroundColor: '#fff', paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  screen: { flex: 1 },
+  shadow: {
+    shadowColor: '#1E1446', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 24, elevation: 2,
   },
-  back: { fontSize: 34, color: '#1B2333', lineHeight: 34 },
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#1B2333' },
-  content: { paddingHorizontal: 22, paddingVertical: 18 },
+  borderDark: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' },
 
-  hero: { borderRadius: 22, paddingVertical: 26, paddingHorizontal: 22, alignItems: 'center' },
-  heroFlame: { fontSize: 46 },
-  heroStreak: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 38, color: '#fff', marginTop: 6 },
-  heroLabel: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: 'rgba(255,255,255,0.9)' },
-  barTrack: { width: '100%', height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.3)', marginTop: 18, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 6, backgroundColor: '#fff' },
-  heroGoal: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff', marginTop: 10 },
-
-  claimCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 16,
-    backgroundColor: '#FFF7E6', borderRadius: 18, padding: 16,
-    borderWidth: 2, borderColor: '#F0C04C',
+  hero: {
+    paddingHorizontal: 20, paddingBottom: 26, overflow: 'hidden',
+    borderBottomLeftRadius: 30, borderBottomRightRadius: 30,
   },
-  giftIcon: { width: 46, height: 46, borderRadius: 14, backgroundColor: '#E0A02C', alignItems: 'center', justifyContent: 'center' },
-  claimTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#8A5A0C' },
-  claimSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#B07A1C', marginTop: 2 },
+  heroBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 12 },
+  backBtn: {
+    width: 42, height: 42, borderRadius: 14, backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 4,
+  },
+  heroTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, color: '#fff' },
+  heroBody: { flexDirection: 'row', alignItems: 'center', gap: 20, marginTop: 22 },
+  ring: { width: RING, height: RING, alignItems: 'center', justifyContent: 'center' },
+  ringNum: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 30, lineHeight: 32, color: '#fff', marginTop: 2 },
+  ringUnit: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11, color: 'rgba(255,255,255,0.8)' },
+  heroLabel: { fontFamily: 'Nunito_900Black', fontSize: 11, letterSpacing: 1.1, color: 'rgba(255,255,255,0.75)' },
+  goalTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, lineHeight: 28, color: '#fff', marginTop: 4 },
+  goalLeft: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
 
-  sectionLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, letterSpacing: 0.6, color: '#9AA0AA', marginTop: 24, marginBottom: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  claim: {
+    marginTop: 16, marginHorizontal: 18, paddingVertical: 14, paddingLeft: 16, paddingRight: 14,
+    borderRadius: 20, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  claimTitle: { fontFamily: 'Nunito_900Black', fontSize: 14 },
+  claimSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12 },
+  claimBtn: {
+    width: 42, height: 42, borderRadius: 12, backgroundColor: '#E0A02C',
+    alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: '#B47E12',
+  },
+
+  section: {
+    fontFamily: 'Nunito_900Black', fontSize: 12, letterSpacing: 1,
+    paddingTop: 24, paddingHorizontal: 22, paddingBottom: 10,
+  },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 18 },
   preset: {
-    width: '30.5%', aspectRatio: 1.15, borderRadius: 16, backgroundColor: '#fff',
-    alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#E6E8ED',
+    width: '31%', flexGrow: 1, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6,
+    borderRadius: 20, borderWidth: 2, alignItems: 'center',
   },
-  presetActive: { borderColor: '#FF4B4B', backgroundColor: '#FFF0F0' },
-  presetDays: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 26, color: '#1B2333' },
-  presetUnit: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: '#8A8F99' },
-  presetTextActive: { color: '#FF4B4B' },
+  presetNum: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 28, lineHeight: 32 },
+  presetSub: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12 },
+  xpPill: { marginTop: 8, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 8 },
+  xpText: { fontFamily: 'Nunito_900Black', fontSize: 11 },
 
-  customRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, height: 58,
-    backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16,
-    borderWidth: 2, borderColor: '#E6E8ED',
+  custom: {
+    marginHorizontal: 18, height: 56, borderRadius: 18, borderWidth: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16,
   },
-  customRowActive: { borderColor: '#FF4B4B', backgroundColor: '#FFF0F0' },
-  customInput: { flex: 1, fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, color: '#1B2333' },
-  customUnit: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#8A8F99' },
+  customInput: { flex: 1, minWidth: 0, fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, paddingVertical: 0 },
+  customUnit: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14 },
 
-  note: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: '#8A8F99', textAlign: 'center', marginTop: 18, lineHeight: 20, paddingHorizontal: 8 },
+  howCard: { marginTop: 18, marginHorizontal: 18, borderRadius: 20, padding: 16 },
+  howTitle: { fontFamily: 'Nunito_900Black', fontSize: 14 },
+  howRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 },
+  howIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  howText: { flex: 1, fontFamily: 'Nunito_600SemiBold', fontSize: 13, lineHeight: 18 },
+  howBold: { fontFamily: 'Nunito_800ExtraBold' },
+  howNote: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 12 },
 
-  rewardPreview: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFF7E6', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 18, marginTop: 18,
+  dock: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 14, paddingHorizontal: 18 },
+  ctaWrap: {
+    borderRadius: 18,
+    shadowColor: '#E54834', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 24, elevation: 6,
   },
-  rewardPreviewLabel: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#8A5A0C' },
-  rewardPreviewValue: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 18, color: '#E0A02C' },
-
   cta: {
-    height: 58, borderRadius: 18, backgroundColor: '#FF4B4B', alignItems: 'center', justifyContent: 'center',
-    marginTop: 16, borderBottomWidth: 4, borderBottomColor: '#D43A3A',
+    height: 56, borderRadius: 18, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', paddingLeft: 20, paddingRight: 8,
   },
-  ctaDisabled: { opacity: 0.45 },
-  ctaText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 18, color: '#fff' },
+  ctaText: { flex: 1, fontFamily: 'Baloo2_800ExtraBold', fontSize: 18, color: '#fff' },
+  ctaXp: {
+    height: 40, paddingHorizontal: 12, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.2)',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  ctaXpText: { fontFamily: 'Nunito_900Black', fontSize: 14, color: '#fff' },
 });
