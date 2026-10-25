@@ -25,14 +25,20 @@ import { t } from './i18n';
 /** Nom du fichier embarqué via le plugin expo-notifications (app.json). */
 export const PRAYER_SOUND = 'prayer_reminder.wav';
 const CHANNEL_ID = 'prayer-reminder-v1';
+/** Canal de la notification « avant » : son par défaut, pas l'adhan. */
+const PRE_CHANNEL_ID = 'prayer-before-v1';
 const ID_PREFIX = 'prayer-';
 const DAYS_AHEAD = 7;
+/** Avec la notification « avant », 2 × 5 × 6 = 60 < 64 (plafond iOS). */
+const DAYS_AHEAD_WITH_BEFORE = 6;
 
 export interface ReminderConfig {
   enabled: boolean;
   latitude: number | null;
   longitude: number | null;
   prayers: Record<PrayerName, boolean>;
+  /** Notification discrète N minutes avant (0 ou absent = aucune). */
+  beforeMinutes?: number;
 }
 
 /** Demande la permission de notifier. true si accordée. */
@@ -50,6 +56,10 @@ async function ensureAndroidChannel(): Promise<void> {
     importance: Notifications.AndroidImportance.HIGH,
     sound: PRAYER_SOUND,
     vibrationPattern: [0, 250, 250, 250],
+  });
+  await Notifications.setNotificationChannelAsync(PRE_CHANNEL_ID, {
+    name: t('prayer.reminder.preChannelName'),
+    importance: Notifications.AndroidImportance.DEFAULT ?? 3,
   });
 }
 
@@ -75,7 +85,10 @@ async function reschedule(cfg: ReminderConfig, now: Date): Promise<void> {
 
   await ensureAndroidChannel();
 
-  for (let d = 0; d < DAYS_AHEAD; d++) {
+  const before = cfg.beforeMinutes && cfg.beforeMinutes > 0 ? cfg.beforeMinutes : 0;
+  const days = before > 0 ? DAYS_AHEAD_WITH_BEFORE : DAYS_AHEAD;
+
+  for (let d = 0; d < days; d++) {
     // Pas de +24 h : setDate avance d'un jour CALENDAIRE (sûr aux changements d'heure).
     const day = new Date(now);
     day.setDate(now.getDate() + d);
@@ -95,6 +108,25 @@ async function reschedule(cfg: ReminderConfig, now: Date): Promise<void> {
           channelId: CHANNEL_ID,
         },
       });
+
+      if (before > 0) {
+        const at = new Date(slot.time.getTime() - before * 60_000);
+        if (at.getTime() <= now.getTime()) continue;
+        // Identifiant `prayer-<nom>-pre-…` : même préfixe (annulé avec les
+        // autres) et le nom de la prière reste en 2e position.
+        await Notifications.scheduleNotificationAsync({
+          identifier: `${ID_PREFIX}${slot.name}-pre-${at.getTime()}`,
+          content: {
+            title: t('prayer.reminder.preTitle', { name, m: before }),
+            body: t('prayer.reminder.preBody', { name }),
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: at,
+            channelId: PRE_CHANNEL_ID,
+          },
+        });
+      }
     }
   }
 }

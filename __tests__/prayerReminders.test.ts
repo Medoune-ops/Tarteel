@@ -90,4 +90,20 @@ describe('syncPrayerReminders', () => {
     await syncPrayerReminders({ ...DAKAR, latitude: null, longitude: null }, NOW);
     expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
+  it('« avant » : une notification discrète en plus, N minutes plus tôt, sans dépasser 64', async () => {
+    await syncPrayerReminders({ ...DAKAR, beforeMinutes: 10 }, NOW);
+    const pre = mockScheduled.filter((n) => n.identifier.includes('-pre-'));
+    const main = mockScheduled.filter((n) => !n.identifier.includes('-pre-'));
+    expect(pre.length).toBeGreaterThan(0);
+    expect(mockScheduled.length).toBeLessThanOrEqual(64);
+    for (const n of pre) {
+      expect(n.content.sound).toBeUndefined();
+      expect(n.trigger.channelId).toBe('prayer-before-v1');
+      expect(n.trigger.date.getTime()).toBeGreaterThan(NOW.getTime());
+      // Chaque « avant » précède de 10 min un rappel principal de la même prière.
+      const name = n.identifier.split('-')[1];
+      expect(main.some((m) => m.identifier.split('-')[1] === name
+        && m.trigger.date.getTime() - n.trigger.date.getTime() === 10 * 60_000)).toBe(true);
+    }
+  });
 });

@@ -1,26 +1,26 @@
 /**
- * Écran « Heures de prière » — les 5 prières du jour, la prochaine mise en
- * avant (le Chourouq rattaché au Fajr), plus le choix de la position.
+ * Écran « Heures de prière » — arc du soleil et prochaine prière dans
+ * l'en-tête, les 5 prières du jour (le Chourouq rattaché au Fajr), les rappels
+ * (adhan, voix, notification « avant »), la position et la Qibla.
  *
  * Tout est calculé localement (`constants/prayerTimes.ts`) : aucun appel
  * réseau, l'écran fonctionne hors-ligne dès que la position est connue.
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert, Switch, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle,
-  interpolate, Extrapolation,
-} from 'react-native-reanimated';
+import Svg, { Path, Line } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import HeaderPattern from '../../components/HeaderPattern';
 import DeviceStatusBar from '../../components/StatusBar';
 import QiblaCompass from '../../components/QiblaCompass';
 import { useTheme } from '../../utils/useTheme';
-import { usePrayerStore } from '../../store/prayerStore';
+import {
+  usePrayerStore, ADHAN_SOUNDS, REMINDER_BEFORE_OPTIONS, type AdhanSound,
+} from '../../store/prayerStore';
 import { useUserStore } from '../../store/userStore';
 import {
   computePrayerTimes,
@@ -29,83 +29,52 @@ import {
   formatPrayerTime,
   timeUntil,
   FALLBACK_CITIES,
-  PRAYER_NAMES,
+  type PrayerName,
   type PrayerSlot,
 } from '../../constants/prayerTimes';
+import { toHijri } from '../../constants/hijri';
 import { requestReminderPermission } from '../../lib/prayerReminders';
-import { useT } from '../../lib/i18n';
+import { useT, type I18nKey } from '../../lib/i18n';
 
 const LOCALE_BY_LANG: Record<string, string> = { fr: 'fr-FR', en: 'en-US', ar: 'ar' };
+
+const AR_NAME: Record<PrayerName | 'sunrise', string> = {
+  fajr: 'الفجر', sunrise: 'الشروق', dhuhr: 'الظهر', asr: 'العصر', maghrib: 'المغرب', isha: 'العشاء',
+};
+/** Ciel associé à chaque moment de la journée (pastille de la ligne). */
+const SKY: Record<PrayerName | 'sunrise', [string, string]> = {
+  fajr: ['#3B3F8C', '#C77A9A'],
+  sunrise: ['#F6B26B', '#F7D88A'],
+  dhuhr: ['#5BB8F0', '#FFE08A'],
+  asr: ['#E9A94B', '#F7D27A'],
+  maghrib: ['#D9564A', '#F29A5B'],
+  isha: ['#141C3E', '#3A4A8A'],
+};
+
+const LIGHT = {
+  bg: '#F3F4F1', card: '#FFFFFF', ink: '#16201C', muted: '#6E7873', line: '#ECEEEA',
+  accent: '#1A8F69', accentSoft: '#E2F2EA', rowNext: '#E6F4EC',
+  hero: ['#166F55', '#1E8E6A', '#2BA47D'] as const,
+  sunHalo: 'rgba(255,214,107,0.28)', swOff: '#D7DBD7', seg: '#EFF1EE', segOn: '#FFFFFF', radioOff: '#C9CFCB',
+};
+const DARK = {
+  bg: '#0B0F0E', card: '#141A18', ink: '#EDF3F0', muted: '#8C9893', line: '#222A27',
+  accent: '#3DCB98', accentSoft: 'rgba(61,203,152,0.13)', rowNext: 'rgba(61,203,152,0.11)',
+  hero: ['#08201A', '#0D3328', '#13503E'] as const,
+  sunHalo: 'rgba(255,214,107,0.18)', swOff: '#2E3734', seg: '#1D2421', segOn: '#2B3430', radioOff: '#2C3532',
+};
+
+const minutesOf = (d: Date) => d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function PrieresScreen() {
   const router = useRouter();
   const T = useTheme();
+  const C = T.isDark ? DARK : LIGHT;
   const tr = useT();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
-  /*
-   * En-tête qui se comprime au défilement, comme sur les pages de contenu.
-   * Il passe de 190 à 92 pixels : le médaillon et le sous-titre se replient,
-   * le titre rétrécit et vient se poser à côté de la flèche de retour.
-   *
-   * Replier la HAUTEUR du médaillon et du sous-titre, pas seulement leur
-   * opacité : un élément transparent occupe toujours sa place, et le titre
-   * se retrouverait écrasé à zéro.
-   */
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollY.value = e.contentOffset.y;
-  });
-  const COURSE = 98;
-
-  const hdrHauteur = useAnimatedStyle(() => ({
-    height: interpolate(scrollY.value, [0, COURSE], [190, 92], Extrapolation.CLAMP),
-  }));
-  /*
-   * Le titre est positionné ABSOLUMENT, pas laissé au flux.
-   *
-   * Avec `justifyContent: flex-end` et des marges animées, sa place dépendait
-   * du repli du médaillon et du sous-titre : il se faisait écraser à zéro, ou
-   * trancher par le bord. En le posant à une coordonnée calculée, il glisse
-   * simplement de sa position centrée vers la barre, à hauteur de la flèche.
-   */
-  const hdrTitre = useAnimatedStyle(() => ({
-    top: interpolate(scrollY.value, [0, COURSE], [118, 50], Extrapolation.CLAMP),
-    left: interpolate(scrollY.value, [0, COURSE], [20, 56], Extrapolation.CLAMP),
-    // Au repos la boite occupe toute la largeur et `textAlign: center` centre
-    // le titre. Repliee, on l'elargit tres au-dela du bord droit : le centrage
-    // ne joue plus, le texte se cale a gauche apres la fleche et sa position
-    // cesse de dependre de sa longueur (sinon FR et EN n'atterrissent pas au
-    // meme endroit). numberOfLines={1} empeche tout debordement visible.
-    right: interpolate(scrollY.value, [0, COURSE], [20, -220], Extrapolation.CLAMP),
-    // La reduction part du bord GAUCHE (transformOrigin dans headerTitleAbs) :
-    // sans cela elle part du centre, et le titre recule vers la droite d'autant
-    // que sa demi-largeur — un texte long comme « Heures de prière » se
-    // desaligne alors de la fleche retour, un texte court presque pas.
-    transform: [
-      { scale: interpolate(scrollY.value, [0, COURSE], [1, 0.74], Extrapolation.CLAMP) },
-    ],
-  }));
-  const hdrMedaillon = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, COURSE], [62, 0], Extrapolation.CLAMP),
-  }));
-  const hdrSous = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.5], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, COURSE], [20, 0], Extrapolation.CLAMP),
-    // La hauteur du titre est deja reservee par la marge haute du filet
-    // ci-dessus : la compter ici aussi poussait le sous-titre hors du cadre,
-    // ou il se faisait trancher par le bord bas de l'en-tete.
-    marginTop: interpolate(scrollY.value, [0, COURSE], [2, 0], Extrapolation.CLAMP),
-  }));
-  const hdrRule = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COURSE * 0.4], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, COURSE], [3, 0], Extrapolation.CLAMP),
-    // Le titre est absolu (118 -> ~150) : il ne pousse rien, donc le filet doit
-    // reserver lui-meme la hauteur qu'il occupe, sinon il lui passe au travers.
-    marginTop: interpolate(scrollY.value, [0, COURSE], [40, 0], Extrapolation.CLAMP),
-    marginBottom: interpolate(scrollY.value, [0, COURSE], [8, 0], Extrapolation.CLAMP),
-  }));
   const language = useUserStore((s) => s.language);
   const localeTag = LOCALE_BY_LANG[language] ?? 'fr-FR';
 
@@ -119,23 +88,35 @@ export default function PrieresScreen() {
   const reminderPrayers = usePrayerStore((s) => s.reminderPrayers);
   const setRemindersEnabled = usePrayerStore((s) => s.setRemindersEnabled);
   const toggleReminderPrayer = usePrayerStore((s) => s.toggleReminderPrayer);
+  const adhanSound = usePrayerStore((s) => s.adhanSound);
+  const setAdhanSound = usePrayerStore((s) => s.setAdhanSound);
+  const reminderBefore = usePrayerStore((s) => s.reminderBefore);
+  const setReminderBefore = usePrayerStore((s) => s.setReminderBefore);
 
-  // Aperçu du son de rappel (le même fichier que la notification).
+  // Aperçu de la voix choisie.
+  // TODO(backend) : un seul fichier embarqué pour l'instant
+  // (prayer_reminder.wav) ; chaque voix aura son propre fichier une fois les
+  // adhans fournis par le backend / CDN.
   const preview = useAudioPlayer(require('../../assets/sounds/prayer_reminder.wav'));
   const previewStatus = useAudioPlayerStatus(preview);
-  const togglePreview = useCallback(() => {
-    if (previewStatus.playing) {
+  const [previewing, setPreviewing] = useState<AdhanSound | null>(null);
+  const playingId = previewStatus.playing ? previewing : null;
+  const togglePreview = useCallback((id: AdhanSound) => {
+    setAdhanSound(id);
+    if (playingId === id) {
       preview.pause();
-    } else {
-      preview.seekTo(0);
-      preview.play();
+      setPreviewing(null);
+      return;
     }
-  }, [preview, previewStatus.playing]);
+    preview.seekTo(0);
+    preview.play();
+    setPreviewing(id);
+  }, [preview, playingId, setAdhanSound]);
 
   // La programmation elle-même est faite par usePrayerRemindersSync (layout
   // racine) dès que le réglage change ; ici on ne gère que la permission.
-  const onToggleReminders = useCallback(async (value: boolean) => {
-    if (!value) {
+  const onToggleReminders = useCallback(async () => {
+    if (remindersEnabled) {
       setRemindersEnabled(false);
       return;
     }
@@ -145,12 +126,12 @@ export default function PrieresScreen() {
       return;
     }
     setRemindersEnabled(true);
-  }, [setRemindersEnabled, tr]);
+  }, [remindersEnabled, setRemindersEnabled, tr]);
 
   const [locating, setLocating] = useState(false);
   const [showCities, setShowCities] = useState(false);
 
-  // Re-rendu chaque minute pour le compte à rebours.
+  // Re-rendu chaque minute pour le compte à rebours et le soleil.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -203,300 +184,443 @@ export default function PrieresScreen() {
 
   const remaining = upcoming ? timeUntil(upcoming.time, now) : null;
   const hasLocation = latitude != null && longitude != null;
+  const remainingLong = remaining
+    ? (remaining.hours > 0
+      ? tr('prayer.inHoursMinutesLong', { h: remaining.hours, m: remaining.minutes })
+      : tr('prayer.inMinutes', { m: remaining.minutes }))
+    : '';
+  const remainingShort = remaining
+    ? (remaining.hours > 0
+      ? tr('prayer.inHoursMinutes', { h: remaining.hours, m: remaining.minutes })
+      : tr('prayer.inMinutes', { m: remaining.minutes }))
+    : '';
+
+  // ── Arc du soleil (géométrie de la maquette : 350 × 214, rayons 160 / 190). ──
+  const arcW = Math.min(350, width - 24);
+  const k = arcW / 350;
+  const arc = useMemo(() => {
+    if (slots.length === 0) return null;
+    const cx = 175 * k, base = 204 * k, rx = 160 * k, ry = 190 * k;
+    const s0 = minutesOf(slots[0]!.time) - 21;
+    const s1 = minutesOf(slots[4]!.time) + 22;
+    const pt = (m: number) => {
+      const f = Math.min(1, Math.max(0, (m - s0) / (s1 - s0)));
+      const a = Math.PI * (1 - f);
+      return { x: cx + rx * Math.cos(a), y: base - ry * Math.sin(a) };
+    };
+    const nowM = minutesOf(now);
+    const sun = pt(nowM);
+    return {
+      base,
+      full: `M${cx - rx} ${base} A${rx} ${ry} 0 0 1 ${cx + rx} ${base}`,
+      done: `M${cx - rx} ${base} A${rx} ${ry} 0 0 1 ${sun.x} ${sun.y}`,
+      sun,
+      dots: slots.map((s) => {
+        const p = pt(minutesOf(s.time));
+        return {
+          ...p,
+          name: s.name,
+          isNext: upcoming?.name === s.name,
+          past: s.time.getTime() <= now.getTime(),
+        };
+      }),
+    };
+  }, [slots, now, k, upcoming]);
+
+  const hijri = toHijri(now);
+  const dateLabel = capitalize(now.toLocaleDateString(localeTag, { weekday: 'long', day: 'numeric', month: 'long' }));
+  const hijriLabel = `${hijri.day} ${tr(`prayer.hijri.month.${hijri.month}` as I18nKey)} ${hijri.year}`;
+
+  // Lignes du tableau : les 5 prières, le Chourouq glissé après le Fajr.
+  const rows: { key: PrayerName | 'sunrise'; time: Date; minor?: boolean }[] = [];
+  for (const s of slots) {
+    rows.push({ key: s.name, time: s.time });
+    if (s.name === 'fajr' && sunrise) rows.push({ key: 'sunrise', time: sunrise, minor: true });
+  }
+
+  const cityLabel = cityName ?? tr('prayer.myPosition');
 
   return (
-    <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
+    <View style={[styles.screen, { backgroundColor: C.bg }]}>
       <DeviceStatusBar />
-      <Animated.View style={[styles.headerWrap, hdrHauteur]}>
-        <LinearGradient colors={['#1F8A70', '#26A17B']} style={StyleSheet.absoluteFill} />
-        <HeaderPattern width={width} height={180} variant="arcs" />
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.back}>
-          <Feather name="chevron-left" size={26} color="#fff" />
-        </Pressable>
-        <Animated.View style={[styles.headerMedallionWrap, hdrMedaillon]}>
-          <View style={styles.headerMedallion}>
-            <Text style={styles.headerEmoji}>🕌</Text>
-          </View>
-        </Animated.View>
-
-        <Animated.Text
-          style={[styles.headerTitle, styles.headerTitleAbs, hdrTitre]}
-          numberOfLines={1}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}>
+        {/* ── En-tête ── */}
+        <LinearGradient
+          colors={C.hero}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={[styles.hero, { paddingTop: insets.top + 12 }]}
         >
-          {tr('prayer.headerTitle')}
-        </Animated.Text>
-
-        <Animated.View style={[styles.headerRule, hdrRule]} />
-        <Animated.Text style={[styles.headerSub, hdrSous]} numberOfLines={1}>
-          {tr('prayer.headerSub')}
-        </Animated.Text>
-      </Animated.View>
-
-      <Animated.ScrollView
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {!hasLocation ? (
-          <View style={styles.setupBox}>
-            <Feather name="map-pin" size={32} color={T.textTertiary} />
-            <Text style={[styles.setupText, { color: T.textSecondary }]}>
-              {tr('prayer.setupExplain')}
-            </Text>
-            <Pressable style={styles.primaryBtn} onPress={useGps} disabled={locating}>
-              {locating
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.primaryLabel}>{tr('prayer.useGps')}</Text>}
+          <View style={styles.topBar}>
+            <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn} accessibilityLabel={tr('prayer.back')}>
+              <Feather name="chevron-left" size={22} color="#0F5B44" />
             </Pressable>
-            <Pressable onPress={() => setShowCities((v) => !v)}>
-              <Text style={[styles.linkBtn, { color: T.textSecondary }]}>{tr('prayer.chooseCity')}</Text>
+            <Text style={styles.heroTitle} numberOfLines={1}>{tr('prayer.headerTitle')}</Text>
+            <Pressable onPress={() => setShowCities((v) => !v)} style={styles.cityPill} accessibilityLabel={tr('prayer.chooseCity')}>
+              <Feather name="map-pin" size={15} color="#0F5B44" />
+              <Text style={styles.cityPillText} numberOfLines={1}>{cityLabel}</Text>
+              <Feather name="chevron-down" size={14} color="#0F5B44" />
             </Pressable>
           </View>
-        ) : (
-          <>
-            {/* Prochaine prière, mise en avant. */}
-            {upcoming && (
-              <LinearGradient
-                colors={['#1F8A70', '#26A17B']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.nextCard}
-              >
-                <Text style={styles.nextLabel}>{tr('prayer.nextPrayer')}</Text>
-                <Text style={styles.nextName}>{tr(`prayer.name.${upcoming.name}`)}</Text>
-                <Text style={styles.nextTime}>{formatPrayerTime(upcoming.time, localeTag)}</Text>
-                {remaining && (
-                  <Text style={styles.nextRemaining}>
-                    {remaining.hours > 0
-                      ? tr('prayer.inHoursMinutes', { h: remaining.hours, m: remaining.minutes })
-                      : tr('prayer.inMinutes', { m: remaining.minutes })}
-                  </Text>
-                )}
-              </LinearGradient>
-            )}
 
-            {/* Les 5 prières du jour. */}
-            <View style={[styles.list, { backgroundColor: T.cardBg }]}>
-              {slots.map((s, i) => {
-                const isNext = upcoming?.name === s.name && s.time.getTime() === upcoming.time.getTime();
-                const passed = s.time.getTime() <= now.getTime();
-                return (
-                  <View
-                    key={s.name}
-                    style={[
-                      i > 0 && [styles.divider, { borderTopColor: T.divider }],
-                      isNext && styles.rowActive,
-                    ]}
-                  >
-                    <View style={styles.row}>
-                      <Text style={[styles.rowName, { color: passed && !isNext ? T.textTertiary : T.text }]}>
-                        {tr(`prayer.name.${s.name}`)}
-                      </Text>
-                      <Text style={[styles.rowTime, { color: passed && !isNext ? T.textTertiary : T.text }]}>
-                        {formatPrayerTime(s.time, localeTag)}
-                      </Text>
-                    </View>
-                    {/* Chourouq DANS le bloc du Fajr, sans séparateur, en retrait
-                        et en plus petit : il se lit comme la fin du temps du
-                        Fajr, pas comme une sixième prière. */}
-                    {s.name === 'fajr' && sunrise && (
-                      <View style={styles.subRow}>
-                        <Feather name="corner-down-right" size={14} color={T.textTertiary} />
-                        <View style={styles.subTextCol}>
-                          <Text style={[styles.subName, { color: T.textSecondary }]}>{tr('prayer.sunrise')}</Text>
-                          <Text style={[styles.subHint, { color: T.textTertiary }]}>{tr('prayer.sunriseHint')}</Text>
-                        </View>
-                        <Text style={[styles.subTime, { color: T.textSecondary }]}>
-                          {formatPrayerTime(sunrise, localeTag)}
-                        </Text>
-                      </View>
-                    )}
+          {hasLocation && arc && upcoming ? (
+            <>
+              <View style={{ width: arcW, height: 214 * k, alignSelf: 'center', marginTop: 12 }}>
+                <Svg width={arcW} height={214 * k} style={StyleSheet.absoluteFill}>
+                  <Path d={arc.full} stroke="rgba(255,255,255,0.28)" strokeWidth={2} strokeDasharray="2 6" strokeLinecap="round" fill="none" />
+                  <Path d={arc.done} stroke="rgba(255,255,255,0.85)" strokeWidth={2.5} strokeLinecap="round" fill="none" />
+                  <Line x1={0} y1={arc.base} x2={arcW} y2={arc.base} stroke="rgba(255,255,255,0.18)" strokeWidth={1} />
+                </Svg>
+                {arc.dots.map((d) => {
+                  const size = d.isNext ? 14 : 9;
+                  return (
+                    <View
+                      key={d.name}
+                      style={{
+                        position: 'absolute', left: d.x - size / 2, top: d.y - size / 2,
+                        width: size, height: size, borderRadius: size / 2,
+                        backgroundColor: d.isNext ? '#fff' : d.past ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)',
+                        borderWidth: d.isNext ? 3 : 0, borderColor: 'rgba(255,255,255,0.35)',
+                      }}
+                    />
+                  );
+                })}
+                <View style={[styles.sunHalo, { left: arc.sun.x - 17, top: arc.sun.y - 17, backgroundColor: C.sunHalo }]} />
+                <View style={[styles.sun, { left: arc.sun.x - 11, top: arc.sun.y - 11 }]} />
+                <View style={styles.arcCenter}>
+                  <Text style={styles.nextLine}>
+                    {tr('prayer.nextShort')} · <Text style={styles.nextLineStrong}>{tr(`prayer.name.${upcoming.name}`)}</Text>
+                  </Text>
+                  <Text style={styles.nextTime}>{formatPrayerTime(upcoming.time, localeTag)}</Text>
+                  <View style={styles.remainingPill}>
+                    <Text style={styles.remainingText}>{remainingLong}</Text>
                   </View>
-                );
-              })}
-            </View>
-
-            {/* Rappels sonores à l'heure de la prière. */}
-            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('prayer.reminder.sectionTitle')}</Text>
-            <View style={[styles.list, { backgroundColor: T.cardBg }]}>
-              <View style={styles.row}>
-                <View style={styles.reminderTextCol}>
-                  <Text style={[styles.rowName, { color: T.text }]}>{tr('prayer.reminder.toggle')}</Text>
-                  <Text style={[styles.reminderHint, { color: T.textTertiary }]}>{tr('prayer.reminder.toggleHint')}</Text>
                 </View>
-                {/*
-                  L'état ÉTEINT doit avoir sa propre couleur : sans `false`,
-                  React Native retombe sur un gris très clair, invisible sur
-                  la carte blanche du mode clair — bouton blanc sur piste
-                  quasi blanche. Mêmes valeurs que le composant `Toggle`.
-                */}
-                <Switch
-                  value={remindersEnabled}
-                  onValueChange={onToggleReminders}
-                  trackColor={{ false: T.isDark ? '#3A3950' : '#D4D7DD', true: '#1F8A70' }}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={T.isDark ? '#3A3950' : '#D4D7DD'}
-                />
               </View>
-              {remindersEnabled && PRAYER_NAMES.map((name) => (
+              <View style={styles.arcEnds}>
+                <Text style={styles.arcEndText}>{tr('prayer.name.fajr')}</Text>
+                <Text style={styles.arcEndText}>{tr('prayer.name.isha')}</Text>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.heroSub}>{tr('prayer.headerSub')}</Text>
+          )}
+        </LinearGradient>
+
+        <View style={styles.content}>
+          {/* Choix de la position (pastille de ville, « Modifier », ou premier lancement). */}
+          {(showCities || !hasLocation) && (
+            <View style={[styles.card, { backgroundColor: C.card, marginTop: 18 }]}>
+              {!hasLocation && (
+                <Text style={[styles.setupText, { color: C.muted }]}>{tr('prayer.setupExplain')}</Text>
+              )}
+              <Pressable style={[styles.cityRow, { borderBottomColor: C.line }]} onPress={useGps} disabled={locating}>
+                <Feather name="navigation" size={17} color={C.accent} />
+                <Text style={[styles.cityRowText, { color: C.accent }]}>{tr('prayer.useGps')}</Text>
+                {locating && <ActivityIndicator color={C.accent} size="small" />}
+              </Pressable>
+              {FALLBACK_CITIES.map((c, i) => (
                 <Pressable
-                  key={name}
-                  style={[styles.row, styles.divider, { borderTopColor: T.divider }]}
-                  onPress={() => toggleReminderPrayer(name)}
+                  key={c.id}
+                  style={[styles.cityRow, i < FALLBACK_CITIES.length - 1 && { borderBottomColor: C.line }]}
+                  onPress={() => { setFromCity(c); setShowCities(false); }}
                 >
-                  <Text style={[styles.rowName, { color: reminderPrayers[name] ? T.text : T.textTertiary }]}>
-                    {tr(`prayer.name.${name}`)}
-                  </Text>
-                  <Feather
-                    name={reminderPrayers[name] ? 'bell' : 'bell-off'}
-                    size={18}
-                    color={reminderPrayers[name] ? '#1F8A70' : T.textTertiary}
-                  />
+                  <Text style={[styles.cityRowText, { color: C.ink }]}>{c.nom}</Text>
+                  {cityName === c.nom && <Feather name="check" size={18} color={C.accent} />}
                 </Pressable>
               ))}
-              <Pressable
-                style={[styles.row, styles.divider, { borderTopColor: T.divider }]}
-                onPress={togglePreview}
-              >
-                <Text style={[styles.rowName, { color: '#1F8A70' }]}>
-                  {previewStatus.playing ? tr('prayer.reminder.stop') : tr('prayer.reminder.preview')}
-                </Text>
-                <Feather name={previewStatus.playing ? 'pause' : 'play'} size={18} color="#1F8A70" />
-              </Pressable>
             </View>
+          )}
 
-            {/* Position courante + moyen d'en changer. */}
-            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('prayer.locationTitle')}</Text>
-            <View style={[styles.locationBox, { backgroundColor: T.cardBg }]}>
-              <Feather name="map-pin" size={16} color={T.textSecondary} />
-              <Text style={[styles.locationText, { color: T.textSecondary }]}>
-                {cityName ?? (source === 'gps' ? tr('prayer.gpsPosition') : '—')}
-              </Text>
-            </View>
-            <View style={styles.locationActions}>
-              <Pressable style={styles.secondaryBtn} onPress={useGps} disabled={locating}>
-                {locating
-                  ? <ActivityIndicator color="#1F8A70" size="small" />
-                  : <Text style={styles.secondaryLabel}>{tr('prayer.useGps')}</Text>}
-              </Pressable>
-              <Pressable style={styles.secondaryBtn} onPress={() => setShowCities((v) => !v)}>
-                <Text style={styles.secondaryLabel}>{tr('prayer.chooseCity')}</Text>
-              </Pressable>
-            </View>
-          </>
-        )}
+          {hasLocation && (
+            <>
+              <View style={styles.dateRow}>
+                <Text style={[styles.dateText, { color: C.ink }]}>{dateLabel}</Text>
+                <Text style={[styles.hijriText, { color: C.muted }]}>{hijriLabel}</Text>
+              </View>
 
-        {/* Liste des villes de repli. */}
-        {showCities && (
-          <View style={[styles.list, { backgroundColor: T.cardBg, marginTop: 12 }]}>
-            {FALLBACK_CITIES.map((c, i) => (
-              <Pressable
-                key={c.id}
-                style={[styles.row, i > 0 && [styles.divider, { borderTopColor: T.divider }]]}
-                onPress={() => { setFromCity(c); setShowCities(false); }}
-              >
-                <Text style={[styles.rowName, { color: T.text }]}>{c.nom}</Text>
-                {cityName === c.nom && <Feather name="check" size={18} color="#1F8A70" />}
-              </Pressable>
-            ))}
-          </View>
-        )}
+              {/* ── Les prières du jour ── */}
+              <View style={[styles.card, styles.listCard, { backgroundColor: C.card }]}>
+                {rows.map((r) => {
+                  const minor = !!r.minor;
+                  const name = r.key as PrayerName;
+                  const isNext = !minor && upcoming?.name === r.key;
+                  const time = isNext ? upcoming!.time : r.time;
+                  const past = !isNext && r.time.getTime() <= now.getTime();
+                  const on = !minor && !!reminderPrayers[name];
+                  const active = on && remindersEnabled;
+                  const sub = minor
+                    ? tr('prayer.sunriseRow')
+                    : isNext
+                      ? tr('prayer.rowNext', { when: remainingShort })
+                      : past ? tr('prayer.rowPassed') : on ? tr('prayer.rowAdhan') : tr('prayer.rowSilent');
+                  const label = minor ? tr('prayer.sunrise') : tr(`prayer.name.${name}`);
+                  return (
+                    <View
+                      key={r.key}
+                      style={[
+                        styles.prayerRow,
+                        minor && styles.prayerRowMinor,
+                        isNext && { backgroundColor: C.rowNext },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={SKY[r.key]}
+                        start={{ x: 0.2, y: 0 }}
+                        end={{ x: 0.6, y: 1 }}
+                        style={[
+                          minor ? styles.chipMinor : styles.chip,
+                          { opacity: past ? 0.5 : 1 },
+                        ]}
+                      />
+                      <View style={[styles.prayerText, { opacity: past ? 0.5 : 1 }]}>
+                        <View style={styles.prayerNameLine}>
+                          <Text style={[styles.prayerName, { color: C.ink, fontSize: minor ? 14 : 16 }]}>{label}</Text>
+                          <Text style={[styles.prayerAr, { color: C.muted }]}>{AR_NAME[r.key]}</Text>
+                        </View>
+                        <Text style={[styles.prayerSub, { color: isNext ? C.accent : C.muted }]} numberOfLines={1}>{sub}</Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.prayerTime,
+                          { color: isNext ? C.accent : C.ink, fontSize: minor ? 15 : 19, opacity: past ? 0.5 : 1 },
+                        ]}
+                      >
+                        {formatPrayerTime(time, localeTag)}
+                      </Text>
+                      {minor ? (
+                        <View style={styles.bellBtn} />
+                      ) : (
+                        <Pressable
+                          onPress={() => toggleReminderPrayer(name)}
+                          style={[styles.bellBtn, active && { backgroundColor: C.accentSoft }]}
+                          accessibilityLabel={tr(on ? 'prayer.bellOn' : 'prayer.bellOff', { name: label })}
+                          hitSlop={4}
+                        >
+                          <Feather name={active ? 'bell' : 'bell-off'} size={17} color={active ? C.accent : C.muted} />
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
 
-        {/* Qibla — même position, même besoin : on évite un écran séparé. */}
-        {hasLocation && (
-          <>
-            <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('qibla.sectionTitle')}</Text>
-            <QiblaCompass
-              latitude={latitude}
-              longitude={longitude}
-              colors={{
-                text: T.text,
-                textSecondary: T.textSecondary,
-                textTertiary: T.textTertiary,
-                cardBg: T.cardBg,
-              }}
-            />
-          </>
-        )}
+              {/* ── Rappels ── */}
+              <Text style={[styles.sectionTitle, { color: C.ink }]}>{tr('prayer.reminder.sectionTitle')}</Text>
+              <View style={[styles.card, { backgroundColor: C.card }]}>
+                <View style={styles.reminderHead}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.rowTitle, { color: C.ink }]}>{tr('prayer.reminder.adhanToggle')}</Text>
+                    <Text style={[styles.rowSub, { color: C.muted }]}>{tr('prayer.reminder.adhanHint')}</Text>
+                  </View>
+                  <Pressable
+                    onPress={onToggleReminders}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: remindersEnabled }}
+                    accessibilityLabel={tr('prayer.reminder.adhanToggle')}
+                    style={[
+                      styles.switch,
+                      { backgroundColor: remindersEnabled ? C.accent : C.swOff, alignItems: remindersEnabled ? 'flex-end' : 'flex-start' },
+                    ]}
+                  >
+                    <View style={styles.switchKnob} />
+                  </Pressable>
+                </View>
 
-        <Text style={[styles.note, { color: T.textTertiary }]}>{tr('prayer.footerNote')}</Text>
-        <View style={{ height: 28 }} />
-      </Animated.ScrollView>
+                <View style={[styles.sounds, { opacity: remindersEnabled ? 1 : 0.4 }]}>
+                  {ADHAN_SOUNDS.map((id) => {
+                    const sel = adhanSound === id;
+                    const playing = playingId === id;
+                    return (
+                      <Pressable
+                        key={id}
+                        onPress={() => setAdhanSound(id)}
+                        style={[
+                          styles.soundRow,
+                          { backgroundColor: sel ? C.accentSoft : 'transparent', borderColor: sel ? 'transparent' : C.line },
+                        ]}
+                      >
+                        <View style={[styles.radio, { borderColor: sel ? C.accent : C.radioOff }]}>
+                          <View style={[styles.radioDot, { backgroundColor: sel ? C.accent : 'transparent' }]} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.soundName, { color: C.ink }]}>{tr(`prayer.reminder.sound.${id}`)}</Text>
+                          <Text style={[styles.soundSub, { color: C.muted }]}>{tr(`prayer.reminder.sound.${id}Sub`)}</Text>
+                        </View>
+                        <Pressable
+                          onPress={() => togglePreview(id)}
+                          style={[styles.playBtn, { backgroundColor: playing ? C.accent : C.seg }]}
+                          accessibilityLabel={playing ? tr('prayer.reminder.stop') : tr('prayer.reminder.preview')}
+                        >
+                          <Feather
+                            name={playing ? 'pause' : 'play'}
+                            size={14}
+                            color={playing ? '#fff' : C.ink}
+                            style={playing ? undefined : { marginLeft: 2 }}
+                          />
+                        </Pressable>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <View style={[styles.hr, { backgroundColor: C.line }]} />
+                <View style={styles.beforeRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.rowTitleSm, { color: C.ink }]}>{tr('prayer.reminder.before')}</Text>
+                    <Text style={[styles.rowSub, { color: C.muted }]}>{tr('prayer.reminder.beforeHint')}</Text>
+                  </View>
+                  <View style={[styles.segment, { backgroundColor: C.seg }]}>
+                    {REMINDER_BEFORE_OPTIONS.map((v) => {
+                      const sel = reminderBefore === v;
+                      return (
+                        <Pressable
+                          key={v}
+                          onPress={() => setReminderBefore(v)}
+                          style={[styles.segItem, sel && [styles.segItemOn, { backgroundColor: C.segOn }]]}
+                        >
+                          <Text style={[styles.segText, { color: sel ? C.ink : C.muted }]}>
+                            {v === 0 ? tr('prayer.reminder.beforeNone') : tr('prayer.reminder.beforeMin', { m: v })}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+
+              {/* ── Position ── */}
+              <Text style={[styles.sectionTitle, { color: C.ink }]}>{tr('prayer.locationTitle')}</Text>
+              <View style={[styles.card, styles.positionCard, { backgroundColor: C.card }]}>
+                <View style={[styles.positionIcon, { backgroundColor: C.accentSoft }]}>
+                  <Feather name="map-pin" size={21} color={C.accent} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.rowTitle, { color: C.ink }]} numberOfLines={1}>
+                    {cityName ?? (source === 'gps' ? tr('prayer.gpsPosition') : '—')}
+                  </Text>
+                  <Text style={[styles.positionSub, { color: C.muted }]} numberOfLines={1}>
+                    {source === 'gps' ? tr('prayer.sourceGps') : tr('prayer.sourceCity')}
+                  </Text>
+                </View>
+                <Pressable onPress={() => setShowCities((v) => !v)} style={[styles.editBtn, { backgroundColor: C.accentSoft }]}>
+                  <Text style={[styles.editText, { color: C.accent }]}>{tr('prayer.edit')}</Text>
+                </Pressable>
+              </View>
+
+              {/* ── Qibla ── */}
+              <Text style={[styles.sectionTitle, { color: C.ink }]}>{tr('qibla.sectionTitle')}</Text>
+              <QiblaCompass
+                latitude={latitude}
+                longitude={longitude}
+                dark={T.isDark}
+                colors={{ text: C.ink, textSecondary: C.muted, textTertiary: C.muted, cardBg: C.card }}
+              />
+            </>
+          )}
+
+          <Text style={[styles.note, { color: C.muted }]}>{tr('prayer.footerNote')}</Text>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  // Enveloppe de hauteur animee ; rogne son contenu pendant la compression.
-  headerWrap: { overflow: 'hidden', alignItems: 'center' },
-  // Le medaillon se replie en hauteur : son enveloppe rogne pendant l'animation.
-  headerMedallionWrap: { overflow: 'hidden', marginTop: 54, alignItems: 'center' },
-  // Titre pose a une coordonnee animee (voir hdrTitre) plutot que laisse au
-  // flux : sa place ne depend plus du repli des autres elements.
-  // transformOrigin ancre la reduction a GAUCHE, sinon un titre long se decale
-  // vers la droite en se reduisant et ne suit plus la fleche retour.
-  headerTitleAbs: { position: 'absolute', textAlign: 'center', transformOrigin: 'left center' },
-  // Les marges verticales et la gauche sont animees (voir hdrMarges) :
-  // seule la droite est fixe, pour garder le titre centre au repos.
-  header: { flex: 1, paddingRight: 20, alignItems: 'center', justifyContent: 'flex-end' },
-  back: { position: 'absolute', left: 14, top: 54, zIndex: 2 },
-  headerMedallion: {
-    width: 62, borderRadius: 31, overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+
+  hero: { paddingHorizontal: 20, paddingBottom: 26, overflow: 'hidden' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  backBtn: {
+    width: 42, height: 42, borderRadius: 14, backgroundColor: '#FFFFFF',
     alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 7, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
-  headerEmoji: { fontSize: 30 },
-  // marginTop est animé (voir hdrTitre) : il se résorbe à la compression.
-  headerTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff' },
-  // Les marges sont animees (voir hdrRule) : aucune marge statique ici, elle
-  // s'ajouterait a la marge animee et decalerait tout le flux vers le bas.
-  headerRule: { width: 42, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.5)' },
-  headerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)' },
-
-  content: { paddingHorizontal: 20, paddingTop: 18 },
-
-  setupBox: { alignItems: 'center', gap: 14, paddingVertical: 40, paddingHorizontal: 20 },
-  setupText: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  primaryBtn: {
-    backgroundColor: '#1F8A70', paddingHorizontal: 28, paddingVertical: 14,
-    borderRadius: 14, minWidth: 200, alignItems: 'center',
+  heroTitle: { flex: 1, textAlign: 'center', fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, color: '#fff' },
+  cityPill: {
+    height: 42, maxWidth: 140, paddingLeft: 11, paddingRight: 12, borderRadius: 14, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 7, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
-  primaryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
-  linkBtn: { fontFamily: 'Nunito_700Bold', fontSize: 14, textDecorationLine: 'underline' },
+  cityPillText: { flexShrink: 1, fontFamily: 'Nunito_900Black', fontSize: 14, color: '#0F5B44' },
+  heroSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginTop: 26 },
 
-  nextCard: { borderRadius: 18, padding: 20, alignItems: 'center', marginBottom: 18 },
-  nextLabel: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.85)' },
-  nextName: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 26, color: '#fff', marginTop: 2 },
-  nextTime: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 40, color: '#fff', marginTop: 4 },
-  nextRemaining: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
-
-  list: { borderRadius: 16, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
-  rowActive: { backgroundColor: 'rgba(31,138,112,0.10)' },
-  divider: { borderTopWidth: 1 },
-  rowName: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
-  rowTime: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17 },
-  subRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 22, paddingRight: 16, paddingBottom: 12, marginTop: -6 },
-  subTextCol: { flex: 1 },
-  subName: { fontFamily: 'Nunito_700Bold', fontSize: 13 },
-  subHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 11, marginTop: 1 },
-  subTime: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 14 },
-
-  sectionTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, marginTop: 22, marginBottom: 10 },
-
-  reminderTextCol: { flex: 1, paddingRight: 12 },
-  reminderHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 2, lineHeight: 17 },
-
-  locationBox: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14 },
-  locationText: { fontFamily: 'Nunito_700Bold', fontSize: 14 },
-  locationActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  secondaryBtn: {
-    flex: 1, borderWidth: 1.5, borderColor: '#1F8A70', borderRadius: 12,
-    paddingVertical: 12, alignItems: 'center',
+  sun: {
+    position: 'absolute', width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFD66B',
+    shadowColor: '#FFD66B', shadowOpacity: 0.7, shadowRadius: 14, elevation: 8,
   },
-  secondaryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, color: '#1F8A70' },
+  sunHalo: { position: 'absolute', width: 34, height: 34, borderRadius: 17 },
+  arcCenter: { position: 'absolute', left: 0, right: 0, bottom: 14, alignItems: 'center' },
+  nextLine: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: 'rgba(255,255,255,0.78)' },
+  nextLineStrong: { fontFamily: 'Nunito_900Black', color: '#fff' },
+  nextTime: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 54, lineHeight: 64, color: '#fff', letterSpacing: -1, marginTop: 6 },
+  remainingPill: { marginTop: 4, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.16)' },
+  remainingText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, color: '#fff' },
+  arcEnds: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8, marginTop: 2 },
+  arcEndText: { fontFamily: 'Nunito_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.6)' },
 
-  note: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, textAlign: 'center', marginTop: 20, paddingHorizontal: 12, lineHeight: 17 },
+  content: { paddingHorizontal: 18 },
+  card: {
+    borderRadius: 24, overflow: 'hidden',
+    shadowColor: '#14281E', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1,
+  },
+  setupText: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, lineHeight: 20, textAlign: 'center', padding: 18, paddingBottom: 6 },
+  cityRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'transparent',
+  },
+  cityRowText: { flex: 1, fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
+
+  dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, paddingTop: 18, paddingBottom: 12, gap: 8 },
+  dateText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14, flexShrink: 1 },
+  hijriText: { fontFamily: 'Nunito_700Bold', fontSize: 13, textAlign: 'right', flexShrink: 1 },
+
+  listCard: { padding: 6 },
+  prayerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 18 },
+  prayerRowMinor: { paddingTop: 4, paddingBottom: 12 },
+  chip: { width: 38, height: 38, borderRadius: 12 },
+  chipMinor: { width: 20, height: 20, borderRadius: 7, marginLeft: 9, marginRight: 9 },
+  prayerText: { flex: 1, minWidth: 0 },
+  prayerNameLine: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  prayerName: { fontFamily: 'Nunito_800ExtraBold' },
+  prayerAr: { fontFamily: 'ScheherazadeNew_400Regular', fontSize: 17, lineHeight: 22 },
+  prayerSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 1 },
+  prayerTime: { fontFamily: 'Baloo2_800ExtraBold', fontVariant: ['tabular-nums'] },
+  bellBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+
+  sectionTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, paddingHorizontal: 4, paddingTop: 28, paddingBottom: 10 },
+
+  reminderHead: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18 },
+  rowTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16 },
+  rowTitleSm: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
+  rowSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: 2 },
+  switch: { width: 52, height: 32, borderRadius: 16, padding: 3, justifyContent: 'center' },
+  switchKnob: {
+    width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff',
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  sounds: { paddingHorizontal: 18, paddingBottom: 18, gap: 8 },
+  soundRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 10, paddingRight: 10, paddingLeft: 14, borderRadius: 16, borderWidth: 1.5,
+  },
+  radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  radioDot: { width: 8, height: 8, borderRadius: 4 },
+  soundName: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14 },
+  soundSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12 },
+  playBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  hr: { height: 1 },
+  beforeRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 16 },
+  segment: { flexDirection: 'row', gap: 4, padding: 3, borderRadius: 12 },
+  segItem: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9 },
+  segItemOn: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  segText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12 },
+
+  positionCard: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingLeft: 18, paddingRight: 16 },
+  positionIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  positionSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 1 },
+  editBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12 },
+  editText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13 },
+
+  note: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, textAlign: 'center', marginTop: 24, paddingHorizontal: 12, lineHeight: 17 },
 });

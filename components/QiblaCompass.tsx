@@ -14,42 +14,30 @@
  * le dit.
  */
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Magnetometer } from 'expo-sensors';
 import { qiblaDirection, distanceToKaaba, cardinalFor } from '../constants/prayerTimes';
 import { useT } from '../lib/i18n';
-import { KaabaColorIcon } from './IslamicIcons';
 
-/**
- * Flèche dessinée à la main plutôt que l'icône Feather "navigation" : celle-ci
- * ne pointe PAS plein nord (0°) par défaut — sa pointe est décalée vers le
- * haut-droite — alors que `rotation` (plus bas) suppose une flèche pointant
- * exactement vers le haut à 0°. Résultat : la Qibla s'affichait décalée vers
- * le nord au lieu de sa direction réelle. Ce triangle est garanti pointer
- * plein haut (nord) à 0°, quelle que soit l'icône utilisée par ailleurs dans
- * l'app.
- */
-function QiblaArrow({ size = 54, color = '#1F8A70' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 2 L19 21 L12 16.5 L5 21 Z"
-        fill={color}
-      />
-    </Svg>
-  );
-}
+/** Écart (en degrés) en deçà duquel on considère le téléphone aligné. */
+const ALIGN_TOLERANCE = 4;
+const TICKS = Array.from({ length: 72 }, (_, i) => i * 5);
+const CARDINALS = [
+  { l: 'N', a: 0 }, { l: 'E', a: 90 }, { l: 'S', a: 180 }, { l: 'W', a: 270 },
+];
 
 interface Props {
   latitude: number;
   longitude: number;
   /** Couleurs du thème courant (clair/sombre). */
   colors: { text: string; textSecondary: string; textTertiary: string; cardBg: string };
+  /** Mode sombre : cadran et halo de la Kaaba adaptés. */
+  dark?: boolean;
 }
 
-export default function QiblaCompass({ latitude, longitude, colors }: Props) {
+export default function QiblaCompass({ latitude, longitude, colors, dark = false }: Props) {
   const tr = useT();
+  const { width } = useWindowDimensions();
   const [heading, setHeading] = useState<number | null>(null);
 
   const qibla = qiblaDirection(latitude, longitude);
@@ -129,69 +117,163 @@ export default function QiblaCompass({ latitude, longitude, colors }: Props) {
     };
   }, []);
 
-  // Rotation à appliquer à la flèche. Sans magnétomètre, on pointe simplement
-  // le cap absolu (l'utilisateur se repère alors avec une autre boussole).
-  const rotation = heading == null ? qibla : (qibla - heading + 360) % 360;
+  // Écart signé entre la Qibla et l'avant du téléphone, ramené à [-180, 180[.
+  // Sans magnétomètre, l'aiguille montre le cap absolu (repère fixe).
+  const diff = heading == null ? null : ((qibla - heading) % 360 + 540) % 360 - 180;
+  const needleRot = diff ?? qibla;
+  const dialRot = heading == null ? 0 : -heading;
+  const aligned = diff != null && Math.abs(diff) <= ALIGN_TOLERANCE;
+
+  const accent = dark ? '#3DCB98' : '#1A8F69';
+  const needle = aligned ? '#1FB07E' : heading == null ? '#9AA0AA' : accent;
+  const dialBg = dark ? '#101513' : '#F5F7F4';
+  const tick = dark ? '#2C3532' : '#C9CFCB';
+  const tickMaj = dark ? '#59645F' : '#8A948F';
+  const line = dark ? '#222A27' : '#ECEEEA';
+
+  const pill = heading == null
+    ? { label: tr('qibla.noCompass'), bg: dark ? '#1D2421' : '#EFF1EE', fg: colors.textSecondary }
+    : aligned
+      ? { label: tr('qibla.aligned'), bg: '#1FB07E', fg: '#fff' }
+      : {
+        label: tr(diff! > 0 ? 'qibla.turnRight' : 'qibla.turnLeft'),
+        bg: dark ? 'rgba(61,203,152,0.13)' : 'rgba(26,143,105,0.12)',
+        fg: accent,
+      };
+
+  // Cadran de 270 px sur la maquette ; réduit sur les petits écrans.
+  const D = Math.min(270, width - 110);
+  const R = D / 2;
+  const k = D / 270;
+  const dir = tr(`qibla.cardinal.${cardinal}`);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>{tr('qibla.title')}</Text>
-        <Text style={[styles.distance, { color: colors.textTertiary }]}>
-          {tr('qibla.distance', { km: distance.toLocaleString() })}
-        </Text>
-      </View>
-
-      <View style={styles.compassWrap}>
-        {/* Cadran */}
-        <View style={styles.dial}>
-          {/* Repère fixe : la Kaaba en haut du cadran, à la place du "N".
-              Elle ne tourne PAS — seule la flèche pivote pour l'indiquer,
-              exactement comme le nord d'une boussole classique reste fixe
-              pendant que l'aiguille bouge. */}
-          <View style={styles.kaabaFixed}>
-            <KaabaColorIcon size={22} color={colors.text} />
-          </View>
-
-          {/* Flèche vers la Kaaba. Sans magnétomètre, elle ne peut pas suivre
-              l'appareil : elle est alors grisée pour qu'on voie tout de suite
-              qu'il s'agit d'un repère fixe (le cap absolu) et non d'une
-              aiguille bloquée — c'est ce que le texte sous le cadran explique. */}
-          <View style={[styles.needle, { transform: [{ rotate: `${rotation}deg` }] }]}>
-            <QiblaArrow size={54} color={heading == null ? '#9AA0AA' : '#1F8A70'} />
-          </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: colors.text }]}>{tr('qibla.title')}</Text>
+          <Text style={[styles.distance, { color: colors.textSecondary }]}>
+            {tr('qibla.subtitle', {
+              km: distance.toLocaleString('fr-FR'),
+              deg: Math.round(qibla),
+              dir: dir.charAt(0).toUpperCase() + dir.slice(1),
+            })}
+          </Text>
+        </View>
+        <View style={[styles.pill, { backgroundColor: pill.bg }]}>
+          <Text style={[styles.pillText, { color: pill.fg }]}>{pill.label}</Text>
         </View>
       </View>
 
-      <Text style={[styles.bearing, { color: colors.text }]}>
-        {Math.round(qibla)}° · {tr(`qibla.cardinal.${cardinal}`)}
-      </Text>
+      <View style={{ width: D, height: D, marginTop: 22 }}>
+        {/* Cadran : tourne avec le téléphone pour garder le nord au nord. */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            { borderRadius: R, backgroundColor: dialBg, transform: [{ rotate: `${dialRot}deg` }] },
+          ]}
+        >
+          {TICKS.map((a) => {
+            const maj = a % 30 === 0;
+            const w = maj ? 2.5 : 1.5;
+            const h = maj ? 12 : 6;
+            return (
+              <View
+                key={a}
+                style={{
+                  position: 'absolute', left: R - w / 2, top: R - h / 2, width: w, height: h,
+                  borderRadius: 1, backgroundColor: maj ? tickMaj : tick,
+                  transform: [{ rotate: `${a}deg` }, { translateY: -122 * k }],
+                }}
+              />
+            );
+          })}
+          {CARDINALS.map((c) => (
+            <View
+              key={c.l}
+              style={{
+                position: 'absolute', left: R - 12, top: R - 12, width: 24, height: 24,
+                alignItems: 'center', justifyContent: 'center',
+                transform: [{ rotate: `${c.a}deg` }, { translateY: -98 * k }, { rotate: `${-c.a}deg` }],
+              }}
+            >
+              <Text style={[styles.cardinal, { color: c.l === 'N' ? '#E0584F' : colors.textSecondary }]}>
+                {c.l === 'W' ? tr('qibla.westLetter') : c.l}
+              </Text>
+            </View>
+          ))}
+          {/* La Kaaba, posée sur le bord du cadran à l'azimut de la Qibla. */}
+          <View
+            style={{
+              position: 'absolute', left: R - 15, top: R - 15, width: 30, height: 30,
+              alignItems: 'center', justifyContent: 'center',
+              transform: [{ rotate: `${qibla}deg` }, { translateY: -148 * k }, { rotate: `${-qibla}deg` }],
+            }}
+          >
+            <View
+              style={[
+                styles.kaaba,
+                dark
+                  ? { borderWidth: 2, borderColor: '#E8B84A', shadowColor: '#E8B84A', shadowOpacity: 0.6, shadowRadius: 9, elevation: 6 }
+                  : { borderWidth: 3, borderColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 4, elevation: 3 },
+              ]}
+            >
+              <View style={styles.kaabaBand} />
+            </View>
+          </View>
+        </View>
 
-      <Text style={[styles.hint, { color: colors.textTertiary }]}>
-        {heading == null ? tr('qibla.noSensor') : tr('qibla.hint')}
+        {/* Aiguille vers la Kaaba, relative à l'avant du téléphone. */}
+        <View style={[StyleSheet.absoluteFill, { transform: [{ rotate: `${needleRot}deg` }] }]} pointerEvents="none">
+          <View style={{ position: 'absolute', left: R - 2, top: R - 112 * k, width: 4, height: 112 * k, borderRadius: 2, backgroundColor: needle }} />
+          <View
+            style={{
+              position: 'absolute', left: R - 13, top: R - 126 * k, width: 0, height: 0,
+              borderLeftWidth: 13, borderRightWidth: 13, borderBottomWidth: 24,
+              borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: needle,
+            }}
+          />
+        </View>
+
+        {/* Moyeu : l'écart restant en degrés. */}
+        <View style={[styles.hub, { left: R - 29, top: R - 29, backgroundColor: colors.cardBg, borderColor: line }]}>
+          <Text style={[styles.hubText, { color: colors.text }]}>
+            {Math.abs(Math.round(diff ?? qibla))}°
+          </Text>
+        </View>
+
+        {/* Repère fixe : l'avant du téléphone. */}
+        <View style={[styles.lubber, { left: R - 1.5, backgroundColor: colors.text }]} />
+      </View>
+
+      <Text style={[styles.hint, { color: colors.textSecondary }]}>
+        {heading == null ? tr('qibla.noSensor') : aligned ? tr('qibla.alignedHint') : tr('qibla.hint')}
       </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, padding: 18, alignItems: 'center' },
-  header: { alignItems: 'center', marginBottom: 14 },
-  title: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17 },
-  distance: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 2 },
-
-  compassWrap: { alignItems: 'center', justifyContent: 'center' },
-  dial: {
-    width: 150, height: 150, borderRadius: 75,
-    borderWidth: 2, borderColor: 'rgba(31,138,112,0.25)',
+  card: {
+    borderRadius: 24, paddingHorizontal: 18, paddingVertical: 22, alignItems: 'center',
+    shadowColor: '#14281E', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1,
+  },
+  header: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', paddingHorizontal: 4, gap: 10 },
+  title: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16 },
+  distance: { fontFamily: 'Nunito_600SemiBold', fontSize: 13, marginTop: 1 },
+  pill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  pillText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12 },
+  cardinal: { fontFamily: 'Nunito_900Black', fontSize: 13 },
+  kaaba: { width: 24, height: 24, borderRadius: 6, backgroundColor: '#1B1D1C', overflow: 'hidden' },
+  kaabaBand: { height: 4, marginTop: 6, backgroundColor: '#E8B84A' },
+  hub: {
+    position: 'absolute', width: 58, height: 58, borderRadius: 29, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
-  needle: { alignItems: 'center', justifyContent: 'center' },
-  kaabaFixed: { position: 'absolute', top: 8, alignItems: 'center', justifyContent: 'center' },
-
-  bearing: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, marginTop: 14 },
+  hubText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, lineHeight: 22 },
+  lubber: { position: 'absolute', top: -14, width: 3, height: 14, borderRadius: 2 },
   hint: {
-    fontFamily: 'Nunito_600SemiBold', fontSize: 11, textAlign: 'center',
-    marginTop: 6, paddingHorizontal: 8, lineHeight: 16,
+    fontFamily: 'Nunito_600SemiBold', fontSize: 13, textAlign: 'center',
+    marginTop: 20, lineHeight: 19, maxWidth: 290,
   },
 });
