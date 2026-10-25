@@ -197,6 +197,18 @@
               {
                 "name": "WordOfDayWidgetProvider",
                 "resourceName": "@xml/w_wordofday_info"
+              },
+              {
+                "name": "PrayerNextWidgetProvider",
+                "resourceName": "@xml/w_prayer_next_info"
+              },
+              {
+                "name": "PrayerAllWidgetProvider",
+                "resourceName": "@xml/w_prayer_all_info"
+              },
+              {
+                "name": "PrayerLargeWidgetProvider",
+                "resourceName": "@xml/w_prayer_large_info"
               }
             ]
           }

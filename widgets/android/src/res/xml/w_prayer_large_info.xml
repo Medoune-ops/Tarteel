@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Journée + Qibla : 4x4. Pas de rafraîchissement périodique (updatePeriodMillis=0) :
+     PrayerWidgetBase programme lui-même un réveil à la prochaine prière. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="280dp"
+    android:minHeight="280dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="4"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/w_prayer_large"
+    android:description="@string/w_desc_p_large"
+    android:previewLayout="@layout/w_prayer_large"
+    android:resizeMode="none"
+    android:widgetCategory="home_screen" />

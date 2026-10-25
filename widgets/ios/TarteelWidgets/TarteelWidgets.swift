@@ -99,5 +99,12 @@ struct TarteelWidgetBundle: WidgetBundle {
         ContinueSmallWidget()
         WeekMediumWidget()
         WordOfDayWidget()
+        // Heures de prière (PrayerWidgets.swift). Un WidgetBundle accepte
+        // jusqu'à 10 widgets : on en est à 9.
+        PrayerNextWidget()
+        PrayerDayWidget()
+        PrayerAllWidget()
+        PrayerLargeWidget()
+        PrayerLockWidget()
     }
 }

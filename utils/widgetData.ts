@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 import { t, type I18nKey } from '../lib/i18n';
+import { computePrayerTimes, computeSunrise, qiblaDirection } from '../constants/prayerTimes';
+import { usePrayerStore } from '../store/prayerStore';
 
 /**
  * iOS n'a pas besoin de l'App Group ici : c'est le module natif Swift
@@ -42,6 +44,62 @@ export interface WidgetData {
   /** Heure locale (0-23) du rappel quotidien — miroir de userStore.reminderHour,
    *  affichée sur le widget "Rappel". */
   reminderHour: number;
+  /** Horaires de prière pour les widgets « Heures de prière ». Absent tant
+   *  qu'aucune position n'a été choisie dans l'écran Prières. */
+  prayer?: PrayerWidgetData;
+}
+
+/** Clé d'un créneau : les 5 prières + le chourouq (affiché, jamais « prochaine »). */
+export type PrayerWidgetKey = 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
+
+export interface PrayerWidgetData {
+  /** Ville choisie, ou null pour une position GPS brute (le widget affiche « Ma position »). */
+  city: string | null;
+  /** Direction de la Qibla en degrés depuis le nord géographique (arrondie). */
+  qibla: number;
+  /**
+   * Créneaux de PRAYER_WIDGET_DAYS jours, dans l'ordre, en secondes epoch.
+   * Le widget n'a aucun moyen de recalculer les horaires (la librairie `adhan`
+   * est en JS) : on lui en donne d'avance pour qu'il reste juste plusieurs
+   * jours sans que l'app soit rouverte. Le widget découpe lui-même par jour
+   * selon son fuseau local.
+   */
+  slots: { k: PrayerWidgetKey; t: number }[];
+}
+
+/** Jours d'horaires embarqués : 7 × 6 créneaux = 42 entrées, quelques Ko. */
+export const PRAYER_WIDGET_DAYS = 7;
+
+/** Horaires des PRAYER_WIDGET_DAYS prochains jours (aujourd'hui compris). */
+export function buildPrayerWidgetData(
+  latitude: number,
+  longitude: number,
+  city: string | null,
+  now: Date = new Date(),
+): PrayerWidgetData {
+  const slots: PrayerWidgetData['slots'] = [];
+  for (let d = 0; d < PRAYER_WIDGET_DAYS; d++) {
+    // Midi local : évite qu'un passage à l'heure d'été fasse sauter ou doubler un jour.
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d, 12);
+    const times = computePrayerTimes(latitude, longitude, day);
+    const sunrise = computeSunrise(latitude, longitude, day);
+    const sec = (date: Date) => Math.round(date.getTime() / 1000);
+    slots.push({ k: 'fajr', t: sec(times[0]!.time) });
+    slots.push({ k: 'sunrise', t: sec(sunrise) });
+    for (const s of times.slice(1)) slots.push({ k: s.name, t: sec(s.time) });
+  }
+  return { city, qibla: Math.round(qiblaDirection(latitude, longitude)), slots };
+}
+
+/** Horaires pour la position enregistrée, ou undefined si aucune position. */
+function currentPrayerWidgetData(): PrayerWidgetData | undefined {
+  const s = usePrayerStore.getState();
+  if (s.latitude == null || s.longitude == null) return undefined;
+  try {
+    return buildPrayerWidgetData(s.latitude, s.longitude, s.cityName);
+  } catch {
+    return undefined;
+  }
 }
 
 const MOTIVATION_KEYS: I18nKey[] = [
@@ -84,6 +142,9 @@ export function syncWidgetData(params: {
     activeDays,
     motivationMsg: currentMotivationMsg(),
     reminderHour: params.reminderHour,
+    // Recalculé à chaque synchro : l'app et les widgets partagent UN seul
+    // JSON, donc chaque écriture doit porter aussi les horaires.
+    prayer: currentPrayerWidgetData(),
   };
 
   if (!setWidgetDataNative) return;

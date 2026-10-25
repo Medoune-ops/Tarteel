@@ -18,8 +18,11 @@ struct WidgetData: Codable {
     /// Heure locale (0-23) du rappel quotidien — miroir de userStore.reminderHour
     /// côté app, affichée sur le widget "Rappel".
     var reminderHour: Int
+    /// Horaires de prière (widgets « Heures de prière »). nil tant que
+    /// l'utilisateur n'a choisi aucune position dans l'écran Prières.
+    var prayer: PrayerWidgetData?
 
-    init(streak: Int, xp: Int, currentLesson: Int, lessonProgress: Int, lessonSection: String, activeDays: [Bool], motivationMsg: String, reminderHour: Int) {
+    init(streak: Int, xp: Int, currentLesson: Int, lessonProgress: Int, lessonSection: String, activeDays: [Bool], motivationMsg: String, reminderHour: Int, prayer: PrayerWidgetData? = nil) {
         self.streak = streak
         self.xp = xp
         self.currentLesson = currentLesson
@@ -28,6 +31,7 @@ struct WidgetData: Codable {
         self.activeDays = activeDays
         self.motivationMsg = motivationMsg
         self.reminderHour = reminderHour
+        self.prayer = prayer
     }
 
     // Décodage tolérant : reminderHour est absent des données déjà stockées
@@ -43,7 +47,22 @@ struct WidgetData: Codable {
         activeDays = try c.decode([Bool].self, forKey: .activeDays)
         motivationMsg = try c.decode(String.self, forKey: .motivationMsg)
         reminderHour = try c.decodeIfPresent(Int.self, forKey: .reminderHour) ?? 19
+        // `try?` : un bloc prière malformé ne doit pas casser les widgets Série.
+        prayer = (try? c.decodeIfPresent(PrayerWidgetData.self, forKey: .prayer)) ?? nil
     }
+}
+
+/// Miroir de PrayerWidgetData dans utils/widgetData.ts.
+struct PrayerWidgetData: Codable {
+    struct Slot: Codable {
+        /// "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha"
+        let k: String
+        /// Secondes epoch.
+        let t: Double
+    }
+    let city: String?
+    let qibla: Double
+    let slots: [Slot]
 }
 
 func loadWidgetData() -> WidgetData {
