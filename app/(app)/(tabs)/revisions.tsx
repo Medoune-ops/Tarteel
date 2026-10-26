@@ -26,7 +26,7 @@ const ETAT_COLORS: Record<SourateRevisionView['etat'], { couleur: string; couleu
 // Sourate trouvée par la recherche mais pas encore apprise : neutre, pas de SRS.
 const NON_APPRISE_COLOR = { couleur: '#8A8F99', couleurDark: '#6B7078', bg: '#EDEEF1' };
 
-type Onglet = 'guidee' | 'libre';
+type Onglet = 'guidee' | 'libre' | 'reconstituer';
 
 /** "Aujourd'hui" / "Dans N jours" à partir d'une date ISO (ou null = jamais révisé → due maintenant). */
 function formatProchaineRevision(iso: string | null): string {
@@ -123,7 +123,11 @@ function TabSwitcher({ onglet, onChange }: { onglet: Onglet; onChange: (o: Ongle
         onPress={() => onChange('guidee')}
       >
         <Feather name="zap" size={18} color={onglet === 'guidee' ? '#fff' : '#6B4DFF'} />
-        <Text style={[styles.tabBtnGuideeText, onglet !== 'guidee' && { color: '#6B4DFF' }]}>
+        <Text
+          style={[styles.tabBtnGuideeText, onglet !== 'guidee' && { color: '#6B4DFF' }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
           {tr('revisions.tabGuidee')}
         </Text>
       </Pressable>
@@ -132,10 +136,69 @@ function TabSwitcher({ onglet, onChange }: { onglet: Onglet; onChange: (o: Ongle
         onPress={() => onChange('libre')}
       >
         <Feather name="list" size={16} color={onglet === 'libre' ? '#1B2333' : '#8A8F99'} />
-        <Text style={[styles.tabBtnLibreText, onglet === 'libre' && { color: '#1B2333' }]}>
+        <Text
+          style={[styles.tabBtnLibreText, onglet === 'libre' && { color: '#1B2333' }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
           {tr('revisions.tabLibre')}
         </Text>
       </Pressable>
+      <Pressable
+        style={[styles.tabBtn, styles.tabBtnLibre, onglet === 'reconstituer' && styles.tabBtnLibreActive]}
+        onPress={() => onChange('reconstituer')}
+      >
+        <Feather name="grid" size={16} color={onglet === 'reconstituer' ? '#1B2333' : '#8A8F99'} />
+        <Text
+          style={[styles.tabBtnLibreText, onglet === 'reconstituer' && { color: '#1B2333' }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {tr('revisions.tabReconstituer')}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * Onglet « Reconstituer » : présente l'exercice et le lance. Les mots et
+ * versets sont tirés d'une sourate apprise (voir revision/reconstituer.tsx).
+ */
+function OngletReconstituer({ T, tr }: { T: ReturnType<typeof useTheme>; tr: ReturnType<typeof useT> }) {
+  const router = useRouter();
+  return (
+    <View style={{ gap: 14 }}>
+      <View style={styles.guidedCard}>
+        <LinearGradient colors={['#FFA43A', '#F0720F']} style={styles.guidedGrad}>
+          <View style={styles.guidedHeaderRow}>
+            <View style={styles.guidedBadgePill}>
+              <Feather name="grid" size={12} color="#fff" />
+              <Text style={styles.guidedBadgePillText}>{tr('revisions.reconstituerBadge')}</Text>
+            </View>
+          </View>
+          <Text style={styles.reconTitle}>{tr('revisions.reconstituerTitle')}</Text>
+          <Text style={styles.reconSub}>{tr('revisions.reconstituerSub')}</Text>
+          <View style={styles.reconDemo}>
+            <Text style={styles.reconDemoModel}>بِسْمِ</Text>
+            <Feather name="arrow-left" size={18} color="rgba(255,255,255,0.9)" />
+            <View style={styles.reconDemoTiles}>
+              {['ب', 'ـِ', 'س', 'ـْ', 'م', 'ـِ'].map((t, i) => (
+                <View key={i} style={styles.reconDemoTile}>
+                  <Text style={styles.reconDemoTileTxt}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+          <Pressable style={styles.reconBtn} onPress={() => router.push('/(app)/revision/reconstituer')}>
+            <Text style={styles.reconBtnTxt}>{tr('revisions.start')}</Text>
+            <Feather name="arrow-right" size={16} color="#F0720F" />
+          </Pressable>
+        </LinearGradient>
+      </View>
+      <Text style={[styles.emptySub, { color: T.textSecondary, textAlign: 'center' }]}>
+        {tr('revisions.reconstituerHint')}
+      </Text>
     </View>
   );
 }
@@ -440,6 +503,8 @@ export default function RevisionsScreen() {
 
           {onglet === 'guidee' ? (
             <OngletGuidee T={T} tr={tr} lettres={lettres} />
+          ) : onglet === 'reconstituer' ? (
+            <OngletReconstituer T={T} tr={tr} />
           ) : (
             <>
               {/* Barre de recherche */}
@@ -648,6 +713,26 @@ const styles = StyleSheet.create({
   tabBtnLibre: { flex: 1, backgroundColor: '#EDEEF1' },
   tabBtnLibreActive: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#E2E4EA' },
   tabBtnLibreText: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#8A8F99' },
+
+  // Onglet « Reconstituer ».
+  reconTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 22, color: '#fff' },
+  reconSub: { fontFamily: 'Nunito_700Bold', fontSize: 13.5, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
+  reconDemo: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14,
+    backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 16, padding: 10,
+  },
+  reconDemoModel: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 26, lineHeight: 50, color: '#fff' },
+  reconDemoTiles: { flex: 1, flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 5 },
+  reconDemoTile: {
+    width: 30, height: 34, borderRadius: 9, backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  reconDemoTileTxt: { fontFamily: 'ScheherazadeNew_700Bold', fontSize: 18, lineHeight: 30, color: '#B5571A' },
+  reconBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 13, marginTop: 16,
+  },
+  reconBtnTxt: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#F0720F' },
 
   // Onglet guidée — carte mise en avant.
   guidedCard: { borderRadius: 22, overflow: 'hidden', marginBottom: 8 },
