@@ -74,7 +74,7 @@ export default function FriendsQrScreen() {
               >
                 <View style={[styles.qrGlow, { backgroundColor: T.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(107,77,255,0.08)' }]} />
                 <View style={styles.qrWhite}>
-                  <QRCode value={`tarteel://add?code=${code}`} size={228} color="#1B2333" backgroundColor="#fff" />
+                  <QRCode value={`https://tarteel.sn/f/${code}`} size={228} color="#1B2333" backgroundColor="#fff" />
                 </View>
                 <View style={[styles.codePill, { backgroundColor: P.tint }]}>
                   <Feather name="user-plus" size={15} color="#6B4DFF" />
