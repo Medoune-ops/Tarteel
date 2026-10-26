@@ -1,7 +1,9 @@
 /**
  * Map des sons locaux pour les 28 lettres de l'alphabet arabe.
  * Fichiers MP3 bundlés dans assets/sounds/letters/ — aucun réseau requis.
- * (Re)générer les fichiers via : assets/sounds/letters/download.ps1
+ * Ce sont des enregistrements des lettres seules, fournis à part (ils ont
+ * remplacé l'ancienne synthèse vocale) : pour les changer, remplacer les
+ * fichiers en gardant ces noms. ta2 = ط, dha2 = ظ, ha2 = ه, ha = ح.
  */
 const LETTER_SOUNDS: Record<string, number> = {
   alif:  require('../assets/sounds/letters/alif.mp3'),
