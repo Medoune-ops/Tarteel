@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Braise qui rougeoie au pied de la flamme. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <gradient android:type="radial" android:gradientRadius="9dp" android:startColor="#FF8A3D" android:centerColor="#80FF7832" android:endColor="#00FF7832" />
+</shape>

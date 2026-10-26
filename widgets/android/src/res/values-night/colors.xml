@@ -11,4 +11,17 @@
     <color name="w_p_hero_start">#08201A</color>
     <color name="w_p_hero_mid">#0D3328</color>
     <color name="w_p_hero_end">#13503E</color>
+
+    <!-- Série éteinte en mode sombre. -->
+    <color name="w_f_ember_start">#2A1F28</color>
+    <color name="w_f_ember_mid">#1C141B</color>
+    <color name="w_f_ember_end">#120C10</color>
+    <color name="w_f_night_start">#2E2070</color>
+    <color name="w_f_night_mid">#1C1450</color>
+    <color name="w_f_night_end">#100A30</color>
+    <color name="w_f_card">#17161E</color>
+    <color name="w_f_ink">#EFEEF4</color>
+    <color name="w_f_muted">#9290A2</color>
+    <color name="w_f_track">#211F29</color>
+    <color name="w_f_path">#3A3646</color>
 </resources>

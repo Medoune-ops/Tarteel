@@ -47,6 +47,29 @@ export interface WidgetData {
   /** Horaires de prière pour les widgets « Heures de prière ». Absent tant
    *  qu'aucune position n'a été choisie dans l'écran Prières. */
   prayer?: PrayerWidgetData;
+  /** De quoi savoir si la flamme s'est éteinte, même sans rouvrir l'app.
+   *  Absent tant que le store ne s'est pas enregistré (tests, web). */
+  flame?: FlameWidgetData;
+}
+
+export interface FlameWidgetData {
+  /** Dernier jour (YYYY-MM-DD, local) où la série a progressé. */
+  lastActiveDay: string | null;
+  /** Série qui vient de s'éteindre ; 0 tant que rien n'est perdu. */
+  lostStreak: number;
+  /** Jour (YYYY-MM-DD, local) où la flamme s'est éteinte. */
+  lostDay: string | null;
+  /** Gels en stock : chacun couvre un jour manqué avant que la flamme s'éteigne. */
+  freezes: number;
+}
+
+/**
+ * Le suivi vit dans userStore, qui importe déjà ce fichier : il s'enregistre
+ * ici plutôt que d'être importé (cycle), et chaque synchro le relit.
+ */
+let flameProvider: (() => FlameWidgetData) | null = null;
+export function setFlameProvider(fn: (() => FlameWidgetData) | null) {
+  flameProvider = fn;
 }
 
 /** Clé d'un créneau : les 5 prières + le chourouq (affiché, jamais « prochaine »). */
@@ -145,6 +168,7 @@ export function syncWidgetData(params: {
     // Recalculé à chaque synchro : l'app et les widgets partagent UN seul
     // JSON, donc chaque écriture doit porter aussi les horaires.
     prayer: currentPrayerWidgetData(),
+    flame: flameProvider?.() ?? undefined,
   };
 
   if (!setWidgetDataNative) return;

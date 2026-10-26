@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget Ma semaine : 4x2 (format large). -->
+<!-- Widget Ma semaine : 4x2 (format large). Réveil toutes les 30 min pour
+     basculer seul sur « Recommencer » quand la flamme s'éteint. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
     android:minHeight="110dp"
     android:targetCellWidth="4"
     android:targetCellHeight="2"
-    android:updatePeriodMillis="0"
+    android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/w_week"
     android:description="@string/w_desc_week"
     android:previewLayout="@layout/w_week_preview"

@@ -74,4 +74,23 @@
         <item>O</item>
         <item>NO</item>
     </string-array>
+
+    <!-- Série éteinte -->
+    <string name="w_lost_caps">SÉRIE ÉTEINTE</string>
+    <string name="w_lost_unit">jours perdus</string>
+    <string name="w_lost_cta">Rallumer</string>
+    <string name="w_away_caps">TU NOUS MANQUES</string>
+    <string name="w_away_days">jours</string>
+    <string name="w_away_cta">Reprendre</string>
+    <string name="w_away_t1">Hier sans toi</string>
+    <string name="w_away_t2">La loutre t\'attend</string>
+    <string name="w_away_t3">Ton Coran t\'attend</string>
+    <string name="w_away_t4">Reviens en douceur</string>
+    <string name="w_restart_old_caps">ANCIENNE SÉRIE</string>
+    <string name="w_restart_caps">NOUVEAU DÉPART</string>
+    <string name="w_restart_title">Allume ton jour 1</string>
+    <string name="w_restart_today">J1 · aujourd\'hui</string>
+    <string name="w_restart_goal">J7 · +50 gemmes</string>
+    <string name="w_restart_cta">Lire un verset</string>
+    <string name="w_days_short">%1$d j</string>
 </resources>

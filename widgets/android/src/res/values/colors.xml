@@ -59,4 +59,25 @@
     <color name="w_p_hero_end">#2BA47D</color>
     <color name="w_p_sun">#FFD66B</color>
     <color name="w_p_sun_ink">#1C1A26</color>
+
+    <!-- Série éteinte (maquette « Tarteel Widgets Retour »), mode clair.
+         values-night/colors.xml surcharge les teintes qui changent la nuit. -->
+    <color name="w_f_ember_start">#3A2C36</color>
+    <color name="w_f_ember_mid">#2A1E28</color>
+    <color name="w_f_ember_end">#1E1418</color>
+    <color name="w_f_night_start">#5B3FD6</color>
+    <color name="w_f_night_mid">#3B2A99</color>
+    <color name="w_f_night_end">#221660</color>
+    <color name="w_f_card">#FFFFFF</color>
+    <color name="w_f_ink">#1C1A26</color>
+    <color name="w_f_muted">#6F6C7A</color>
+    <color name="w_f_track">#F4F1EC</color>
+    <color name="w_f_path">#DCD6E2</color>
+    <color name="w_f_orange">#F4633A</color>
+    <color name="w_f_ash">#5B4A57</color>
+    <color name="w_f_core">#3E3240</color>
+    <color name="w_f_glow">#FF8A3D</color>
+    <color name="w_f_moon">#FFE7A0</color>
+    <color name="w_white_65">#A6FFFFFF</color>
+    <color name="w_white_92">#EBFFFFFF</color>
 </resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fond braise du widget « Série éteinte ». -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="26dp" />
+    <gradient android:type="linear" android:angle="300"
+        android:startColor="@color/w_f_ember_start"
+        android:centerColor="@color/w_f_ember_mid"
+        android:endColor="@color/w_f_ember_end" />
+</shape>
