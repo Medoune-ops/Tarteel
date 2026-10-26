@@ -114,17 +114,108 @@ struct WordOfDayView: View {
     }
 }
 
+// ─── Écran verrouillé · Nom du jour ──────────────────────────────────────────
+// En ligne : « ★ Le Gardien · ٱلْحَفِيظ » au-dessus de l'heure.
+// Rectangle : « ★ NOM DU JOUR », le nom, sa signification et l'arabe à droite.
+// L'écran verrouillé est monochrome : pas de couleur, seulement des opacités.
+
+struct WordOfDayInlineView: View {
+    let name: AsmaName
+    var body: some View {
+        Text("\(Image(systemName: "star.fill")) \(name.traduction) · \(name.arabe)")
+    }
+}
+
+struct WordOfDayRectangularView: View {
+    let name: AsmaName
+    var body: some View {
+        HStack(alignment: .center, spacing: 6) {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 3) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 8, weight: .bold))
+                    Text(L.t("w_wordofday_caps"))
+                        .font(.system(size: 9, weight: .heavy))
+                        .tracking(0.6)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .opacity(0.75)
+                Text(name.traduction)
+                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(name.sens)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .opacity(0.8)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(name.arabe)
+                .font(.system(size: 22, weight: .semibold, design: .serif))
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
+                .frame(maxWidth: 62)
+                .environment(\.layoutDirection, .rightToLeft)
+        }
+        .padding(.horizontal, 6)
+    }
+}
+
+/// Choisit la vue selon l'emplacement : écran d'accueil ou écran verrouillé.
+struct WordOfDayEntryView: View {
+    let name: AsmaName
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            WordOfDayInlineView(name: name)
+                .containerBackground(Color.clear, for: .widget)
+        case .accessoryRectangular:
+            WordOfDayRectangularView(name: name)
+                .containerBackground(for: .widget) { AccessoryWidgetBackground() }
+        default:
+            WordOfDayView(name: name)
+                .containerBackground(Color.white, for: .widget)
+        }
+    }
+}
+
 struct WordOfDayWidget: Widget {
     let kind = "TarteelWordOfDay"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TarteelProvider()) { entry in
-            WordOfDayView(name: nameOfTheDay(entry.date))
-                .containerBackground(Color.white, for: .widget)
+            WordOfDayEntryView(name: nameOfTheDay(entry.date))
+                .widgetURL(URL(string: "tarteel://asma"))
         }
         .contentMarginsDisabled()
         .configurationDisplayName(L.t("w_wordofday_title"))
         .description(L.t("w_desc_wordofday"))
-        .supportedFamilies([.systemSmall])
+        .supportedFamilies([.systemSmall, .accessoryInline, .accessoryRectangular])
+    }
+}
+
+// ─── Écran verrouillé · Loutre (rond) ────────────────────────────────────────
+// La mascotte seule, pour ouvrir l'app d'un geste depuis l'écran verrouillé.
+
+struct OtterLockWidget: Widget {
+    let kind = "TarteelOtterLock"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: TarteelProvider()) { _ in
+            Image("Otter")
+                .resizable()
+                .scaledToFit()
+                .padding(7)
+                .widgetAccentable()
+                .widgetURL(URL(string: "tarteel://"))
+                .containerBackground(for: .widget) { AccessoryWidgetBackground() }
+        }
+        .configurationDisplayName(L.t("w_otter_title"))
+        .description(L.t("w_desc_otter"))
+        .supportedFamilies([.accessoryCircular])
     }
 }
