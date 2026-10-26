@@ -6,7 +6,7 @@ import { useAppConfigStore } from '../store/appConfigStore';
 
 /**
  * Point d'entrée du deep link `tarteel://add?code=XXXXXX` (page publique de
- * redirection https://tarteel.app/f/:code et QR code). Redirige vers l'écran
+ * redirection https://tarteel.sn/f/:code et QR code). Redirige vers l'écran
  * d'ajout d'ami avec le code pré-rempli ; si personne n'est connecté, on passe
  * par l'onboarding.
  */

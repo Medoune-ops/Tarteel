@@ -32,7 +32,10 @@
         "com.apple.security.application-groups": [
           "group.com.tarteel.app.expowidgets"
         ]
-      }
+      },
+      "associatedDomains": [
+        "applinks:tarteel.sn"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -84,7 +87,24 @@
             }
           }
         ]
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "tarteel.sn",
+              "pathPrefix": "/f/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
