@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Petit · Série éteinte : affiché pendant les 7 jours qui suivent la perte
+     (maquette « Tarteel Widgets Retour »). Remplace w_streak.xml. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_lost_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/w_f_bg_ember"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:letterSpacing="0.12"
+            android:maxLines="1"
+            android:text="@string/w_lost_caps"
+            android:textColor="@color/w_white_65"
+            android:textSize="9sp"
+            android:textStyle="bold" />
+        <ImageView
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:src="@drawable/w_f_dot_orange"
+            android:importantForAccessibility="no" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="bottom"
+        android:orientation="horizontal">
+            <FrameLayout
+                android:layout_width="54dp"
+                android:layout_height="54dp">
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/w_f_flame_ash"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="3dp"
+                    android:src="@drawable/w_f_flame_core"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="2dp"
+                    android:src="@drawable/w_f_ember_glow"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
+                <FrameLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:id="@+id/w_lost_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:text="17"
+                        android:textColor="@color/w_white_92"
+                        android:textSize="38sp"
+                        android:textStyle="bold" />
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="4dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="-3dp"
+                        android:layout_marginEnd="-3dp"
+                        android:rotation="-12"
+                        android:src="@drawable/w_f_strike"
+                        android:scaleType="fitXY"
+                        android:importantForAccessibility="no" />
+                </FrameLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:maxLines="1"
+                android:text="@string/w_lost_unit"
+                android:textColor="@color/w_white_70"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:background="@drawable/w_f_cta_orange"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:paddingEnd="5dp">
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/w_f_cta_icon"
+                android:gravity="center"
+                android:text="🔥"
+                android:textSize="12sp" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="7dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="@string/w_lost_cta"
+                android:textColor="@color/w_white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/w_f_circle_white"
+                android:gravity="center"
+                android:text="→"
+                android:textColor="#E8501E"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Point orange de l'en-tête « Série éteinte ». -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/w_f_orange" />
+    <stroke android:width="2dp" android:color="#40F4633A" />
+</shape>

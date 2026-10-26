@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
-import { syncWidgetData } from '../utils/widgetData';
+import { setFlameProvider, syncWidgetData } from '../utils/widgetData';
+import { trackFlame } from '../utils/flameTracking';
 import { clearSwrCache } from '../lib/api/swr';
 
 // ─── Constantes du système de cœurs ─────────────────────────────────────────
@@ -45,6 +46,12 @@ interface UserState {
   theme: 'light' | 'dark' | 'system';
   /** Objectif de série fixé par l'utilisateur (null = aucun objectif en cours). */
   streakGoal: number | null;
+  /** Dernier jour (YYYY-MM-DD) où la série a progressé — widgets Série. */
+  streakDay: string | null;
+  /** Série qui vient de s'éteindre (0 = aucune) — widgets « Série éteinte ». */
+  lostStreak: number;
+  /** Jour (YYYY-MM-DD) où la flamme s'est éteinte. */
+  lostStreakDay: string | null;
   /**
    * Heure locale (0–23) du rappel quotidien.
    *
@@ -175,6 +182,9 @@ const initialState = {
   voiceEnabled: true,
   theme: 'system' as const,
   streakGoal: null as number | null,
+  streakDay: null as string | null,
+  lostStreak: 0,
+  lostStreakDay: null as string | null,
   reminderHour: 19,
   /*
    * Activé par défaut, à 19 h.
@@ -282,7 +292,7 @@ export const useUserStore = create<UserState>()(
 
       setStreak: (streak) => {
         const s = get();
-        set({ streak });
+        set({ streak, ...trackFlame(s, streak) });
         syncWidgetData({ streak, xp: s.xp, currentLesson: s.currentLesson, reminderHour: s.reminderHour });
       },
 
@@ -295,6 +305,7 @@ export const useUserStore = create<UserState>()(
       hydrateFromBackend: (data) => {
         const next = computeHearts(data.hearts, data.lastHeartLossAt, data.isPremium);
         set({
+          ...trackFlame(get(), data.streak),
           streak: data.streak,
           xp: data.xp,
           hearts: next.hearts,
@@ -356,3 +367,14 @@ export const useUserStore = create<UserState>()(
     }
   )
 );
+
+// Chaque synchro des widgets relit le suivi de la flamme (voir widgetData.ts).
+setFlameProvider(() => {
+  const s = useUserStore.getState();
+  return {
+    lastActiveDay: s.streakDay,
+    lostStreak: s.lostStreak,
+    lostDay: s.lostStreakDay,
+    freezes: s.streakFreezes,
+  };
+});

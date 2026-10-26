@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Moyen · Recommencer : remplace « Ma semaine » tant que la série n'est pas
+     rallumée (maquette « Tarteel Widgets Retour »). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_restart_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:layout_width="110dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/w_f_bg_ember_left"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="12dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.1"
+            android:maxLines="1"
+            android:text="@string/w_restart_old_caps"
+            android:textColor="@color/w_white_65"
+            android:textSize="8sp"
+            android:textStyle="bold" />
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+            <FrameLayout
+                android:layout_width="50dp"
+                android:layout_height="50dp">
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/w_f_flame_ash"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="3dp"
+                    android:src="@drawable/w_f_flame_core"
+                    android:importantForAccessibility="no" />
+                <ImageView
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="2dp"
+                    android:src="@drawable/w_f_ember_glow"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
+                <FrameLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:id="@+id/w_restart_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:text="17 j"
+                        android:textColor="@color/w_white_92"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="-3dp"
+                        android:layout_marginEnd="-3dp"
+                        android:rotation="-12"
+                        android:src="@drawable/w_f_strike"
+                        android:scaleType="fitXY"
+                        android:importantForAccessibility="no" />
+                </FrameLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@drawable/w_f_bg_card_right"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingTop="13dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="12dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.12"
+            android:text="@string/w_restart_caps"
+            android:textColor="@color/w_f_orange"
+            android:textSize="9sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="@string/w_restart_title"
+            android:textColor="@color/w_f_ink"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/w_f_track"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="4dp">
+            <FrameLayout
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/w_f_dot_day1">
+                <ImageView
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/w_f_flame_light"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+                <FrameLayout
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/w_f_dot_day">
+                    <ImageView
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/w_f_flame_path"
+                        android:importantForAccessibility="no" />
+                </FrameLayout>
+            </FrameLayout>
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+                <FrameLayout
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/w_f_dot_day">
+                    <ImageView
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/w_f_flame_path"
+                        android:importantForAccessibility="no" />
+                </FrameLayout>
+            </FrameLayout>
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+                <FrameLayout
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/w_f_dot_day">
+                    <ImageView
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/w_f_flame_path"
+                        android:importantForAccessibility="no" />
+                </FrameLayout>
+            </FrameLayout>
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+                <FrameLayout
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/w_f_dot_day">
+                    <ImageView
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/w_f_flame_path"
+                        android:importantForAccessibility="no" />
+                </FrameLayout>
+            </FrameLayout>
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+                <FrameLayout
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/w_f_dot_day">
+                    <ImageView
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/w_f_flame_path"
+                        android:importantForAccessibility="no" />
+                </FrameLayout>
+            </FrameLayout>
+            <TextView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/w_f_dot_trophy"
+                android:gravity="center"
+                android:text="🏆"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:text="@string/w_restart_today"
+                android:textColor="@color/w_f_orange"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="@string/w_restart_goal"
+                android:textColor="@color/w_f_muted"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="34dp"
+            android:background="@drawable/w_f_cta_orange"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:paddingEnd="5dp">
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/w_f_cta_icon"
+                android:gravity="center"
+                android:text="📖"
+                android:textSize="12sp" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="7dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="@string/w_restart_cta"
+                android:textColor="@color/w_white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/w_f_circle_white"
+                android:gravity="center"
+                android:text="→"
+                android:textColor="#E8501E"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

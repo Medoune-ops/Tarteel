@@ -21,6 +21,9 @@ struct WidgetData: Codable {
     /// Horaires de prière (widgets « Heures de prière »). nil tant que
     /// l'utilisateur n'a choisi aucune position dans l'écran Prières.
     var prayer: PrayerWidgetData?
+    /// Suivi de la flamme (widgets « Série éteinte »). nil pour des données
+    /// écrites par une version antérieure : la série s'affiche alors normalement.
+    var flame: FlameWidgetData?
 
     init(streak: Int, xp: Int, currentLesson: Int, lessonProgress: Int, lessonSection: String, activeDays: [Bool], motivationMsg: String, reminderHour: Int, prayer: PrayerWidgetData? = nil) {
         self.streak = streak
@@ -49,6 +52,7 @@ struct WidgetData: Codable {
         reminderHour = try c.decodeIfPresent(Int.self, forKey: .reminderHour) ?? 19
         // `try?` : un bloc prière malformé ne doit pas casser les widgets Série.
         prayer = (try? c.decodeIfPresent(PrayerWidgetData.self, forKey: .prayer)) ?? nil
+        flame = (try? c.decodeIfPresent(FlameWidgetData.self, forKey: .flame)) ?? nil
     }
 }
 
@@ -63,6 +67,18 @@ struct PrayerWidgetData: Codable {
     let city: String?
     let qibla: Double
     let slots: [Slot]
+}
+
+/// Miroir de FlameWidgetData dans utils/widgetData.ts.
+struct FlameWidgetData: Codable {
+    /// Dernier jour (YYYY-MM-DD, local) où la série a progressé.
+    let lastActiveDay: String?
+    /// Série éteinte ; 0 tant que rien n'est perdu.
+    let lostStreak: Int
+    /// Jour (YYYY-MM-DD, local) où la flamme s'est éteinte.
+    let lostDay: String?
+    /// Gels en stock : chacun couvre un jour manqué.
+    let freezes: Int
 }
 
 func loadWidgetData() -> WidgetData {

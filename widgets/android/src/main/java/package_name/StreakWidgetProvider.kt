@@ -12,6 +12,22 @@ import android.widget.RemoteViews
 class StreakWidgetProvider : TarteelWidgetBase() {
 
     override fun buildViews(context: Context, data: TarteelWidgetData): RemoteViews {
+        // Flamme éteinte : « Série éteinte » la première semaine, puis
+        // « Tu nous manques » (voir FlameState.kt).
+        when (val flame = FlameState.read(context, data.streak)) {
+            is FlameState.Ember -> return RemoteViews(context.packageName, R.layout.w_streak_lost).apply {
+                setTextViewText(R.id.w_lost_value, flame.lost.toString())
+                // « Rallumer » mène à l'écran Série (restauration).
+                setOnClickPendingIntent(R.id.w_lost_root, openAppIntent(context, "tarteel://streak"))
+            }
+            is FlameState.Away -> return RemoteViews(context.packageName, R.layout.w_streak_away).apply {
+                setTextViewText(R.id.w_away_value, flame.daysAway.toString())
+                setTextViewText(R.id.w_away_msg, context.getString(awayMessageRes(flame.daysAway)))
+                setOnClickPendingIntent(R.id.w_away_root, openAppIntent(context, "tarteel://"))
+            }
+            FlameState.Burning -> Unit
+        }
+
         val views = RemoteViews(context.packageName, R.layout.w_streak)
 
         views.setTextViewText(R.id.w_streak_value, data.streak.toString())

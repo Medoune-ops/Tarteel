@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bulle « Zz » de la loutre endormie. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="9dp" />
+    <solid android:color="#2EFFFFFF" />
+</shape>

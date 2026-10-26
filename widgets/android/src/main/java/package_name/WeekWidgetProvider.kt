@@ -27,6 +27,20 @@ class WeekWidgetProvider : TarteelWidgetBase() {
     }
 
     override fun buildViews(context: Context, data: TarteelWidgetData): RemoteViews {
+        // Flamme éteinte : « Recommencer » tant que la série n'est pas rallumée.
+        val flame = FlameState.read(context, data.streak)
+        val lost = when (flame) {
+            is FlameState.Ember -> flame.lost
+            is FlameState.Away -> flame.lost
+            FlameState.Burning -> 0
+        }
+        if (lost > 0) {
+            return RemoteViews(context.packageName, R.layout.w_week_restart).apply {
+                setTextViewText(R.id.w_restart_value, context.getString(R.string.w_days_short, lost))
+                setOnClickPendingIntent(R.id.w_restart_root, openAppIntent(context, "tarteel://lecture-libre"))
+            }
+        }
+
         val views = RemoteViews(context.packageName, R.layout.w_week)
 
         views.setTextViewText(R.id.w_week_streak, data.streak.toString())

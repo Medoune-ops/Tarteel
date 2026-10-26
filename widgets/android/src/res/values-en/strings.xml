@@ -66,4 +66,23 @@
         <item>W</item>
         <item>NW</item>
     </string-array>
+
+    <!-- Série éteinte -->
+    <string name="w_lost_caps">STREAK LOST</string>
+    <string name="w_lost_unit">days lost</string>
+    <string name="w_lost_cta">Relight</string>
+    <string name="w_away_caps">WE MISS YOU</string>
+    <string name="w_away_days">days</string>
+    <string name="w_away_cta">Resume</string>
+    <string name="w_away_t1">A day without you</string>
+    <string name="w_away_t2">The otter is waiting</string>
+    <string name="w_away_t3">Your Quran awaits</string>
+    <string name="w_away_t4">Come back gently</string>
+    <string name="w_restart_old_caps">PREVIOUS STREAK</string>
+    <string name="w_restart_caps">FRESH START</string>
+    <string name="w_restart_title">Light up day 1</string>
+    <string name="w_restart_today">D1 · today</string>
+    <string name="w_restart_goal">D7 · +50 gems</string>
+    <string name="w_restart_cta">Read a verse</string>
+    <string name="w_days_short">%1$d d</string>
 </resources>
