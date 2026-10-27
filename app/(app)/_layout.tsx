@@ -195,6 +195,8 @@ export default function AppLayout() {
         <Stack.Screen name="lecture/[numero]" />
         <Stack.Screen name="streak-goal" />
         <Stack.Screen name="streak" />
+        {/* Pas de retour arrière par geste : on sort par « Continuer » ou ✕. */}
+        <Stack.Screen name="streak-celebration" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="gems" />
         <Stack.Screen name="tajwid" />
         <Stack.Screen name="coran-player" />

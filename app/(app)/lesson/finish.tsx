@@ -56,11 +56,16 @@ export default function FinishScreen() {
   const completedRef = useRef(false);
   const [showMastered, setShowMastered] = useState(false);
   const [mastered, setMastered] = useState<{ numero: number; nom: string } | null>(null);
+  // Série renvoyée par le serveur si elle vient d'augmenter (1re leçon du
+  // jour) → « Continuer » passe par l'écran de célébration.
+  const [streakUp, setStreakUp] = useState<number | null>(null);
 
   useEffect(() => {
     if (completedRef.current) return;
     completedRef.current = true;
     if (!params.lessonId) return; // maquette / pas de leçon réelle : rien à enregistrer
+    // Lu AVANT l'appel : completeLesson hydrate le store avec la nouvelle série.
+    const streakBefore = useUserStore.getState().streak;
     // Compteur local de leçons terminées : garde-fou de la demande de note.
     useReviewPromptStore.getState().recordLesson();
     completeLesson({
@@ -73,6 +78,9 @@ export default function FinishScreen() {
         console.log('[finish] completeLesson OK', data);
         setXpGained(data.xpGained ?? 0);
         setDoubleXpWasActive(!!data.doubleXpWasActive);
+        // La série n'augmente qu'une fois par jour, côté serveur : les leçons
+        // suivantes du même jour renvoient la même valeur.
+        if (data.streak > streakBefore) setStreakUp(data.streak);
         // Leçon validée → parcours, classement et calendrier d'activité ont
         // changé : forcer un vrai re-fetch au prochain affichage.
         // ⚠️ La clé du parcours inclut la langue (`sections:fr`, cf.
@@ -107,7 +115,16 @@ export default function FinishScreen() {
   // canPrompt().
   const goNext = () => {
     const review = useReviewPromptStore.getState();
-    if (accuracy >= 80 && review.canPrompt()) review.show();
+    const askReview = accuracy >= 80 && review.canPrompt();
+    if (streakUp != null) {
+      // La notation attendra la fin de la célébration (cf. streak-celebration).
+      router.replace({
+        pathname: '/(app)/streak-celebration',
+        params: { streak: String(streakUp), xp: String(xpGained ?? 0), review: askReview ? '1' : '0' },
+      });
+      return;
+    }
+    if (askReview) review.show();
     router.replace('/(app)/(tabs)/parcours');
   };
 

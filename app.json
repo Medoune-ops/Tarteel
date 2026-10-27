@@ -244,6 +244,15 @@
           }
         }
       ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Tarteel enregistre l'image de ta série dans tes photos.",
+          "savePhotosPermission": "Tarteel enregistre l'image de ta série dans tes photos.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo"]
+        }
+      ],
       "./plugins/withoutActivityRecognition"
     ],
     "experiments": {
