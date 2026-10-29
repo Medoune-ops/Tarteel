@@ -35,24 +35,24 @@ export const Colors = {
 } as const;
 
 export const LightTheme = {
-  pageBg: '#EDEDF2',
+  pageBg: '#F6F4FB',
   cardBg: '#FFFFFF',
-  inputBg: '#F2F3F6',
-  border: '#E6E8EC',
-  divider: '#F0F1F4',
-  text: '#1B2333',
-  textSecondary: '#7A828F',
-  textTertiary: '#9AA0AA',
-  sectionLabel: '#9AA0AA',
+  inputBg: '#F3F0FC',
+  border: '#ECE8F4',
+  divider: '#F0EDF6',
+  text: '#1C1A26',
+  textSecondary: '#8A8494',
+  textTertiary: '#A9A4B8',
+  sectionLabel: '#A9A4B8',
   headerBg: '#FFFFFF',
   tabBarBg: '#FFFFFF',
-  tabBarBorder: '#E6E8EC',
-  selectorBg: '#ECEEF2',
+  tabBarBorder: '#ECE8F4',
+  selectorBg: '#EFECF6',
   selectedBg: '#E7F8E4',
   profileCardBg: '#E8E2FB',
   // ── Décor / éléments graphiques ──
   skyline: '#B0B8C4',        // traits du panorama La Mecque
-  skylineShadow: '#EDEDF2',  // ombre de lune (= pageBg en clair)
+  skylineShadow: '#F6F4FB',  // ombre de lune (= pageBg en clair)
   lockedBg: '#D5D8DF',       // nœud verrouillé (fond)
   lockedBorder: '#B0B5BE',   // nœud verrouillé (bordure)
   lockedBorderDark: '#9EA3AC', // nœud verrouillé (bordure basse)
@@ -64,18 +64,18 @@ export const LightTheme = {
 
 export const DarkTheme = {
   pageBg: '#0F0E17',
-  cardBg: '#1C1B28',
-  inputBg: '#252436',
-  border: '#2E2D3F',
-  divider: '#2A2940',
-  text: '#F0EFFF',
-  textSecondary: '#9896B8',
+  cardBg: '#1A1926',
+  inputBg: '#232133',
+  border: '#27253A',
+  divider: '#27253A',
+  text: '#F4F2FA',
+  textSecondary: '#9A96AA',
   textTertiary: '#6B6A88',
   sectionLabel: '#6B6A88',
-  headerBg: '#1C1B28',
-  tabBarBg: '#1C1B28',
-  tabBarBorder: '#2E2D3F',
-  selectorBg: '#252436',
+  headerBg: '#1A1926',
+  tabBarBg: '#15141F',
+  tabBarBorder: '#27253A',
+  selectorBg: '#1E1C2B',
   selectedBg: '#1E3320',
   profileCardBg: '#221F38',
   // ── Décor / éléments graphiques ──

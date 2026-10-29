@@ -7,141 +7,28 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Rect, Path, Circle, Ellipse, Line, Defs, RadialGradient, Stop, G } from 'react-native-svg';
+import Svg, {
+  Rect, Path, Circle, Ellipse, Line, Defs, RadialGradient, Stop, G, LinearGradient as SvgGradient,
+} from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import HeaderPattern from '../../../components/HeaderPattern';
-import { MosqueIcon, FlameIcon, GemIcon } from '../../../components/IslamicIcons';
+import { FlameIcon, GemIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
 import { useGiftModalStore } from '../../../store/giftModalStore';
 import { useTheme } from '../../../utils/useTheme';
 import { Colors, type ThemeColors } from '../../../constants/colors';
 import {
+  type LessonState,
+  type NodeIcon,
   type ParcoursNode,
   type ParcoursSection,
 } from '../../../constants/parcours';
-import { fetchSections } from '../../../lib/api';
+import { fetchSections, fetchActivity } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { fetchDailyChestAvailable, claimDailyChestApi } from '../../../lib/api/rewards';
 import { useT, t } from '../../../lib/i18n';
 import { playSound } from '../../../constants/sounds';
 
-// Icônes SVG pros pour les nodes complétés
-function IconStar({ size = 48 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <Path d="M24 6 L28.5 18 L42 18 L31.5 26.5 L35.5 39 L24 31.5 L12.5 39 L16.5 26.5 L6 18 L19.5 18 Z" fill="#fff" opacity={0.95} />
-    </Svg>
-  );
-}
-
-function IconBook({ size = 48 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      {/* couverture gauche */}
-      <Path d="M8 10 Q8 8 10 8 L23 8 L23 40 L10 40 Q8 40 8 38 Z" fill="#fff" opacity={0.9} />
-      {/* couverture droite */}
-      <Path d="M25 8 L38 8 Q40 8 40 10 L40 38 Q40 40 38 40 L25 40 Z" fill="#fff" opacity={0.75} />
-      {/* reliure */}
-      <Path d="M23 8 L25 8 L25 40 L23 40 Z" fill="#fff" opacity={0.5} />
-      {/* lignes texte gauche */}
-      <Path d="M12 16 L21 16" stroke="#34C724" strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M12 21 L21 21" stroke="#34C724" strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M12 26 L18 26" stroke="#34C724" strokeWidth={1.8} strokeLinecap="round" />
-      {/* lignes texte droite */}
-      <Path d="M27 16 L36 16" stroke="#34C724" strokeWidth={1.8} strokeLinecap="round" opacity={0.6} />
-      <Path d="M27 21 L36 21" stroke="#34C724" strokeWidth={1.8} strokeLinecap="round" opacity={0.6} />
-      <Path d="M27 26 L32 26" stroke="#34C724" strokeWidth={1.8} strokeLinecap="round" opacity={0.6} />
-    </Svg>
-  );
-}
-
-function IconPen({ size = 48 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      {/* corps du stylo */}
-      <Path d="M32 8 L40 16 L18 38 L8 40 L10 30 Z" fill="#fff" opacity={0.92} />
-      {/* pointe */}
-      <Path d="M36 8 L40 12 L38 14 L34 10 Z" fill="#fff" opacity={0.6} />
-      {/* reflet */}
-      <Path d="M33 10 L38 15" stroke="#34C724" strokeWidth={1.5} strokeLinecap="round" opacity={0.5} />
-      {/* trait d'écriture */}
-      <Path d="M10 30 L18 38" stroke="#34C724" strokeWidth={1.2} opacity={0.4} />
-      <Path d="M8 40 L14 34" stroke="#34C724" strokeWidth={1} opacity={0.35} />
-    </Svg>
-  );
-}
-
-function IconNote({ size = 48, locked = false, lockedColor = '#9AA0AA' }: { size?: number; locked?: boolean; lockedColor?: string }) {
-  const col = locked ? lockedColor : '#fff';
-  return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      {/* hampe */}
-      <Path d="M20 10 L20 34" stroke={col} strokeWidth={3} strokeLinecap="round" />
-      {/* queue note 1 */}
-      <Path d="M20 10 L36 7 L36 20 L20 23 Z" fill={col} opacity={0.9} />
-      {/* tête note 1 */}
-      <Ellipse cx={16} cy={35} rx={6} ry={4.5} fill={col} opacity={0.95} transform="rotate(-15 16 35)" />
-      {/* hampe 2 */}
-      <Path d="M33 17 L33 38" stroke={col} strokeWidth={3} strokeLinecap="round" />
-      {/* tête note 2 */}
-      <Ellipse cx={29} cy={39} rx={6} ry={4.5} fill={col} opacity={0.95} transform="rotate(-15 29 39)" />
-    </Svg>
-  );
-}
-
-function IconCrescent({ size = 48, locked = false, lockedColor = '#9AA0AA' }: { size?: number; locked?: boolean; lockedColor?: string }) {
-  const col = locked ? lockedColor : '#fff';
-  return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      {/* grand croissant bien visible */}
-      <Path d="M24 4 A20 20 0 1 0 24 44 A14 14 0 1 1 24 4 Z" fill={col} opacity={0.95} />
-      {/* étoile 5 branches */}
-      <Path d="M36 8 L37.5 4 L39 8 L43.5 8 L40 11 L41.5 15.5 L37.5 12.8 L33.5 15.5 L35 11 L31.5 8 Z" fill={col} opacity={0.88} />
-      {/* petite étoile */}
-      <Path d="M40 20 L41 17.5 L42 20 L44.5 20 L42.7 21.6 L43.4 24.2 L41 22.7 L38.6 24.2 L39.3 21.6 L37.5 20 Z" fill={col} opacity={0.65} />
-    </Svg>
-  );
-}
-
-function IconMoon({ size = 48, locked = false, lockedColor = '#9AA0AA' }: { size?: number; locked?: boolean; lockedColor?: string }) {
-  const col = locked ? lockedColor : '#fff';
-  return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      {/* croissant */}
-      <Path d="M28 6 A18 18 0 1 0 28 42 A13 13 0 1 1 28 6 Z" fill={col} opacity={0.95} />
-      {/* petite étoile */}
-      <Path d="M36 10 L37.2 7 L38.4 10 L41.5 10 L39 12 L40 15 L37.2 13.2 L34.4 15 L35.4 12 L33 10 Z" fill={col} opacity={0.85} />
-      {/* étoile plus petite */}
-      <Path d="M40 20 L40.8 18 L41.6 20 L43.8 20 L42.2 21.3 L42.9 23.5 L40.8 22.2 L38.7 23.5 L39.4 21.3 L37.8 20 Z" fill={col} opacity={0.7} />
-    </Svg>
-  );
-}
-
-function IconTrophy({ size = 48, locked = false, lockedColor = '#9AA0AA' }: { size?: number; locked?: boolean; lockedColor?: string }) {
-  const col = locked ? lockedColor : '#fff';
-  const shine = locked ? '#B0B8C4' : '#ffffffcc';
-  return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      {/* coupe */}
-      <Path d="M14 8 L34 8 L32 26 Q32 34 24 36 Q16 34 16 26 Z" fill={col} opacity={0.95} />
-      {/* anses */}
-      <Path d="M14 10 Q6 10 6 18 Q6 24 14 24" stroke={col} strokeWidth={2.5} fill="none" strokeLinecap="round" />
-      <Path d="M34 10 Q42 10 42 18 Q42 24 34 24" stroke={col} strokeWidth={2.5} fill="none" strokeLinecap="round" />
-      {/* pied */}
-      <Rect x={20} y={36} width={8} height={5} rx={1} fill={col} opacity={0.85} />
-      {/* socle */}
-      <Rect x={15} y={41} width={18} height={3} rx={1.5} fill={col} opacity={0.9} />
-      {/* reflet */}
-      <Path d="M18 12 Q20 10 22 12" stroke={shine} strokeWidth={1.5} strokeLinecap="round" opacity={0.6} />
-      {/* étoile sur la coupe */}
-      <Path d="M24 14 L25.2 18 L29 18 L26 20.5 L27.2 24.5 L24 22 L20.8 24.5 L22 20.5 L19 18 L22.8 18 Z" fill={locked ? '#B0B8C4' : '#F6B100'} opacity={0.9} />
-    </Svg>
-  );
-}
-
-function Dashed({ color }: { color: string }) {
-  return <View style={[styles.dashed, { borderColor: color }]} />;
-}
+type Theme = ReturnType<typeof useTheme>;
 
 /** Assombrit (percent < 0) ou éclaircit (percent > 0) un hex de la couleur de section,
  *  pour dériver les bordures 3D (bord + ombre) des badges à partir d'une seule teinte. */
@@ -180,50 +67,61 @@ function SectionSkeleton({ theme }: { theme: ThemeColors }) {
   );
 }
 
-function CompletedNode({ align, icon, onPress, color }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'star' | 'book' | 'pen'; onPress: () => void; color: string }) {
-  const renderIcon = () => {
-    if (icon === 'star') return <IconStar size={52} />;
-    if (icon === 'book') return <IconBook size={52} />;
-    if (icon === 'pen')  return <IconPen  size={52} />;
-    if (icon === 'mosque') return <MosqueIcon size={78} />;
-    return <Text style={styles.kaabaEmoji}>🕋</Text>;
-  };
-  return (
-    <Pressable onPress={onPress} style={[styles.nodeRow, alignStyle(align)]}>
-      <View style={[styles.completed, {
-        backgroundColor: color,
-        borderColor: shadeColor(color, -18),
-        borderBottomColor: shadeColor(color, -35),
-        shadowColor: shadeColor(color, -35),
-      }]}>{renderIcon()}</View>
-    </Pressable>
-  );
+/*
+ * Nœud du parcours : une fleur à 8 lobes, en relief.
+ *
+ * Quatre couches de la même forme : le flanc (décalé de 6 px vers le bas,
+ * plus sombre) donne l'épaisseur, puis la face en dégradé, un reflet blanc
+ * sur la moitié haute et un liseré clair.
+ */
+function flowerPath(cx: number, cy: number, rc: number, r: number, n: number): string {
+  const pts: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n + Math.PI / n;
+    pts.push([cx + rc * Math.cos(a), cy + rc * Math.sin(a)]);
+  }
+  let d = `M${pts[0]![0].toFixed(2)} ${pts[0]![1].toFixed(2)}`;
+  for (let i = 1; i <= n; i++) {
+    const q = pts[i % n]!;
+    d += ` A${r} ${r} 0 0 1 ${q[0].toFixed(2)} ${q[1].toFixed(2)}`;
+  }
+  return `${d}Z`;
+}
+const FLOWER = flowerPath(37, 37, 27, 12.5, 8);
+const FLOWER_RING = flowerPath(37, 40, 35, 16, 8);
+
+/** [haut, milieu, bas du dégradé, flanc, liseré, opacité du reflet]. */
+function flowerPalette(state: LessonState, isDark: boolean): [string, string, string, string, string, number] {
+  if (state === 'completed') return ['#A8EE8C', '#45C935', '#1F9A14', '#1A7E10', 'rgba(255,255,255,0.55)', 0.45];
+  if (state === 'active') return ['#C9B8FF', '#7A5CFF', '#3F22E8', '#3218B8', 'rgba(255,255,255,0.6)', 0.45];
+  return isDark
+    ? ['#3A3852', '#2C2A42', '#232137', '#16152A', 'rgba(255,255,255,0.08)', 0.08]
+    : ['#FFFFFF', '#ECE9F3', '#DCD7E7', '#C4BED3', 'rgba(255,255,255,0.9)', 0.5];
 }
 
-function LockedNode({ align, icon = 'kaaba', theme }: { align: 'left' | 'right' | 'center'; icon?: 'kaaba' | 'mosque' | 'note' | 'moon' | 'trophy' | 'crescent'; theme: ThemeColors }) {
-  const lc = theme.lockedIcon;
-  const renderIcon = () => {
-    if (icon === 'note')     return <IconNote     size={52} locked lockedColor={lc} />;
-    if (icon === 'moon')     return <IconMoon     size={52} locked lockedColor={lc} />;
-    if (icon === 'trophy')   return <IconTrophy   size={52} locked lockedColor={lc} />;
-    if (icon === 'crescent') return <IconCrescent size={52} locked lockedColor={lc} />;
-    if (icon === 'mosque')   return <MosqueIcon   size={72} locked />;
-    return <Text style={styles.kaabaEmojiLocked}>🕋</Text>;
-  };
-  return (
-    <View style={[styles.nodeRow, alignStyle(align)]}>
-      <View style={[styles.locked, {
-        backgroundColor: theme.lockedBg,
-        borderColor: theme.lockedBorder,
-        borderBottomColor: theme.lockedBorderDark,
-      }]}>{renderIcon()}</View>
-    </View>
-  );
-}
+const NODE_GLYPH: Record<NodeIcon, React.ComponentProps<typeof Feather>['name']> = {
+  star: 'star', book: 'book-open', pen: 'edit-3', mosque: 'home', kaaba: 'box',
+  note: 'music', moon: 'moon', trophy: 'award', crescent: 'moon',
+};
 
-function ActiveNode({ onPress, label = 'Leçon', color }: { onPress: () => void; label?: string; color: string }) {
+function FlowerNode({ node, isDark, onPress }: { node: ParcoursNode; isDark: boolean; onPress: () => void }) {
+  const { state } = node;
+  const [c1, c2, c3, side, rim, hi] = flowerPalette(state, isDark);
+  const locked = state === 'locked';
+  const glyph = locked ? (node.icon === 'trophy' ? 'award' : 'lock') : (NODE_GLYPH[node.icon] ?? 'star');
+  // Identifiants de dégradé propres au nœud : plusieurs Svg cohabitent à l'écran.
+  const gid = `fg${node.id.replace(/\W/g, '')}`;
+  const hid = `fh${node.id.replace(/\W/g, '')}`;
+  const floor = state === 'completed'
+    ? `rgba(54,174,37,${isDark ? 0.35 : 0.22})`
+    : state === 'active'
+      ? `rgba(98,68,245,${isDark ? 0.45 : 0.25})`
+      : (isDark ? 'rgba(0,0,0,0.35)' : 'rgba(30,20,70,0.08)');
+
+  // Anneau du nœud courant qui respire, pour attirer l'œil sans clignoter.
   const scale = useSharedValue(1);
   useEffect(() => {
+    if (state !== 'active') return;
     scale.value = withRepeat(
       withSequence(
         withTiming(1.06, { duration: 1000, easing: Easing.inOut(Easing.sin) }),
@@ -231,27 +129,42 @@ function ActiveNode({ onPress, label = 'Leçon', color }: { onPress: () => void;
       ),
       -1,
     );
-  }, []);
+  }, [state]);
   const ringStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
-    <Pressable onPress={onPress} style={[styles.nodeRow, { marginRight: 30 }]}>
-      <View style={{ alignItems: 'center' }}>
-        <Animated.View style={[styles.activeRing, ringStyle, {
-          backgroundColor: `${color}26`,
-          borderColor: `${color}59`,
-        }]}>
-          <View style={[styles.activeInner, {
-            backgroundColor: color,
-            borderColor: shadeColor(color, -18),
-            borderBottomColor: shadeColor(color, -35),
-            shadowColor: shadeColor(color, -35),
-          }]}>
-            <MosqueIcon size={76} />
-          </View>
+    <Pressable onPress={onPress} disabled={locked} hitSlop={6} style={styles.flower}>
+      <View style={[styles.flowerFloor, { backgroundColor: floor }]} />
+      {state === 'active' && (
+        <Animated.View style={[styles.flowerSvg, ringStyle]} pointerEvents="none">
+          <Svg width={104} height={112} viewBox="-15 -15 104 112">
+            <Path d={FLOWER_RING} fill="none" stroke={isDark ? 'rgba(138,107,255,0.55)' : 'rgba(107,77,255,0.3)'} strokeWidth={3} />
+          </Svg>
         </Animated.View>
-        <Text style={[styles.activeLabel, { color: shadeColor(color, -35) }]}>{label}</Text>
-      </View>
+      )}
+      <Svg width={104} height={112} viewBox="-15 -15 104 112" style={styles.flowerSvg} pointerEvents="none">
+        <Defs>
+          <SvgGradient id={gid} x1="0.2" y1="0" x2="0.7" y2="1">
+            <Stop offset="0" stopColor={c1} />
+            <Stop offset="0.45" stopColor={c2} />
+            <Stop offset="1" stopColor={c3} />
+          </SvgGradient>
+          <SvgGradient id={hid} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#fff" stopOpacity={hi} />
+            <Stop offset="0.5" stopColor="#fff" stopOpacity={0} />
+          </SvgGradient>
+        </Defs>
+        <Path d={FLOWER} transform="translate(0 6)" fill={side} />
+        <Path d={FLOWER} fill={`url(#${gid})`} />
+        <Path d={FLOWER} fill={`url(#${hid})`} />
+        <Path d={FLOWER} fill="none" stroke={rim} strokeWidth={1.5} />
+      </Svg>
+      <Feather
+        name={glyph}
+        size={26}
+        color={locked ? (isDark ? '#57536B' : '#A9A4B8') : '#fff'}
+        style={!locked && styles.flowerGlyph}
+      />
     </Pressable>
   );
 }
@@ -1070,23 +983,53 @@ const MeccaSkyline = memo(function MeccaSkyline({ width, height, color, shadowCo
   );
 });
 
-function alignStyle(align: 'left' | 'right' | 'center') {
-  if (align === 'left') return { marginLeft: 120 };
-  if (align === 'right') return { marginRight: 120 };
-  return {};
+/** Décalage horizontal d'un nœud : le chemin serpente de part et d'autre de l'axe. */
+const NODE_SHIFT = 70;
+function nodeOffset(align: ParcoursNode['align']): number {
+  if (align === 'left') return -NODE_SHIFT;
+  if (align === 'right') return NODE_SHIFT;
+  return 0;
 }
 
-/** Dispatcher : rend le bon nœud selon son état (completed / active / locked).
- *  `color` = couleur de la section parente, reprise par les badges completed/active. */
-function RenderNode({ node, onPress, theme, color }: { node: ParcoursNode; onPress: () => void; theme: ThemeColors; color: string }) {
-  if (node.state === 'active') return <ActiveNode label={node.label} onPress={onPress} color={color} />;
-  if (node.state === 'completed') {
-    return <CompletedNode align={node.align} icon={node.icon as 'star' | 'book' | 'pen' | 'mosque' | 'kaaba'} onPress={onPress} color={color} />;
-  }
-  return <LockedNode align={node.align} icon={node.icon as 'note' | 'moon' | 'trophy' | 'kaaba' | 'crescent' | 'mosque'} theme={theme} />;
+/**
+ * Bulle « COMMENCER » posée à côté du nœud courant, du côté où il reste de la
+ * place. Elle est une sœur du nœud (et pas un enfant) : sur Android, un
+ * enfant qui déborde de son parent ne reçoit pas les touchers.
+ */
+function LessonPopover({
+  dx, title, sub, onPress, T,
+}: {
+  dx: number; title: string; sub: string; onPress: () => void; T: Theme;
+}) {
+  const onRight = dx <= 0;
+  const gap = 37 + 16;
+  return (
+    <View
+      style={[
+        styles.popover,
+        { backgroundColor: T.cardBg, borderColor: T.border },
+        onRight ? { left: '50%', marginLeft: dx + gap } : { right: '50%', marginRight: -dx + gap },
+      ]}
+    >
+      <View
+        style={[
+          styles.popoverArrow,
+          { backgroundColor: T.cardBg, borderColor: T.border },
+          onRight ? { left: -7.5, borderLeftWidth: 1.5, borderBottomWidth: 1.5 } : { right: -7.5, borderRightWidth: 1.5, borderTopWidth: 1.5 },
+        ]}
+      />
+      <Text style={[styles.popoverTitle, { color: T.text }]} numberOfLines={1}>{title}</Text>
+      <Text style={[styles.popoverSub, { color: T.textSecondary }]} numberOfLines={1}>{sub}</Text>
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.popoverBtnWrap, pressed && { paddingBottom: 1, marginTop: 10 }]}>
+        <View style={styles.popoverBtn}>
+          <Text style={styles.popoverBtnText}>{t('parcours.start')}</Text>
+        </View>
+      </Pressable>
+    </View>
+  );
 }
 
-/** Carte de titre d'une section + ses nœuds reliés par des pointillés.
+/** Carte d'unité d'une section + ses nœuds en zigzag.
  *  memo : chaque section contient ~10 nœuds animés — on ne re-rend que si
  *  la section elle-même change (les données rafraîchies gardent le même id). */
 const SectionBlock = memo(function SectionBlock({
@@ -1099,7 +1042,7 @@ const SectionBlock = memo(function SectionBlock({
   section: ParcoursSection;
   index: number;
   onLessonPress: (n: ParcoursNode) => void;
-  theme: ThemeColors;
+  theme: Theme;
   /** Position Y du nœud actif DANS cette section (pour scroller pile dessus). */
   onActiveNodeLayout?: (yInSection: number) => void;
 }) {
@@ -1108,42 +1051,47 @@ const SectionBlock = memo(function SectionBlock({
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   // Offset vertical du bloc de nœuds sous la carte d'en-tête de section.
   const pathYRef = useRef(0);
+  const [from, to] = section.degrade;
 
   return (
     <View style={styles.sectionWrap}>
       <Animated.View
-        style={{ width: '100%' }}
+        style={styles.unitWrap}
         entering={FadeInDown.delay(index * 130)
           .duration(550)
           .springify()
           .damping(14)}
       >
-        <LinearGradient
-          colors={section.degrade}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.sectionCard}
-        >
-        {/* Pastille d'icône */}
-        <View style={styles.sectionIcon}>
-          <Feather name={section.headerIcon as any} size={24} color="#fff" />
+        {/* Ombre « marche » : la carte repose sur un bord plus sombre. */}
+        <View style={[styles.unitStep, { backgroundColor: shadeColor(to, -22) }]}>
+          <LinearGradient
+            colors={[shadeColor(from, 8), from, to]}
+            locations={[0, 0.6, 1]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={styles.unitCard}
+          >
+            <View style={styles.unitGlow} pointerEvents="none" />
+            <View style={styles.unitTop}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.unitKicker} numberOfLines={1}>{section.kicker}</Text>
+                <Text style={styles.unitTitle} numberOfLines={2}>{section.titre}</Text>
+                {!!section.sousTitre && (
+                  <Text style={styles.unitSub} numberOfLines={1}>{section.sousTitre}</Text>
+                )}
+              </View>
+              <View style={styles.unitBadge}>
+                <Feather name={section.headerIcon as any} size={22} color="#fff" />
+              </View>
+            </View>
+            <View style={styles.unitProgRow}>
+              <View style={styles.unitTrack}>
+                <View style={[styles.unitFill, { width: `${pct}%` }]} />
+              </View>
+              <Text style={styles.unitCount}>{done}/{total}</Text>
+            </View>
+          </LinearGradient>
         </View>
-
-        {/* Textes */}
-        <View style={{ flex: 1 }}>
-          <Text style={styles.sectionKicker}>{section.kicker}</Text>
-          <Text style={styles.sectionTitre}>{section.titre}</Text>
-          {!!section.sousTitre && (
-            <Text style={styles.sectionSousTitre} numberOfLines={1}>{section.sousTitre}</Text>
-          )}
-
-          {/* Barre de progression */}
-          <View style={styles.sectionProgressTrack}>
-            <View style={[styles.sectionProgressFill, { width: `${pct}%` }]} />
-          </View>
-          <Text style={styles.sectionProgressLabel}>{t('parcours.lessons', { done, total })}</Text>
-        </View>
-        </LinearGradient>
       </Animated.View>
 
       <View
@@ -1152,22 +1100,36 @@ const SectionBlock = memo(function SectionBlock({
         // à l'offset du nœud actif, ça donne sa position dans la section entière.
         onLayout={(e) => { pathYRef.current = e.nativeEvent.layout.y; }}
       >
-        {section.nodes.map((node, i) => (
-          <View
-            key={node.id}
-            style={{ alignItems: 'center' }}
-            // Le nœud actif remonte sa position Y (relative à la section) pour
-            // que le retap sur l'onglet scrolle exactement dessus.
-            onLayout={
-              node.state === 'active' && onActiveNodeLayout
-                ? (e) => onActiveNodeLayout(pathYRef.current + e.nativeEvent.layout.y)
-                : undefined
-            }
-          >
-            <RenderNode node={node} onPress={() => onLessonPress(node)} theme={theme} color={section.couleur} />
-            {i < section.nodes.length - 1 && <Dashed color={theme.dashedLine} />}
-          </View>
-        ))}
+        {section.nodes.map((node) => {
+          const dx = nodeOffset(node.align);
+          const active = node.state === 'active';
+          return (
+            <View
+              key={node.id}
+              style={[styles.nodeSlot, active && { zIndex: 2 }]}
+              // Le nœud actif remonte sa position Y (relative à la section) pour
+              // que le retap sur l'onglet scrolle exactement dessus.
+              onLayout={
+                active && onActiveNodeLayout
+                  ? (e) => onActiveNodeLayout(pathYRef.current + e.nativeEvent.layout.y)
+                  : undefined
+              }
+            >
+              <View style={{ transform: [{ translateX: dx }] }}>
+                <FlowerNode node={node} isDark={theme.isDark} onPress={() => onLessonPress(node)} />
+              </View>
+              {active && (
+                <LessonPopover
+                  dx={dx}
+                  title={node.label ?? t('parcours.lessonFallback')}
+                  sub={section.titre}
+                  onPress={() => onLessonPress(node)}
+                  T={theme}
+                />
+              )}
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -1278,45 +1240,24 @@ function abrege(n: number): string {
 }
 
 /**
- * Un compteur de l'en-tete : serie, XP, gemmes ou coeurs.
+ * Un compteur de la barre du haut : pastille teintée + chiffre.
  *
- * Pose sur le degrade, il est en VERRE : un fond blanc tres translucide
- * cercle d'un lisere clair. Une pastille opaque aurait fait tache sur le
- * motif ; translucide, elle le laisse transparaitre.
- *
- * `hero` inverse le traitement — fond blanc plein, texte orange — pour que
- * la serie, la seule statistique qui appelle une action aujourd'hui, se
- * detache sans avoir besoin d'etre plus grosse.
- *
- * Sans `onPress` (le cas des XP, qui n'ouvrent aucun ecran), on rend une
- * View : pas de retour tactile sur un element qui ne fait rien.
+ * Sans `onPress` (le cas des XP, qui n'ouvrent aucun écran), on rend une
+ * View : pas de retour tactile sur un élément qui ne fait rien.
  */
-function StatChip({
-  Icon, icon, glyphe = '#fff', value, onPress, hero,
+function Counter({
+  tint, icon, value, onPress, T,
 }: {
-  Icon?: (p: { size?: number; color?: string }) => React.ReactElement;
-  icon?: 'zap' | 'heart';
-  /** Couleur de l'icone. Ignoree quand `hero` est vrai. */
-  glyphe?: string;
-  value: string;
-  onPress?: () => void;
-  hero?: boolean;
+  tint: string; icon: React.ReactNode; value: string; onPress?: () => void; T: Theme;
 }) {
-  const style = [styles.chip, hero && styles.chipHero];
   const corps = (
     <>
-      {Icon
-        ? <Icon size={17} color={hero ? '#F0820C' : glyphe} />
-        : <Feather name={icon!} size={16} color={hero ? '#F0820C' : glyphe} />}
+      <View style={[styles.counterIcon, { backgroundColor: tint }]}>{icon}</View>
       <Text
-        style={[styles.chipVal, hero && styles.chipValHero]}
+        style={[styles.counterVal, { color: T.text }]}
         numberOfLines={1}
-        /*
-         * Sur un ecran etroit (iPhone SE, 320 px), quatre pastilles ne
-         * tiennent pas a pleine taille. Plutot que de tronquer le chiffre par
-         * un « … » — un compteur a moitie lu ne veut rien dire — on laisse la
-         * police descendre jusqu'a 75 % de sa taille.
-         */
+        // Sur un écran étroit, on laisse la police descendre plutôt que de
+        // tronquer le chiffre : un compteur à moitié lu ne veut rien dire.
         adjustsFontSizeToFit
         minimumFontScale={0.75}
       >
@@ -1324,15 +1265,101 @@ function StatChip({
       </Text>
     </>
   );
-
-  if (!onPress) return <View style={style}>{corps}</View>;
+  if (!onPress) return <View style={styles.counter}>{corps}</View>;
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={8}
-      style={({ pressed }) => [style, pressed && { opacity: 0.72, transform: [{ scale: 0.95 }] }]}
+      hitSlop={6}
+      style={({ pressed }) => [styles.counter, pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] }]}
     >
       {corps}
+    </Pressable>
+  );
+}
+
+const WEEKDAY_KEYS = [
+  'profil.weekday.mon', 'profil.weekday.tue', 'profil.weekday.wed',
+  'profil.weekday.thu', 'profil.weekday.fri', 'profil.weekday.sat', 'profil.weekday.sun',
+] as const;
+
+const dayKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Carte « Cette semaine » : les jours actifs du lundi au dimanche.
+ *
+ * Les jours viennent de GET /me/activity (même cache que le calendrier du
+ * profil). La semaine peut chevaucher deux mois : on charge alors les deux.
+ * Le jour même compte aussi dès que la série a progressé localement, sans
+ * attendre que le serveur l'ait enregistré.
+ */
+function WeekCard({ T, onPress }: { T: Theme; onPress: () => void }) {
+  const streakDay = useUserStore((s) => s.streakDay);
+  const now = new Date();
+  const todayKey = dayKey(now);
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  const week = Array.from({ length: 7 }, (_, i) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i));
+  const months = Array.from(new Set(week.filter((d) => d <= now).map((d) => dayKey(d).slice(0, 7))));
+  const monthsKey = months.join(',');
+
+  const [activeDays, setActiveDays] = useState<Set<string>>(new Set());
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      Promise.all(
+        monthsKey.split(',').map((m) =>
+          swrFetch(`activity:${m}`, () => fetchActivity(m)).catch(() => [] as string[])),
+      ).then((lists) => {
+        if (!cancelled) setActiveDays(new Set(lists.flat()));
+      });
+      return () => { cancelled = true; };
+    }, [monthsKey]),
+  );
+
+  const isActive = (d: Date) => activeDays.has(dayKey(d)) || (dayKey(d) === todayKey && streakDay === todayKey);
+  const count = week.filter(isActive).length;
+
+  const r = 18;
+  const circ = 2 * Math.PI * r;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.weekCard, { backgroundColor: T.cardBg, borderColor: T.border }, pressed && { opacity: 0.9 }]}
+    >
+      <View style={styles.weekRing}>
+        <Svg width={44} height={44} style={StyleSheet.absoluteFill}>
+          <Circle cx={22} cy={22} r={r} stroke={T.selectorBg} strokeWidth={5} fill="none" />
+          {count > 0 && (
+            <Circle
+              cx={22} cy={22} r={r} stroke="#F5B820" strokeWidth={5} fill="none"
+              strokeDasharray={`${(count / 7) * circ} ${circ}`} transform="rotate(-90 22 22)"
+            />
+          )}
+        </Svg>
+        <Feather name="zap" size={17} color="#F5B820" />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.weekTitle, { color: T.text }]} numberOfLines={1}>{t('parcours.weekTitle')}</Text>
+        <Text style={[styles.weekSub, { color: T.textSecondary }]} numberOfLines={1}>{t('parcours.weekSub', { n: count })}</Text>
+      </View>
+      <View style={styles.weekDots}>
+        {week.map((d, i) => {
+          const on = isActive(d);
+          const today = dayKey(d) === todayKey;
+          return (
+            <View
+              key={i}
+              style={[
+                styles.weekDot,
+                { backgroundColor: on ? '#FF9A3D' : T.selectorBg },
+                today && !on && { borderWidth: 2, borderColor: '#FF9A3D' },
+              ]}
+            >
+              <Text style={[styles.weekDotText, { color: on ? '#fff' : T.textSecondary }]}>{t(WEEKDAY_KEYS[i]!)}</Text>
+            </View>
+          );
+        })}
+      </View>
     </Pressable>
   );
 }
@@ -1353,77 +1380,6 @@ export default function ParcoursScreen() {
 
   const [sections, setSections] = useState<ParcoursSection[]>([]);
 
-  /*
-   * Index de la section EN HAUT DE L'ECRAN — c'est elle qui colore l'en-tete.
-   *
-   * On part de celle qui porte la prochaine lecon (l'ecran s'y positionne au
-   * chargement), puis `onViewableItemsChanged` prend le relais des que
-   * l'utilisateur defile.
-   */
-  const [sectionVisible, setSectionVisible] = useState(0);
-
-  const sectionCourante = sections[sectionVisible] ?? sections[0];
-  // Repli violet Tarteel tant que les sections ne sont pas chargees.
-  const degradeCible = sectionCourante?.degrade ?? ['#7C5CFF', '#5B3FD6'];
-
-  /*
-   * Fondu entre deux degrades superposes.
-   *
-   * `LinearGradient` n'anime pas ses `colors` : changer le tableau bascule la
-   * couleur d'un coup. On garde donc le degrade PRECEDENT en fond et on fait
-   * apparaitre le nouveau par-dessus en opacite — seule propriete que le
-   * compositeur sait interpoler sans redessiner.
-   */
-  const [degradeFond, setDegradeFond] = useState(degradeCible);
-  const [degradeHaut, setDegradeHaut] = useState(degradeCible);
-  const fondu = useSharedValue(1);
-
-  useEffect(() => {
-    // Rien a faire si la couleur n'a pas change (meme section, ou retour sur
-    // une section de meme teinte).
-    if (degradeCible[0] === degradeHaut[0] && degradeCible[1] === degradeHaut[1]) return;
-
-    /*
-     * Le degrade SORTANT est celui qu'on voit a cet instant — pas forcement
-     * `degradeHaut`, si un fondu est encore en cours. En defilement rapide a
-     * travers plusieurs sections, ecraser le fond par le haut provoquait une
-     * coupure : la couche basse sautait d'un coup a mi-animation.
-     *
-     * On ne remplace donc le fond que lorsque le fondu precedent est termine
-     * (fondu.value === 1). Sinon on le laisse en place et on redirige
-     * seulement la couche haute, qui repart de son opacite courante.
-     */
-    if (fondu.value === 1) setDegradeFond(degradeHaut);
-    setDegradeHaut(degradeCible);
-    fondu.value = 0;
-    fondu.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.quad) });
-  }, [degradeCible[0], degradeCible[1]]);
-
-  const hautStyle = useAnimatedStyle(() => ({ opacity: fondu.value }));
-
-  /*
-   * Section qui colore l'en-tete : celle qui occupe la plus grande part de
-   * l'ecran.
-   *
-   * `viewAreaCoveragePercentThreshold` et NON `itemVisiblePercentThreshold` :
-   * le second mesure la part de l'ITEM visible, or une section fait ~790 px
-   * pour ~620 px d'ecran utile. Elle ne peut donc jamais depasser ~78 % d'
-   * elle-meme, et entre deux positions centrees aucune section n'atteignait
-   * le seuil — le callback ne partait pas et la couleur restait figee.
-   *
-   * Le premier mesure la part de l'ECRAN couverte, ce qui a un sens quel que
-   * soit la taille des items. A 50 %, la section qui remplit la moitie haute
-   * de la vue prend la main.
-   */
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
-      // viewableItems peut arriver vide pendant un defilement rapide : on
-      // garde alors la derniere couleur plutot que de revenir au repli.
-      const premier = viewableItems[0]?.index;
-      if (premier != null) setSectionVisible(premier);
-    },
-  ).current;
   const [loadError, setLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [canLoadMore, setCanLoadMore] = useState(true);
@@ -1434,22 +1390,6 @@ export default function ParcoursScreen() {
   const shownRef = useRef(0);
   // Index (dans la liste affichée) de la section active — pour l'auto-scroll.
   const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
-  /*
-   * Couleur de depart : l'ecran s'ouvre sur la section de la prochaine lecon
-   * (voir scrollToActiveSection), l'en-tete doit partir de SA teinte plutot
-   * que de sauter depuis celle de la section 0.
-   *
-   * UNE SEULE FOIS. `setActiveSectionIndex` est rappele a chaque rechargement
-   * des sections — retour sur l'onglet, revalidation SWR — et reecrasait
-   * alors `sectionVisible` pose par le defilement : la couleur se figeait sur
-   * la section active et ne suivait plus le scroll.
-   */
-  const couleurInitialisee = useRef(false);
-  useEffect(() => {
-    if (couleurInitialisee.current || activeSectionIndex == null) return;
-    couleurInitialisee.current = true;
-    setSectionVisible(activeSectionIndex);
-  }, [activeSectionIndex]);
   const hasAutoScrolledRef = useRef(false);
 
   /** Applique la liste complète en gardant le nb de sections déjà affichées. */
@@ -1589,6 +1529,7 @@ export default function ParcoursScreen() {
   // place), ce qui ajoute un coût inutile à chaque re-render de l'écran.
   const renderHeader = useCallback(() => (
     <>
+      {!loadError && <WeekCard T={T} onPress={() => router.push('/(app)/streak')} />}
       {loadError && (
         <View style={styles.centerState}>
           <Feather name="wifi-off" size={32} color={T.textSecondary} />
@@ -1601,7 +1542,7 @@ export default function ParcoursScreen() {
         </View>
       )}
     </>
-  ), [loadError, T.textSecondary, loadSections]);
+  ), [loadError, T, loadSections, router]);
 
   const renderFooter = useCallback(() => {
     if (!canLoadMore) return <View style={{ height: 40 }} />;
@@ -1632,52 +1573,58 @@ export default function ParcoursScreen() {
         isDark={T.isDark}
       />
 
-      {/* En-tete : le degrade de la SECTION EN COURS, pas une couleur figee.
-          Il change donc de teinte a mesure qu'on avance dans le parcours. */}
-      <View style={styles.header}>
-        {/* Degrade sortant, en dessous — voir le fondu plus haut. */}
-        <LinearGradient
-          colors={degradeFond}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        {/* Degrade entrant, qui apparait par-dessus en opacite. */}
-        <Animated.View style={[StyleSheet.absoluteFill, hautStyle]}>
-          <LinearGradient
-            colors={degradeHaut}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
-        {/* Motif rub el hizb — le meme vocabulaire que les autres ecrans. */}
-        <HeaderPattern width={width} height={150} variant="stars" opacity={0.15} />
-        {/* Halo qui eclaire le coin haut gauche, pour que le degrade ne soit
-            pas une surface morte. */}
-        <View style={styles.halo} pointerEvents="none" />
-
-        <View style={[styles.headerTop, { paddingTop: insets.top + 6 }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.salut} numberOfLines={1}>{t('parcours.greeting')}</Text>
-            <Text style={styles.salutSous} numberOfLines={1}>
-              {sectionCourante
-                ? `${sectionCourante.kicker} · ${sectionCourante.titre}`
-                : t('parcours.greetingSub')}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statsBar}>
-          <StatChip
-            Icon={FlameIcon} value={String(streak)} hero
+      {/* Barre du haut : série, XP, gemmes et cœurs. Fixe, ne défile pas. */}
+      <View
+        style={[
+          styles.topBar,
+          {
+            paddingTop: insets.top + 8,
+            backgroundColor: T.isDark ? 'rgba(15,14,23,0.94)' : 'rgba(246,244,251,0.94)',
+            borderBottomColor: T.border,
+          },
+        ]}
+      >
+        <View style={[styles.pill, { backgroundColor: T.cardBg, borderColor: T.border }]}>
+          <Pressable
             onPress={() => router.push('/(app)/streak')}
+            hitSlop={6}
+            style={({ pressed }) => [styles.streakStep, pressed && { opacity: 0.85 }]}
+          >
+            <LinearGradient
+              colors={['#FFA54A', '#F27A12', '#E2610A']}
+              locations={[0, 0.6, 1]}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={styles.streakChip}
+            >
+              <View style={styles.streakIcon}>
+                <FlameIcon size={16} color="#fff" />
+              </View>
+              <View>
+                <Text style={styles.streakVal}>{abrege(streak)}</Text>
+                <Text style={styles.streakLbl}>{t('parcours.days')}</Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
+          <Counter
+            T={T}
+            tint={T.isDark ? 'rgba(245,184,32,0.16)' : '#FFF6D9'}
+            icon={<Feather name="zap" size={15} color="#F5B820" />}
+            value={abrege(xp)}
           />
-          <StatChip icon="zap" glyphe="#FFE07A" value={abrege(xp)} />
-          <StatChip
-            Icon={GemIcon} glyphe="#8FDCFF" value={abrege(gems)}
+          <View style={[styles.pillSep, { backgroundColor: T.border }]} />
+          <Counter
+            T={T}
+            tint={T.isDark ? 'rgba(47,167,232,0.16)' : '#E4F4FD'}
+            icon={<GemIcon size={14} color="#2FA7E8" />}
+            value={abrege(gems)}
             onPress={() => router.push('/(app)/gems')}
           />
-          <StatChip
-            icon="heart" glyphe="#FFA0A0"
+          <View style={[styles.pillSep, { backgroundColor: T.border }]} />
+          <Counter
+            T={T}
+            tint={T.isDark ? 'rgba(240,80,60,0.16)' : '#FFE8E5'}
+            icon={<Feather name="heart" size={15} color="#F0503C" />}
             value={isPremium ? '∞' : String(hearts)}
             onPress={() => router.push('/(app)/hearts')}
           />
@@ -1701,9 +1648,6 @@ export default function ParcoursScreen() {
           ListFooterComponent={renderFooter}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          // L'en-tete prend la couleur de la section qui occupe l'ecran.
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
           scrollIndicatorInsets={{ bottom: 0 }}
           showsVerticalScrollIndicator={false}
           // Chaque section est très haute (~10 nœuds) : on rend peu d'items
@@ -1730,72 +1674,51 @@ export default function ParcoursScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  // ── En-tete ──────────────────────────────────────────────────────────────
-  // Les coins bas arrondis detachent l'en-tete du parcours, comme sur les
-  // autres ecrans de l'app. overflow cache le motif et le halo qui debordent.
-  header: {
-    overflow: 'hidden',
-    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
-    paddingBottom: 14,
+  // ── Barre du haut ────────────────────────────────────────────────────────
+  // Fond presque opaque : le panorama passe dessous sans gêner la lecture.
+  topBar: { paddingHorizontal: 18, paddingBottom: 12, borderBottomWidth: 1, zIndex: 5 },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 2, height: 54,
+    paddingLeft: 7, paddingRight: 6, borderRadius: 20, borderWidth: 1,
+    shadowColor: '#1E1446', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 18, elevation: 2,
   },
-  // Lueur diffuse dans le coin haut gauche : sans elle, le degrade est une
-  // surface morte. Un disque largement hors cadre, dont seule la frange
-  // interieure se voit.
-  halo: {
-    position: 'absolute', top: -150, left: -90,
-    width: 300, height: 300, borderRadius: 150,
-    backgroundColor: 'rgba(255,255,255,0.13)',
+  streakStep: { borderRadius: 14, paddingBottom: 3, backgroundColor: '#C2520A' },
+  streakChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, height: 40,
+    paddingLeft: 6, paddingRight: 12, borderRadius: 14,
   },
-  headerTop: { paddingHorizontal: 18, paddingBottom: 13 },
-  salut: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 19, color: '#fff', lineHeight: 24 },
-  salutSous: {
-    fontFamily: 'Nunito_800ExtraBold', fontSize: 11,
-    color: 'rgba(255,255,255,0.74)', marginTop: 1, letterSpacing: 0.2,
+  streakIcon: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  statsBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, gap: 7,
-  },
-  // Pastille d'un compteur. Le fond, le contour et l'ombre viennent de
-  // l'accent (voir StatChip) ; seule la géométrie est ici.
-  // Verre : fond blanc tres translucide + lisere clair. Laisse passer le
-  // motif, contrairement a une pastille opaque.
-  // `flexShrink` autorise la pastille a se resserrer plutot qu'a pousser ses
-  // voisines hors de l'ecran ; `minWidth: 0` est ce qui permet au texte de
-  // retrecir a l'interieur (sans lui, flex refuse de passer sous la largeur
-  // du contenu).
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 9, paddingVertical: 6, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.17)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)',
-    flexShrink: 1, minWidth: 0,
-  },
-  // La serie : traitement inverse, pour se detacher sans grossir.
-  chipHero: {
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderColor: '#fff',
-    shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 }, elevation: 3,
-  },
-  /*
-   * Pas de lineHeight, et includeFontPadding desactive sur Android.
-   *
-   * Avec lineHeight 19 sur une police 16, les 3 px de blanc ne se
-   * repartissaient pas egalement : Baloo 2 a une forte ascendante et peu de
-   * descendante, donc le chiffre se posait HAUT dans sa boite. Comme la
-   * pastille centre les deux boites (icone 17 px et texte), elle alignait
-   * leurs centres et pas les glyphes — le chiffre paraissait monter
-   * au-dessus de l'icone.
-   *
-   * Sans lineHeight, la boite epouse le glyphe et le centrage tombe juste.
-   */
-  chipVal: {
-    fontFamily: 'Baloo2_800ExtraBold', fontSize: 16, color: '#fff',
-    flexShrink: 1,
+  streakVal: {
+    fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, lineHeight: 19, color: '#fff',
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
-  chipValHero: { color: '#E0560E', fontSize: 17 },
+  streakLbl: { fontFamily: 'Nunito_800ExtraBold', fontSize: 9, color: 'rgba(255,255,255,0.9)' },
+  // `minWidth: 0` laisse le chiffre rétrécir au lieu de pousser ses voisins.
+  counter: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  counterIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  counterVal: {
+    fontFamily: 'Baloo2_800ExtraBold', fontSize: 17, flexShrink: 1,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+  },
+  pillSep: { width: 1, height: 22 },
+
+  // ── Carte « Cette semaine » ──────────────────────────────────────────────
+  weekCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 16, marginTop: 14, paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 20, borderWidth: 1,
+    shadowColor: '#1E1446', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 18, elevation: 2,
+  },
+  weekRing: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  weekTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 14, lineHeight: 17 },
+  weekSub: { fontFamily: 'Nunito_700Bold', fontSize: 12 },
+  weekDots: { flexDirection: 'row', gap: 4 },
+  weekDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  weekDotText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 9 },
+
   scroll: { flexGrow: 1 },
   centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
@@ -1804,38 +1727,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B4DFF',
   },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
+
+  // ── Carte d'unité ────────────────────────────────────────────────────────
   sectionWrap: { width: '100%', alignItems: 'center' },
-  sectionCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 16,
-    marginHorizontal: 18, marginTop: 22,
-    paddingHorizontal: 18, paddingVertical: 18, borderRadius: 24,
-    maxWidth: 520,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18, shadowRadius: 18, elevation: 6,
+  unitWrap: { width: '100%', maxWidth: 520, paddingHorizontal: 16, marginTop: 18 },
+  unitStep: { borderRadius: 24, paddingBottom: 6 },
+  unitCard: { borderRadius: 24, paddingVertical: 16, paddingLeft: 18, paddingRight: 16, overflow: 'hidden' },
+  unitGlow: {
+    position: 'absolute', right: -30, top: -40, width: 150, height: 150, borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  sectionIcon: {
-    width: 56, height: 56, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+  unitTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  unitKicker: { fontFamily: 'Nunito_900Black', fontSize: 11, letterSpacing: 1.3, color: 'rgba(255,255,255,0.85)' },
+  unitTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, lineHeight: 28, color: '#fff', marginTop: 4 },
+  unitSub: { fontFamily: 'Nunito_700Bold', fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  unitBadge: {
+    width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  sectionKicker: {
-    fontFamily: 'Nunito_800ExtraBold', fontSize: 12, letterSpacing: 1.2,
-    color: 'rgba(255,255,255,0.85)',
-  },
-  sectionTitre: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff', marginTop: 1 },
-  sectionSousTitre: {
-    fontFamily: 'Nunito_600SemiBold', fontSize: 13,
-    color: 'rgba(255,255,255,0.9)', marginTop: 2,
-  },
-  sectionProgressTrack: {
-    height: 7, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.18)',
-    marginTop: 12, overflow: 'hidden',
-  },
-  sectionProgressFill: { height: '100%', borderRadius: 4, backgroundColor: '#fff' },
-  sectionProgressLabel: {
-    fontFamily: 'Nunito_700Bold', fontSize: 11,
-    color: 'rgba(255,255,255,0.95)', marginTop: 5,
-  },
+  unitProgRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
+  unitTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: 'rgba(0,0,0,0.18)', overflow: 'hidden' },
+  unitFill: { height: '100%', borderRadius: 5, backgroundColor: '#fff' },
+  unitCount: { fontFamily: 'Nunito_900Black', fontSize: 12, color: '#fff' },
+
   skeletonCard: {
     flexDirection: 'row', alignItems: 'center', gap: 16,
     marginHorizontal: 18, marginTop: 22,
@@ -1844,38 +1758,24 @@ const styles = StyleSheet.create({
   },
   skeletonIcon: { width: 56, height: 56, borderRadius: 18 },
   skeletonLine: { height: 12, borderRadius: 6 },
-  path: { alignItems: 'center', paddingVertical: 40, width: '100%' },
-  nodeRow: { alignItems: 'center' },
-  completed: {
-    width: 96, height: 96, borderRadius: 48,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3,
-    borderBottomWidth: 8,
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 0, elevation: 6,
+
+  // ── Chemin et nœuds ──────────────────────────────────────────────────────
+  path: { alignItems: 'center', paddingTop: 30, paddingBottom: 20, width: '100%' },
+  nodeSlot: { width: '100%', height: 108, alignItems: 'center', justifyContent: 'flex-start' },
+  flower: { width: 74, height: 74, alignItems: 'center', justifyContent: 'center' },
+  flowerSvg: { position: 'absolute', left: -15, top: -15 },
+  flowerFloor: { position: 'absolute', left: 4, right: 4, bottom: -20, height: 14, borderRadius: 7 },
+  flowerGlyph: { textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1.5 }, textShadowRadius: 0 },
+
+  popover: {
+    position: 'absolute', top: -4, width: 132,
+    paddingTop: 10, paddingBottom: 10, paddingHorizontal: 11, borderRadius: 18, borderWidth: 1.5,
+    shadowColor: '#1E1446', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.14, shadowRadius: 28, elevation: 8,
   },
-  locked: {
-    width: 88, height: 88, borderRadius: 44, backgroundColor: '#D5D8DF',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: '#B0B5BE',
-    borderBottomWidth: 8, borderBottomColor: '#9EA3AC',
-  },
-  activeRing: {
-    width: 122, height: 122, borderRadius: 61,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3,
-  },
-  activeInner: {
-    width: 96, height: 96, borderRadius: 48,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3,
-    borderBottomWidth: 8,
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 0, elevation: 6,
-  },
-  activeLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, marginTop: 8 },
-  kaabaEmoji: { fontSize: 46 },
-  kaabaEmojiLocked: { fontSize: 44, opacity: 0.45 },
-  dashed: {
-    height: 30, borderLeftWidth: 3, borderColor: '#C9CDD4',
-    borderStyle: 'dashed', width: 0,
-  },
+  popoverArrow: { position: 'absolute', top: 36, width: 13, height: 13, transform: [{ rotate: '45deg' }] },
+  popoverTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, lineHeight: 18 },
+  popoverSub: { fontFamily: 'Nunito_700Bold', fontSize: 11, marginTop: 2 },
+  popoverBtnWrap: { marginTop: 8, borderRadius: 11, paddingBottom: 3, backgroundColor: '#4A2FC4' },
+  popoverBtn: { height: 32, borderRadius: 11, backgroundColor: '#6B4DFF', alignItems: 'center', justifyContent: 'center' },
+  popoverBtnText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 13.5, color: '#fff', letterSpacing: 0.4 },
 });
