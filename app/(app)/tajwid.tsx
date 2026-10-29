@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-  View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView, Alert, TextInput,
+  View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator, ScrollView, Alert, TextInput, Image,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -289,9 +289,13 @@ export default function TajwidScreen() {
               ]}
             >
               <View style={[styles.recRing, sel && { borderColor: P.accent }]}>
-                <LinearGradient colors={av.colors} {...G140} style={styles.recAvatar}>
-                  <Text style={styles.recIni}>{av.ini}</Text>
-                </LinearGradient>
+                {'photo' in av && av.photo ? (
+                  <Image source={av.photo} style={styles.recAvatar} accessibilityIgnoresInvertColors />
+                ) : (
+                  <LinearGradient colors={av.colors} {...G140} style={styles.recAvatar}>
+                    <Text style={styles.recIni}>{av.ini}</Text>
+                  </LinearGradient>
+                )}
               </View>
               <Text style={[styles.recName, { color: P.ink }]} numberOfLines={2}>{r.nom}</Text>
             </Pressable>

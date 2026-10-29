@@ -3,6 +3,8 @@
  * « Tarteel Écoute du Coran ») — partagés par la liste (tajwid.tsx) et le
  * lecteur plein écran (coran-player.tsx).
  */
+import type { ImageSourcePropType } from 'react-native';
+
 export type ListenPalette = {
   bg: string; card: string; mini: string; ink: string; muted: string;
   line: string; track: string; accent: string; accentSoft: string; recSel: string;
@@ -34,11 +36,16 @@ export const G150 = { start: { x: 0.25, y: 0 }, end: { x: 0.75, y: 1 } };
 export const G140 = { start: { x: 0.18, y: 0 }, end: { x: 0.82, y: 1 } };
 
 /** Avatar (initiales + dégradé) de chaque récitateur de constants/reciters. */
-export const RECITER_AVATAR: Record<string, { ini: string; colors: readonly [string, string] }> = {
-  basit: { ini: 'AB', colors: ['#7C5BF0', '#4F35C9'] },
-  sudais: { ini: 'AS', colors: ['#2BA47D', '#166F55'] },
-  salami: { ini: 'MS', colors: ['#F0A41E', '#D0700C'] },
-  afasy: { ini: 'MA', colors: ['#4A8FE0', '#2A5CB0'] },
+/** Avatar d'un récitateur : sa photo si on en a une, sinon ses initiales sur un dégradé. */
+export const RECITER_AVATAR: Record<string, {
+  ini: string;
+  colors: readonly [string, string];
+  photo?: ImageSourcePropType;
+}> = {
+  basit: { ini: 'AB', colors: ['#7C5BF0', '#4F35C9'], photo: require('../assets/reciters/basit.jpg') },
+  sudais: { ini: 'AS', colors: ['#2BA47D', '#166F55'], photo: require('../assets/reciters/sudais.jpg') },
+  salami: { ini: 'MS', colors: ['#F0A41E', '#D0700C'], photo: require('../assets/reciters/salami.jpg') },
+  afasy: { ini: 'MA', colors: ['#4A8FE0', '#2A5CB0'], photo: require('../assets/reciters/afasy.jpg') },
 };
 
 /** Formate des secondes en "m:ss". */
