@@ -8,14 +8,20 @@
  * La flèche affiche la différence, donc elle pointe toujours vers la Kaaba
  * quelle que soit l'orientation de l'appareil.
  *
- * ⚠️ Le magnétomètre donne le nord MAGNÉTIQUE, pas le nord géographique. Sans
- * correction de déclinaison, l'écart va de quelques degrés (Sénégal, Europe de
- * l'Ouest) à beaucoup plus ailleurs. L'affichage est donc indicatif, et l'écran
- * le dit.
+ * Le cap vient en priorité du SYSTÈME (`Location.watchHeadingAsync`) : il
+ * est calibré, compensé quand le téléphone est penché, et corrigé de la
+ * déclinaison (nord géographique). Le magnétomètre brut n'est qu'un repli
+ * quand la localisation n'est pas autorisée (ville choisie à la main) : il
+ * donne le nord MAGNÉTIQUE, sans compensation d'inclinaison — l'affichage
+ * reste indicatif, et l'écran le dit.
  */
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Magnetometer } from 'expo-sensors';
+import * as Location from 'expo-location';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, Easing, type SharedValue,
+} from 'react-native-reanimated';
 import { qiblaDirection, distanceToKaaba, cardinalFor } from '../constants/prayerTimes';
 import { useT } from '../lib/i18n';
 
@@ -25,6 +31,119 @@ const TICKS = Array.from({ length: 72 }, (_, i) => i * 5);
 const CARDINALS = [
   { l: 'N', a: 0 }, { l: 'E', a: 90 }, { l: 'S', a: 180 }, { l: 'W', a: 270 },
 ];
+
+/** Écart signé le plus court pour aller de `from` à `to`, en degrés, dans [-180, 180[. */
+function shortestDelta(from: number, to: number): number {
+  return ((to - from) % 360 + 540) % 360 - 180;
+}
+
+/**
+ * Cap du téléphone, lissé.
+ *
+ * Les mesures brutes tremblent de plusieurs degrés à chaque échantillon : les
+ * afficher telles quelles faisait gigoter l'aiguille en permanence. On les
+ * filtre (moyenne exponentielle) sur un angle DÉROULÉ, qui peut dépasser 360°
+ * ou passer sous 0 : sans ça, franchir le nord (359° → 1°) faisait faire un
+ * tour complet au cadran dans le mauvais sens.
+ *
+ * - `smooth` : cap déroulé, animé côté UI (rotations du cadran et de l'aiguille) ;
+ * - `heading` : même cap ramené à [0, 360[, pour les textes (rafraîchi ~10 fois/s) ;
+ * - `lowAccuracy` : le système signale une boussole mal calibrée.
+ */
+function useHeading(): { heading: number | null; lowAccuracy: boolean; smooth: SharedValue<number> } {
+  const [heading, setHeading] = useState<number | null>(null);
+  const [lowAccuracy, setLowAccuracy] = useState(false);
+  const smooth = useSharedValue(0);
+
+  useEffect(() => {
+    let subscription: { remove: () => void } | null = null;
+    // Le composant peut être démonté pendant un await : sans ce drapeau, on
+    // s'abonnerait APRÈS le cleanup et l'abonnement fuiterait (capteur laissé
+    // actif sur un écran quitté).
+    let cancelled = false;
+    let current: number | null = null; // cap lissé, déroulé
+    let lastTextUpdate = 0;
+
+    const push = (raw: number, alpha: number) => {
+      if (!Number.isFinite(raw) || raw < 0) return;
+      if (current == null) {
+        current = raw;
+        smooth.value = raw;
+      } else {
+        const delta = shortestDelta(current, raw);
+        // Bruit de fond du capteur : on ne bouge pas pour moins d'un demi-degré.
+        if (Math.abs(delta) < 0.5) return;
+        current += delta * alpha;
+        smooth.value = withTiming(current, { duration: 150, easing: Easing.linear });
+      }
+      const now = Date.now();
+      if (now - lastTextUpdate > 100) {
+        lastTextUpdate = now;
+        setHeading(((current % 360) + 360) % 360);
+      }
+    };
+
+    /** Repli : magnétomètre brut (nord magnétique, téléphone à plat). */
+    const startMagnetometer = async () => {
+      // Le magnétomètre est absent de nombreux appareils d'entrée de gamme (et
+      // de la plupart des émulateurs) : on retombe alors sur l'affichage du cap
+      // seul. Constaté par exemple sur Galaxy A03 (aucun capteur de champ
+      // magnétique). L'aiguille figée n'est donc pas un bug.
+      if (!(await Magnetometer.isAvailableAsync()) || cancelled) return;
+      // ⚠️ NE JAMAIS mettre 200 ms ici sur Android — l'aiguille se fige.
+      // expo-sensors écoute à SENSOR_DELAY_NORMAL (~200 ms) puis filtre avec
+      // `currentTime - lastUpdate > updateInterval` : demander 200 ms rejette
+      // quasiment toutes les mesures (constaté sur appareil, build 17).
+      // 120 ms laisse passer chaque évènement reçu.
+      Magnetometer.setUpdateInterval(120);
+      subscription = Magnetometer.addListener(({ x, y }) => {
+        // Capteur pas encore calibré (fréquent au démarrage sur Android) : il
+        // émet des (0,0), qui donneraient un faux « plein nord ».
+        if (x === 0 && y === 0) return;
+        // Téléphone à plat en portrait : Y vers le haut de l'écran, X vers la
+        // droite. Cap compté depuis le nord dans le sens horaire, et signe
+        // négatif car le champ mesuré pointe à l'opposé du cap (constaté sur
+        // appareil : sans lui, la flèche tournait à l'envers).
+        push((-Math.atan2(x, y) * (180 / Math.PI) + 360) % 360, 0.2);
+      });
+    };
+
+    (async () => {
+      try {
+        // Le cap système exige la permission de localisation. Si l'utilisateur
+        // a choisi sa ville à la main, on ne la redemande pas : repli capteur.
+        const perm = await Location.getForegroundPermissionsAsync();
+        if (cancelled) return;
+        if (perm.granted) {
+          const sub = await Location.watchHeadingAsync((h) => {
+            // trueHeading vaut -1 tant que le nord géographique n'est pas connu.
+            push(h.trueHeading >= 0 ? h.trueHeading : h.magHeading, 0.35);
+            setLowAccuracy(h.accuracy <= 1);
+          });
+          if (cancelled) sub.remove();
+          else subscription = sub;
+          return;
+        }
+      } catch (e) {
+        console.warn('[qibla] cap système indisponible, repli magnétomètre :', e);
+      }
+      try {
+        await startMagnetometer();
+      } catch (e) {
+        // Un catch muet rendait le bug indiagnosticable à distance : la cause
+        // est tracée, l'affichage statique reste le comportement de repli.
+        console.warn('[qibla] magnétomètre indisponible — aiguille figée :', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, []);
+
+  return { heading, lowAccuracy, smooth };
+}
 
 interface Props {
   latitude: number;
@@ -38,90 +157,24 @@ interface Props {
 export default function QiblaCompass({ latitude, longitude, colors, dark = false }: Props) {
   const tr = useT();
   const { width } = useWindowDimensions();
-  const [heading, setHeading] = useState<number | null>(null);
+  const { heading, lowAccuracy, smooth } = useHeading();
 
   const qibla = qiblaDirection(latitude, longitude);
   const distance = distanceToKaaba(latitude, longitude);
   const cardinal = cardinalFor(qibla);
 
-  useEffect(() => {
-    let subscription: { remove: () => void } | null = null;
-
-    // Le composant peut être démonté pendant l'await ci-dessous : sans ce
-    // drapeau, on s'abonnerait APRÈS le cleanup et l'abonnement fuiterait
-    // (aiguille figée sur un écran quitté, capteur laissé actif).
-    let cancelled = false;
-
-    // Le magnétomètre est absent de nombreux appareils d'entrée de gamme (et
-    // de la plupart des émulateurs) : on retombe alors sur l'affichage du cap
-    // seul. Constaté par exemple sur Galaxy A03 (`dumpsys sensorservice` ne
-    // liste que accéléromètre, luminosité, proximité et podomètre — aucun
-    // capteur de champ magnétique, et `pm list features` ne déclare pas
-    // android.hardware.sensor.compass). L'aiguille figée n'est donc pas un
-    // bug : c'est le seul comportement possible sans capteur.
-    Magnetometer.isAvailableAsync()
-      .then((available) => {
-        if (cancelled) return;
-        if (!available) return;
-        // ⚠️ NE JAMAIS mettre 200 ms ici sur Android — l'aiguille se fige.
-        //
-        // expo-sensors n'impose pas cet intervalle au capteur : il enregistre
-        // le listener à SENSOR_DELAY_NORMAL (~200 ms) faute de la permission
-        // HIGH_SAMPLING_RATE_SENSORS, puis filtre en JS natif avec
-        //     if (currentTime - lastUpdate > updateInterval)
-        // Demander 200 ms revient donc à exiger un écart STRICTEMENT supérieur
-        // à 200 ms sur des évènements qui arrivent toutes les ~200 ms : la
-        // condition échoue quasiment à chaque fois et plus aucune mesure ne
-        // passe. C'est exactement ce qui a figé la boussole (constaté sur
-        // appareil, build 17).
-        //
-        // 120 ms laisse au contraire passer chaque évènement reçu. On ne gagne
-        // pas en fluidité au-delà de la cadence matérielle, mais on ne perd
-        // aucune mesure — et aucune permission supplémentaire n'est requise.
-        Magnetometer.setUpdateInterval(120);
-        subscription = Magnetometer.addListener(({ x, y }) => {
-          // Téléphone tenu à plat, portrait : l'axe Y du magnétomètre pointe
-          // vers le haut de l'écran (« devant soi »), l'axe X vers la droite.
-          // Un cap de boussole se compte depuis le nord, dans le sens
-          // horaire — d'où atan2(x, y) plutôt que atan2(y, x) (convention
-          // mathématique standard, sens antihoraire).
-          //
-          // Le capteur renvoie la direction du champ magnétique AMBIANT, qui
-          // pointe à l'opposé du cap réel de l'appareil (le champ « rentre »
-          // par le pôle nord magnétique) : sans ce signe négatif, la flèche
-          // tournait dans le bon référentiel mais dans le mauvais sens — un
-          // virage à droite du téléphone la faisait tourner à gauche
-          // (constaté sur appareil).
-          // Capteur pas encore calibré (fréquent au démarrage sur Android) :
-          // il émet des (0,0). `atan2(0, 0)` vaut 0, ce qui donnerait un cap
-          // « plein nord » parfaitement crédible — l'aiguille se figeait donc
-          // sur une valeur FAUSSE au lieu d'afficher « pas de capteur ». On
-          // ignore ces mesures : `heading` reste null tant qu'aucune lecture
-          // exploitable n'arrive.
-          if (x === 0 && y === 0) return;
-          let angle = -Math.atan2(x, y) * (180 / Math.PI);
-          angle = (angle + 360) % 360;
-          setHeading(angle);
-        });
-      })
-      .catch((e) => {
-        // Un catch muet ici rendait le bug indiagnosticable à distance :
-        // l'aiguille restait figée sans la moindre trace. L'affichage
-        // statique reste le comportement de repli, mais la cause est tracée.
-        console.warn('[qibla] magnétomètre indisponible — aiguille figée :', e);
-      });
-
-    return () => {
-      cancelled = true;
-      subscription?.remove();
-    };
-  }, []);
-
   // Écart signé entre la Qibla et l'avant du téléphone, ramené à [-180, 180[.
   // Sans magnétomètre, l'aiguille montre le cap absolu (repère fixe).
-  const diff = heading == null ? null : ((qibla - heading) % 360 + 540) % 360 - 180;
-  const needleRot = diff ?? qibla;
-  const dialRot = heading == null ? 0 : -heading;
+  const diff = heading == null ? null : shortestDelta(heading, qibla);
+  const live = heading != null;
+  // Rotations animées sur le cap DÉROULÉ (pas ramené à 0–360) : passer de
+  // 359° à 1° tourne de 2°, pas d'un tour complet dans l'autre sens.
+  const dialStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${live ? -smooth.value : 0}deg` }],
+  }), [live]);
+  const needleStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${live ? qibla - smooth.value : qibla}deg` }],
+  }), [live, qibla]);
   const aligned = diff != null && Math.abs(diff) <= ALIGN_TOLERANCE;
 
   const accent = dark ? '#3DCB98' : '#1A8F69';
@@ -167,11 +220,8 @@ export default function QiblaCompass({ latitude, longitude, colors, dark = false
 
       <View style={{ width: D, height: D, marginTop: 22 }}>
         {/* Cadran : tourne avec le téléphone pour garder le nord au nord. */}
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            { borderRadius: R, backgroundColor: dialBg, transform: [{ rotate: `${dialRot}deg` }] },
-          ]}
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { borderRadius: R, backgroundColor: dialBg }, dialStyle]}
         >
           {TICKS.map((a) => {
             const maj = a % 30 === 0;
@@ -221,10 +271,10 @@ export default function QiblaCompass({ latitude, longitude, colors, dark = false
               <View style={styles.kaabaBand} />
             </View>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Aiguille vers la Kaaba, relative à l'avant du téléphone. */}
-        <View style={[StyleSheet.absoluteFill, { transform: [{ rotate: `${needleRot}deg` }] }]} pointerEvents="none">
+        <Animated.View style={[StyleSheet.absoluteFill, needleStyle]} pointerEvents="none">
           <View style={{ position: 'absolute', left: R - 2, top: R - 112 * k, width: 4, height: 112 * k, borderRadius: 2, backgroundColor: needle }} />
           <View
             style={{
@@ -233,7 +283,7 @@ export default function QiblaCompass({ latitude, longitude, colors, dark = false
               borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: needle,
             }}
           />
-        </View>
+        </Animated.View>
 
         {/* Moyeu : l'écart restant en degrés. */}
         <View style={[styles.hub, { left: R - 29, top: R - 29, backgroundColor: colors.cardBg, borderColor: line }]}>
@@ -247,7 +297,11 @@ export default function QiblaCompass({ latitude, longitude, colors, dark = false
       </View>
 
       <Text style={[styles.hint, { color: colors.textSecondary }]}>
-        {heading == null ? tr('qibla.noSensor') : aligned ? tr('qibla.alignedHint') : tr('qibla.hint')}
+        {heading == null
+          ? tr('qibla.noSensor')
+          : aligned
+            ? tr('qibla.alignedHint')
+            : lowAccuracy ? tr('qibla.calibrate') : tr('qibla.hint')}
       </Text>
     </View>
   );

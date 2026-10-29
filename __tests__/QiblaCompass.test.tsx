@@ -28,6 +28,18 @@ jest.mock('expo-sensors', () => ({
     },
   },
 }));
+// Cap système (Location.watchHeadingAsync) : refusé par défaut pour que les
+// tests du repli magnétomètre ci-dessous restent valables.
+let mockLocationGranted = false;
+let mockHeadingCb: ((h: { trueHeading: number; magHeading: number; accuracy: number }) => void) | null = null;
+const mockHeadingRemove = jest.fn();
+jest.mock('expo-location', () => ({
+  getForegroundPermissionsAsync: () => Promise.resolve({ granted: mockLocationGranted }),
+  watchHeadingAsync: (cb: (h: { trueHeading: number; magHeading: number; accuracy: number }) => void) => {
+    mockHeadingCb = cb;
+    return Promise.resolve({ remove: mockHeadingRemove });
+  },
+}));
 jest.mock('react-native-svg', () => ({ __esModule: true, default: 'Svg', Path: 'Path' }));
 jest.mock('../components/IslamicIcons', () => ({ KaabaColorIcon: () => null }));
 jest.mock('../lib/i18n', () => ({
@@ -35,6 +47,7 @@ jest.mock('../lib/i18n', () => ({
 }));
 
 import QiblaCompass from '../components/QiblaCompass';
+import { qiblaDirection } from '../constants/prayerTimes';
 
 const COLORS = { text: '#000', textSecondary: '#666', textTertiary: '#999', cardBg: '#fff' };
 // Dakar.
@@ -49,6 +62,9 @@ const REAL_OS = Platform.OS;
 afterEach(() => { Platform.OS = REAL_OS; });
 
 beforeEach(() => {
+  mockLocationGranted = false;
+  mockHeadingCb = null;
+  mockHeadingRemove.mockClear();
   mockListener = null;
   mockAvailable = true;
   mockRemove.mockClear();
@@ -109,5 +125,33 @@ it('sans magnetometre, aucun abonnement et pas de crash', async () => {
   expect(mockListener).toBeNull();
   expect(mockSetInterval).not.toHaveBeenCalled();
   expect(textOf(r!.root)).toContain('qibla.noSensor');
+  await act(async () => { r?.unmount(); });
+});
+
+it('avec la localisation autorisée, suit le cap SYSTÈME (calibré, nord vrai) et pas le magnétomètre brut', async () => {
+  mockLocationGranted = true;
+  let r: TestRenderer.ReactTestRenderer | undefined;
+  await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });
+
+  expect(mockHeadingCb).not.toBeNull();
+  expect(mockListener).toBeNull();
+
+  // Téléphone pointé pile vers la Qibla -> aligné.
+  const qibla = qiblaDirection(props.latitude, props.longitude);
+  await act(async () => { mockHeadingCb?.({ trueHeading: qibla, magHeading: qibla + 3, accuracy: 3 }); });
+  expect(textOf(r!.root)).toContain('qibla.aligned');
+
+  await act(async () => { r?.unmount(); });
+  expect(mockHeadingRemove).toHaveBeenCalled();
+});
+
+it('boussole mal calibrée : demande de faire un 8', async () => {
+  mockLocationGranted = true;
+  let r: TestRenderer.ReactTestRenderer | undefined;
+  await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });
+
+  const qibla = qiblaDirection(props.latitude, props.longitude);
+  await act(async () => { mockHeadingCb?.({ trueHeading: (qibla + 90) % 360, magHeading: 0, accuracy: 1 }); });
+  expect(textOf(r!.root)).toContain('qibla.calibrate');
   await act(async () => { r?.unmount(); });
 });

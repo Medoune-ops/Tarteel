@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { isWidgetTarget } from '../+native-intent';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as NativeSplashScreen from 'expo-splash-screen';
 import Animated, {
@@ -14,6 +15,7 @@ import { useT } from '../../lib/i18n';
 export default function SplashScreen() {
   const router = useRouter();
   const tr = useT();
+  const { next } = useLocalSearchParams<{ next?: string }>();
   const loadingWidth = useSharedValue(0);
 
   useEffect(() => {
@@ -32,7 +34,12 @@ export default function SplashScreen() {
       // On laisse l'animation se voir un minimum (~1.6s) avant de router.
       setTimeout(() => {
         if (cancelled) return;
-        if (status === 'connected') router.replace('/(app)/(tabs)/parcours');
+        if (status === 'connected') {
+          router.replace('/(app)/(tabs)/parcours');
+          // Ouverture depuis un widget (voir app/+native-intent.tsx) : l'écran
+          // demandé s'empile sur le parcours, « retour » y ramène.
+          if (next && isWidgetTarget(next)) router.push(`/(app)${next}`);
+        }
         else if (status === 'unverified') {
           router.replace({
             pathname: '/(onboarding)/verify-email',

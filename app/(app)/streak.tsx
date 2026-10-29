@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import DeviceStatusBar from '../../components/StatusBar';
-import { FlameIcon, GemIcon, FreezeIcon, TrophyIcon } from '../../components/IslamicIcons';
+import { FlameIcon, GemIcon, FreezeIcon } from '../../components/IslamicIcons';
 import { useTheme } from '../../utils/useTheme';
 import { useUserStore } from '../../store/userStore';
 import { useAppConfigStore } from '../../store/appConfigStore';
@@ -609,70 +609,6 @@ export default function StreakScreen() {
           )}
         </View>
 
-        {/* ── Historique ── */}
-        {history != null && (
-          <>
-            <Text style={[styles.titreSection, { color: T.text }]}>{tr('streak.historyTitle')}</Text>
-            {history.length === 0 ? (
-              <View style={[styles.carte, { backgroundColor: T.cardBg, shadowColor: T.shadow }]}>
-                <View style={styles.boiteEtat}>
-                  <FlameIcon size={34} color={T.textTertiary} inner={T.lockedBg} />
-                  <Text style={[styles.etatTxt, { color: T.textSecondary }]}>{tr('streak.historyEmpty')}</Text>
-                </View>
-              </View>
-            ) : (
-            <View style={[styles.carte, styles.liste, { backgroundColor: T.cardBg, shadowColor: T.shadow }]}>
-              {history.map((h, i) => {
-                const gel = h.reason === 'streak_freeze';
-                const bonus = h.reason === 'streak_bonus';
-                return (
-                  <View key={h.id} style={[styles.ligne, i > 0 && { borderTopWidth: 1, borderTopColor: T.divider }]}>
-                    <View
-                      style={[
-                        styles.ligneIcone,
-                        {
-                          backgroundColor: gel
-                            ? (T.isDark ? 'rgba(28,176,246,0.15)' : '#E3F4FD')
-                            : bonus
-                              ? (T.isDark ? 'rgba(224,160,44,0.16)' : '#FFF4D6')
-                              : (T.isDark ? 'rgba(255,140,50,0.15)' : '#FFEEDD'),
-                        },
-                      ]}
-                    >
-                      {gel ? (
-                        <FreezeIcon size={17} color="#1CB0F6" />
-                      ) : bonus ? (
-                        <TrophyIcon size={17} color="#E0A02C" />
-                      ) : (
-                        <FlameIcon size={17} color="#F4633A" />
-                      )}
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={[styles.ligneTitre, { color: T.text }]}>
-                        {gel ? tr('streak.reasonFreeze') : bonus ? tr('streak.reasonBonus') : tr('streak.reasonDaily')}
-                      </Text>
-                      <Text style={[styles.ligneDate, { color: T.textSecondary }]}>
-                        {new Date(h.createdAt).toLocaleDateString(undefined, {
-                          day: 'numeric', month: 'short', year: 'numeric',
-                        })}
-                      </Text>
-                    </View>
-                    {h.amount !== 0 && (
-                      <View style={styles.ligneMontant}>
-                        <Text style={[styles.ligneMontantTxt, { color: h.amount > 0 ? '#2A9E1C' : '#FF4B4B' }]}>
-                          {h.amount > 0 ? '+' : ''}{h.amount}
-                        </Text>
-                        <GemIcon size={13} color="#1CB0F6" />
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-            )}
-          </>
-        )}
-
         <View style={{ height: 32 }} />
       </ScrollView>
 
@@ -854,17 +790,10 @@ const styles = StyleSheet.create({
   legendePuce: { width: 11, height: 11, borderRadius: 4 },
   legendeTxt: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11 },
 
-  /* ── États / historique ── */
+  /* ── États (chargement, erreur) ── */
   boiteEtat: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 32, paddingHorizontal: 20 },
   etatTxt: { fontFamily: 'Nunito_700Bold', fontSize: 14, textAlign: 'center' },
   retry: { paddingHorizontal: 22, paddingVertical: 10, borderRadius: 14, backgroundColor: '#F0820C' },
   retryTxt: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
 
-  liste: { paddingVertical: 4, paddingHorizontal: 16 },
-  ligne: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  ligneIcone: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  ligneTitre: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
-  ligneDate: { fontFamily: 'Nunito_600SemiBold', fontSize: 12.5, marginTop: 2 },
-  ligneMontant: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  ligneMontantTxt: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15 },
 });
