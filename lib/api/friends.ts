@@ -5,12 +5,15 @@
  * vit hors API, sur `/f/:code`.
  */
 import { apiFetch } from './client';
+import type { AvatarConfig } from '../../components/Avatar';
 
 export interface FriendUser {
   id: string;
   displayName: string;
   username: string | null;
   avatarInitials: string;
+  /** Avatar composé par l'ami ; null/absent = initiales. */
+  avatarStyle?: AvatarConfig | null;
 }
 
 export interface FriendView {

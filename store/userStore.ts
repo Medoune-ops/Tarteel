@@ -5,6 +5,7 @@ import { getLocales } from 'expo-localization';
 import { setFlameProvider, syncWidgetData } from '../utils/widgetData';
 import { trackFlame } from '../utils/flameTracking';
 import { clearSwrCache } from '../lib/api/swr';
+import type { AvatarConfig } from '../components/Avatar';
 
 // ─── Constantes du système de cœurs ─────────────────────────────────────────
 export const MAX_HEARTS = 5;
@@ -20,6 +21,8 @@ interface UserState {
   avatar: string | null;
   /** Pseudo public (ligues) ; null pour les comptes créés avant le champ. */
   username: string | null;
+  /** Avatar composé dans « Mon avatar » ; null = loutre par défaut. Local à l'appareil. */
+  avatarStyle: AvatarConfig | null;
   streak: number;
   xp: number;
   hearts: number;
@@ -88,6 +91,7 @@ interface UserState {
 
   /** Met à jour le profil local (nom/avatar) — ex: après PATCH /me. */
   setProfile: (p: { name?: string; avatar?: string | null }) => void;
+  setAvatarStyle: (style: AvatarConfig) => void;
   setLevel: (v: UserState['level']) => void;
   setObjectif: (v: UserState['objectif']) => void;
   setMemorizedSourates: (v: number[]) => void;
@@ -119,6 +123,7 @@ interface UserState {
    * À appeler après chaque fetch réussi — remplace les valeurs locales par la source de vérité serveur.
    */
   hydrateFromBackend: (data: {
+    avatarStyle?: AvatarConfig | null;
     streak: number;
     xp: number;
     hearts: number;
@@ -165,6 +170,7 @@ const initialState = {
   email: '',
   avatar: null as string | null,
   username: null as string | null,
+  avatarStyle: null as AvatarConfig | null,
   streak: 0,
   xp: 0,
   hearts: MAX_HEARTS,
@@ -234,6 +240,7 @@ export const useUserStore = create<UserState>()(
           name: name ?? s.name,
           avatar: avatar !== undefined ? avatar : s.avatar,
         })),
+      setAvatarStyle: (avatarStyle) => set({ avatarStyle }),
       setLevel: (level) => set({ level }),
       setObjectif: (objectif) => set({ objectif }),
       setMemorizedSourates: (memorizedSourates) => set({ memorizedSourates }),
@@ -322,6 +329,7 @@ export const useUserStore = create<UserState>()(
           ...(data.email  != null && { email:  data.email  }),
           ...(data.avatar !== undefined && { avatar: data.avatar }),
           ...(data.username !== undefined && { username: data.username }),
+          ...(data.avatarStyle !== undefined && { avatarStyle: data.avatarStyle }),
           // Onboarding/prefs : restaurés depuis le serveur pour ne PAS relancer
           // le setup à chaque reconnexion.
           ...(data.onboardingDone != null && { onboardingDone: data.onboardingDone }),

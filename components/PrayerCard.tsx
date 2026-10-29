@@ -1,9 +1,8 @@
 /**
  * Carte « prochaine prière » du profil — porte d'entrée vers l'écran complet.
  *
- * Remplace l'ancienne barre de progression de niveau : une information utile
- * plusieurs fois par jour, plutôt qu'un compteur d'XP déjà visible juste
- * au-dessus dans le bandeau de statistiques.
+ * Une ligne compacte (icône, nom de la prière, heure et compte à rebours),
+ * dans le style des autres cartes du profil.
  *
  * Le calcul est local (`constants/prayerTimes.ts`) : la carte s'affiche donc
  * hors-ligne dès que la position est connue.
@@ -11,7 +10,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { usePrayerStore } from '../store/prayerStore';
 import {
   computePrayerTimes,
@@ -20,17 +18,20 @@ import {
   timeUntil,
 } from '../constants/prayerTimes';
 import { useT } from '../lib/i18n';
+import { useTheme } from '../utils/useTheme';
 
 interface Props {
   onPress: () => void;
   localeTag?: string;
 }
 
+const GREEN = '#1F9A6E';
+
 export default function PrayerCard({ onPress, localeTag = 'fr-FR' }: Props) {
   const tr = useT();
+  const T = useTheme();
   const latitude = usePrayerStore((s) => s.latitude);
   const longitude = usePrayerStore((s) => s.longitude);
-  const cityName = usePrayerStore((s) => s.cityName);
 
   // Re-rendu chaque minute : le compte à rebours doit descendre tout seul.
   const [now, setNow] = useState(() => new Date());
@@ -50,94 +51,61 @@ export default function PrayerCard({ onPress, localeTag = 'fr-FR' }: Props) {
     return computePrayerTimes(latitude, longitude, tomorrow)[0] ?? null;
   }, [latitude, longitude, now]);
 
-  // Position inconnue : la carte invite à la définir plutôt que de rester vide.
-  if (latitude == null || longitude == null) {
-    return (
-      <Pressable onPress={onPress}>
-        <LinearGradient
-          colors={['#1F8A70', '#26A17B']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.card}
-        >
-          <View style={styles.row}>
-            <View style={styles.iconWrap}>
-              <Text style={styles.icon}>🕌</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>{tr('prayer.cardTitle')}</Text>
-              <Text style={styles.setupHint}>{tr('prayer.setupHint')}</Text>
-            </View>
-            <Feather name="chevron-right" size={22} color="rgba(255,255,255,0.9)" />
-          </View>
-        </LinearGradient>
-      </Pressable>
-    );
-  }
-
+  const located = latitude != null && longitude != null;
   const remaining = upcoming ? timeUntil(upcoming.time, now) : null;
 
   return (
-    <Pressable onPress={onPress}>
-      <LinearGradient
-        colors={['#1F8A70', '#26A17B']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.card}
-      >
-        <View style={styles.row}>
-          <View style={styles.iconWrap}>
-            <Text style={styles.icon}>🕌</Text>
-          </View>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: T.cardBg, borderColor: T.border },
+        pressed && { opacity: 0.85 },
+      ]}
+      accessibilityRole="button"
+    >
+      <View style={[styles.iconWrap, { backgroundColor: T.isDark ? 'rgba(31,154,110,0.18)' : '#E3F4EC' }]}>
+        <Feather name="moon" size={18} color={GREEN} />
+      </View>
 
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>{tr('prayer.nextPrayer')}</Text>
-            {upcoming && (
-              <Text style={styles.prayerName}>{tr(`prayer.name.${upcoming.name}`)}</Text>
-            )}
-            {cityName && <Text style={styles.city}>{cityName}</Text>}
-          </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.label, { color: T.textSecondary }]}>
+          {tr(located ? 'prayer.nextPrayer' : 'prayer.cardTitle')}
+        </Text>
+        {located ? (
+          upcoming && <Text style={[styles.prayerName, { color: T.text }]}>{tr(`prayer.name.${upcoming.name}`)}</Text>
+        ) : (
+          <Text style={[styles.prayerName, { color: T.text }]} numberOfLines={1}>{tr('prayer.setupHint')}</Text>
+        )}
+      </View>
 
-          <View style={styles.timeCol}>
-            {upcoming && (
-              <Text style={styles.time}>{formatPrayerTime(upcoming.time, localeTag)}</Text>
-            )}
-            {remaining && (
-              <Text style={styles.remaining}>
-                {remaining.hours > 0
-                  ? tr('prayer.inHoursMinutes', { h: remaining.hours, m: remaining.minutes })
-                  : tr('prayer.inMinutes', { m: remaining.minutes })}
-              </Text>
-            )}
-          </View>
+      {located ? (
+        <View style={styles.timeCol}>
+          {upcoming && <Text style={styles.time}>{formatPrayerTime(upcoming.time, localeTag)}</Text>}
+          {remaining && (
+            <Text style={[styles.remaining, { color: T.textSecondary }]}>
+              {remaining.hours > 0
+                ? tr('prayer.inHoursMinutes', { h: remaining.hours, m: remaining.minutes })
+                : tr('prayer.inMinutes', { m: remaining.minutes })}
+            </Text>
+          )}
         </View>
-      </LinearGradient>
+      ) : (
+        <Feather name="chevron-right" size={18} color={T.textSecondary} />
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 18,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: {
-    width: 46, height: 46, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  icon: { fontSize: 24 },
-  label: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.85)' },
-  prayerName: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, color: '#fff', marginTop: 1 },
-  city: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.75)' },
-  setupHint: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#fff', marginTop: 2 },
+  iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  label: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5 },
+  prayerName: { fontFamily: 'Nunito_900Black', fontSize: 15, lineHeight: 19 },
   timeCol: { alignItems: 'flex-end' },
-  time: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 24, color: '#fff' },
-  remaining: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+  time: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, lineHeight: 24, color: GREEN },
+  remaining: { fontFamily: 'Nunito_800ExtraBold', fontSize: 11.5 },
 });

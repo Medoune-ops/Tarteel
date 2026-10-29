@@ -7,6 +7,7 @@
  * /leagues/join puis on relit.
  */
 import { apiFetch } from './client';
+import type { AvatarConfig } from '../../components/Avatar';
 
 /** Un participant du classement (podium ou voisinage). */
 export interface LeagueMember {
@@ -14,6 +15,8 @@ export interface LeagueMember {
   userId: string;
   name: string;
   initials: string;
+  /** Avatar composé ; null/absent = initiales. */
+  avatarStyle?: AvatarConfig | null;
   weeklyXp: number;
   me: boolean;
   promotion: boolean;

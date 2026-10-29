@@ -4,12 +4,14 @@
  * `/me/household` côté backend.
  */
 import { apiFetch } from './client';
+import type { AvatarConfig } from '../../components/Avatar';
 
 export interface HouseholdMemberView {
   userId: string;
   email: string;
   displayName: string;
   avatarInitials: string;
+  avatarStyle?: AvatarConfig | null;
   role: 'owner' | 'member';
   joinedAt: string;
   isMe: boolean;

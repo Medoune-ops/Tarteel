@@ -10,6 +10,7 @@ import { apiFetch } from './client';
 import { clearTokens } from './tokens';
 import { useUserStore } from '../../store/userStore';
 import type { SourateListItem } from './content';
+import type { AvatarConfig } from '../../components/Avatar';
 
 export interface MeResponse {
   streak: number;
@@ -32,6 +33,8 @@ export interface MeResponse {
   username?: string | null;
   email?: string;
   avatar?: string | null;
+  /** Avatar composé (« Mon avatar ») ; null = avatar par défaut. */
+  avatarStyle?: AvatarConfig | null;
   onboardingDone?: boolean;
   level?: 'debutant' | 'alphabet' | 'lent' | 'fluent';
   objectif?: 'lire' | 'hifz' | 'tafsir' | 'complet';
@@ -104,6 +107,8 @@ export interface UpdateProfileInput {
   avatar?: string;
   /** Pseudo public (ligues) — modifiable depuis Paramètres → Modifier le profil. */
   username?: string;
+  /** Avatar composé dans « Mon avatar » ; visible des amis et des ligues. */
+  avatarStyle?: AvatarConfig | null;
 }
 
 /**
@@ -116,9 +121,10 @@ export interface UpdateProfileInput {
  * `avatar` n'a pas encore de support serveur : on ne l'envoie pas.
  */
 export async function updateProfile(input: UpdateProfileInput): Promise<MeResponse> {
-  const payload: { displayName?: string; username?: string } = {};
+  const payload: { displayName?: string; username?: string; avatarStyle?: AvatarConfig | null } = {};
   if (input.name != null) payload.displayName = input.name;
   if (input.username != null) payload.username = input.username;
+  if (input.avatarStyle !== undefined) payload.avatarStyle = input.avatarStyle;
   const data = await apiFetch<MeResponse>('/me', { method: 'PATCH', json: payload });
   useUserStore.getState().hydrateFromBackend(data);
   return data;
