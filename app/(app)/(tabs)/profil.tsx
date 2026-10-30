@@ -4,10 +4,14 @@ import { useRouter, useFocusEffect, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
+} from 'react-native-reanimated';
 import { UserAvatar } from '../../../components/Avatar';
 import PrayerCard from '../../../components/PrayerCard';
 import { QuranIcon, StarIslamIcon, FlameIcon, TrophyIcon, PuzzleIcon } from '../../../components/IslamicIcons';
 import { useUserStore } from '../../../store/userStore';
+import { leagueLabel } from '../../../utils/leagueLabel';
 import { useTheme } from '../../../utils/useTheme';
 import { useScrollToTopOnTabPress } from '../../../utils/useScrollToTopOnTabPress';
 import { fetchActivity, type LeagueView } from '../../../lib/api';
@@ -49,18 +53,6 @@ function buildBadges(streak: number, streakGoal: number | null): Badge[] {
   ];
 }
 
-/** Libellé de ligue traduit à partir du nom backend (français). */
-const LEAGUE_NAME_KEYS: Record<string, I18nKey> = {
-  bronze: 'ligues.name.bronze', argent: 'ligues.name.argent', or: 'ligues.name.or',
-  emeraude: 'ligues.name.emeraude', saphir: 'ligues.name.saphir', rubis: 'ligues.name.rubis',
-  diamant: 'ligues.name.diamant',
-};
-function leagueLabel(nom?: string | null): string | null {
-  if (!nom) return null;
-  const key = nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return LEAGUE_NAME_KEYS[key] ? t(LEAGUE_NAME_KEYS[key]!) : nom;
-}
-
 /** Barres décoratives de la carte d'écoute (forme d'onde figée). */
 const WAVE = Array.from({ length: 40 }, (_, j) =>
   Math.round(6 + 22 * Math.abs(Math.sin(j * 0.9) * Math.cos(j * 0.37))));
@@ -70,6 +62,19 @@ export default function ProfilScreen() {
   const T = useTheme();
   const tr = useT();
   const insets = useSafeAreaInsets();
+
+  // ── Rotation continue de l'engrenage des paramètres ──
+  const gearSpin = useSharedValue(0);
+  useEffect(() => {
+    gearSpin.value = withRepeat(
+      withTiming(360, { duration: 4000, easing: Easing.linear }),
+      -1, // infini
+      false, // pas d'aller-retour : rotation dans un seul sens
+    );
+  }, []);
+  const gearStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${gearSpin.value}deg` }],
+  }));
   const language = useUserStore((s) => s.language);
   const logout = useUserStore((s) => s.logout);
   const name = useUserStore((s) => s.name);
@@ -184,7 +189,9 @@ export default function ProfilScreen() {
                 <Feather name="share" size={16} color="#fff" />
               </Pressable>
               <Pressable style={styles.heroBtn} onPress={() => router.push('/(app)/settings')} accessibilityLabel="Paramètres" hitSlop={6}>
-                <Feather name="settings" size={17} color="#fff" />
+                <Animated.View style={gearStyle}>
+                  <Feather name="settings" size={17} color="#fff" />
+                </Animated.View>
               </Pressable>
             </View>
           </View>
