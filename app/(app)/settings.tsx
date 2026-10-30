@@ -7,7 +7,7 @@ import Toggle from '../../components/Toggle';
 import { useUserStore } from '../../store/userStore';
 import { useAppConfigStore } from '../../store/appConfigStore';
 import { useTheme } from '../../utils/useTheme';
-import { logout, updateSettings, fetchFriendsInbox } from '../../lib/api';
+import { logout, updateSettings, fetchFriendsSummary } from '../../lib/api';
 import { fetchNotificationPrefs, updateNotificationPrefs } from '../../lib/api/notifications';
 import { useT } from '../../lib/i18n';
 
@@ -90,8 +90,8 @@ export default function SettingsScreen() {
   useFocusEffect(() => {
     if (!friendsEnabled) return;
     let cancelled = false;
-    fetchFriendsInbox()
-      .then((r) => { if (!cancelled) setUnreadMsgs(r.unread); })
+    fetchFriendsSummary()
+      .then((r) => { if (!cancelled) setUnreadMsgs(r.unreadMessages); })
       .catch(() => {});
     return () => { cancelled = true; };
   });

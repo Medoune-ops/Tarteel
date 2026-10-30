@@ -13,8 +13,9 @@ import CountUp from '../../components/CountUp';
 import { useTheme } from '../../utils/useTheme';
 import { friendPalette } from '../../utils/friendTheme';
 import {
-  fetchFriendCode, fetchFriends, fetchFriendsLeaderboard,
-  type FriendView, type LeaderboardEntry,
+  fetchFriendCode, fetchFriends, fetchFriendsLeaderboard, fetchFriendRequests,
+  acceptFriendRequest, declineFriendRequest,
+  type FriendView, type LeaderboardEntry, type FriendRequestView,
 } from '../../lib/api';
 import { useT } from '../../lib/i18n';
 
@@ -34,6 +35,8 @@ export default function FriendsScreen() {
   const [code, setCode] = useState<string | null>(null);
   const [friends, setFriends] = useState<FriendView[]>([]);
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
+  const [requests, setRequests] = useState<FriendRequestView[]>([]);
+  const [answering, setAnswering] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -41,12 +44,13 @@ export default function FriendsScreen() {
     setLoading(true);
     setError(false);
     try {
-      const [c, f, b] = await Promise.all([
-        fetchFriendCode(), fetchFriends(), fetchFriendsLeaderboard(),
+      const [c, f, b, r] = await Promise.all([
+        fetchFriendCode(), fetchFriends(), fetchFriendsLeaderboard(), fetchFriendRequests(),
       ]);
       setCode(c.code);
       setFriends(f);
       setBoard(b.entries);
+      setRequests(r.received);
     } catch {
       setError(true);
     } finally {
@@ -55,6 +59,19 @@ export default function FriendsScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const answerRequest = async (req: FriendRequestView, accept: boolean) => {
+    if (answering) return;
+    setAnswering(req.id);
+    try {
+      await (accept ? acceptFriendRequest(req.id) : declineFriendRequest(req.id));
+      await load();
+    } catch {
+      Alert.alert(tr('friends.addErrorTitle'));
+    } finally {
+      setAnswering(null);
+    }
+  };
 
   const share = async () => {
     if (!code) return;
@@ -129,6 +146,47 @@ export default function FriendsScreen() {
               onPress={() => router.push('/(app)/friends-add')}
               style={{ marginTop: 14 }}
             />
+
+            {/* Demandes reçues */}
+            {requests.length > 0 && (
+              <>
+                <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('friends.requests')}</Text>
+                <View style={[styles.listCard, { backgroundColor: T.cardBg }]}>
+                  {requests.map((r, i) => (
+                    <View key={r.id}>
+                      {i > 0 && <View style={[styles.divider, { backgroundColor: T.divider }]} />}
+                      <View style={styles.friendRow}>
+                        <FriendAvatar name={r.user.displayName} id={r.user.id} size={46} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.friendName, { color: T.text }]}>{r.user.displayName}</Text>
+                          {r.user.username ? <Text style={[styles.friendUser, { color: T.textSecondary }]}>@{r.user.username}</Text> : null}
+                        </View>
+                        {answering === r.id ? (
+                          <ActivityIndicator color="#6B4DFF" />
+                        ) : (
+                          <>
+                            <Pressable
+                              style={[styles.requestBtn, { backgroundColor: P.neutralBg }]}
+                              onPress={() => answerRequest(r, false)}
+                              accessibilityLabel={tr('friends.decline')}
+                            >
+                              <Feather name="x" size={18} color={P.neutralText} />
+                            </Pressable>
+                            <Pressable
+                              style={[styles.requestBtn, { backgroundColor: '#6B4DFF' }]}
+                              onPress={() => answerRequest(r, true)}
+                              accessibilityLabel={tr('friends.accept')}
+                            >
+                              <Feather name="check" size={18} color="#fff" />
+                            </Pressable>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
 
             {/* Classement de la semaine */}
             <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('friends.leaderboard')}</Text>
@@ -212,11 +270,11 @@ export default function FriendsScreen() {
             ) : (
               <View style={[styles.listCard, { backgroundColor: T.cardBg }]}>
                 {friends.map((f, i) => (
-                  <View key={f.friendshipId}>
+                  <View key={f.user.id}>
                     {i > 0 && <View style={[styles.divider, { backgroundColor: T.divider }]} />}
                     <Pressable
                       style={styles.friendRow}
-                      onPress={() => router.push({ pathname: '/(app)/friend-progress', params: { userId: f.user.id, name: f.user.displayName, friendshipId: f.friendshipId } })}
+                      onPress={() => router.push({ pathname: '/(app)/friend-progress', params: { userId: f.user.id, name: f.user.displayName } })}
                     >
                       <FriendAvatar name={f.user.displayName} id={f.user.id} size={46} />
                       <View style={{ flex: 1 }}>
@@ -310,5 +368,6 @@ const styles = StyleSheet.create({
   friendName: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16 },
   friendUser: { fontFamily: 'Nunito_600SemiBold', fontSize: 13 },
   chevron: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  requestBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   divider: { height: 1, marginLeft: 74 },
 });

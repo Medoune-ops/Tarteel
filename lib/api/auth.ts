@@ -9,6 +9,7 @@
 import { apiFetch } from './client';
 import { setTokens, clearTokens, getRefreshToken, getDeviceId } from './tokens';
 import { fetchMe } from './me';
+import { resetFriendsIdentity } from './friends';
 import { useUserStore } from '../../store/userStore';
 import { registerForPushNotifications, unregisterPushToken } from '../pushNotifications';
 
@@ -113,5 +114,6 @@ export async function logout(): Promise<void> {
     // On se déconnecte localement même si le serveur est injoignable.
   }
   await clearTokens();
+  resetFriendsIdentity();
   useUserStore.getState().logout();
 }

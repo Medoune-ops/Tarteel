@@ -18,14 +18,19 @@ type Tr = (key: I18nKey, vars?: Record<string, string | number>) => string;
 const TYPE_META: Record<string, { icon: keyof typeof Feather.glyphMap; color: string; bg: string; bgDark: string }> = {
   sourate_mastered: { icon: 'book-open', color: '#2A9E1C', bg: '#E2F5E1', bgDark: '#1B3220' },
   streak_milestone: { icon: 'zap', color: '#F0820C', bg: '#FFE7D2', bgDark: '#3A2712' },
-  level_up: { icon: 'trending-up', color: '#6B4DFF', bg: '#EDE8FF', bgDark: '#241F3D' },
+  section_completed: { icon: 'flag', color: '#6B4DFF', bg: '#EDE8FF', bgDark: '#241F3D' },
+  challenge_won: { icon: 'award', color: '#E0A10C', bg: '#FFF3D2', bgDark: '#3A3012' },
+  league_promoted: { icon: 'trending-up', color: '#6B4DFF', bg: '#EDE8FF', bgDark: '#241F3D' },
 };
 
 function activityLine(tr: Tr, item: FriendActivityView): string {
-  const d = item.data as { nom?: string; streak?: number };
+  const d = (item.data ?? {}) as { nom?: string; days?: number; titre?: string; title?: string; league?: string };
   switch (item.type) {
     case 'sourate_mastered': return tr('friends.activitySourate', { nom: d.nom ?? '' });
-    case 'streak_milestone': return tr('friends.activityStreakMilestone', { streak: d.streak ?? 0 });
+    case 'streak_milestone': return tr('friends.activityStreakMilestone', { streak: d.days ?? 0 });
+    case 'section_completed': return tr('friends.activitySection', { titre: d.titre ?? '' });
+    case 'challenge_won': return tr('friends.activityChallengeWon', { title: d.title ?? '' });
+    case 'league_promoted': return tr('friends.activityLeague', { league: d.league ?? '' });
     default: return tr('friends.activityLevel');
   }
 }
@@ -62,7 +67,7 @@ export default function FriendsActivityScreen() {
     setLoading(true);
     setError(false);
     try {
-      const r = await fetchFriendsActivity(50);
+      const r = await fetchFriendsActivity();
       setActivity(r.activity);
     } catch {
       setError(true);
@@ -73,10 +78,10 @@ export default function FriendsActivityScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const onCheer = async (id: string) => {
+  const onCheer = async (item: FriendActivityView) => {
     try {
-      const r = await cheerActivity(id);
-      setActivity((prev) => prev.map((a) => (a.id === id ? { ...a, cheeredByMe: r.cheered, cheers: r.cheers } : a)));
+      const r = await cheerActivity(item);
+      setActivity((prev) => prev.map((a) => (a.id === item.id ? { ...a, cheeredByMe: r.cheered, cheers: r.cheers } : a)));
     } catch {
       /* hors-ligne : on laisse l'état inchangé */
     }
@@ -118,7 +123,7 @@ export default function FriendsActivityScreen() {
         ) : (
           <View style={[styles.listCard, { backgroundColor: T.cardBg }]}>
             {activity.map((a, i) => {
-              const meta = TYPE_META[a.type] ?? TYPE_META.level_up;
+              const meta = TYPE_META[a.type] ?? TYPE_META.league_promoted;
               return (
                 <View key={a.id}>
                   {i > 0 && <View style={[styles.divider, { backgroundColor: T.divider }]} />}
@@ -135,7 +140,7 @@ export default function FriendsActivityScreen() {
                       </Text>
                       <Text style={[styles.postTime, { color: T.textSecondary }]}>{timeAgo(a.createdAt)}</Text>
                     </View>
-                    <CheerButton count={a.cheers} active={a.cheeredByMe} onPress={() => onCheer(a.id)} />
+                    <CheerButton count={a.cheers} active={a.cheeredByMe} onPress={() => onCheer(a)} />
                   </View>
                 </View>
               );
