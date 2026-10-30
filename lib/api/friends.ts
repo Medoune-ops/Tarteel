@@ -51,6 +51,8 @@ export interface FriendProgressView {
   user: FriendUser;
   streak: number;
   weeklyXp: number;
+  /** Ligue de la semaine (nom backend, ex. « Saphir ») ; vide si aucune. */
+  leagueTier: string;
   masteredSourates: number;
   masteredSourateNumeros: number[];
 }
@@ -74,6 +76,8 @@ export interface FriendActivityView {
   id: string;
   user: FriendUser;
   type: FriendActivityType;
+  /** Clé de la réussite (n° de sourate, palier…) : identifie un même badge. */
+  refKey: string;
   /** `payload` de la réussite (voir API_CONTRACT §9). */
   data: unknown;
   createdAt: string;
@@ -158,6 +162,7 @@ interface Page<T> {
 interface BackendProfile extends FriendUser {
   streak?: number;
   weeklyXp?: number;
+  leagueTier?: string;
 }
 
 interface BackendAchievement {
@@ -283,6 +288,7 @@ export async function fetchFriendProgress(userId: string): Promise<FriendProgres
     user: toFriendUser(res.user),
     streak: res.user.streak ?? 0,
     weeklyXp: res.user.weeklyXp ?? 0,
+    leagueTier: res.user.leagueTier ?? '',
     masteredSourates: res.masteredSourates.length,
     masteredSourateNumeros: res.masteredSourates.map((s) => s.numero),
   };
@@ -346,12 +352,19 @@ export async function fetchFriendsActivity(): Promise<{ activity: FriendActivity
         id: a.id,
         user: toFriendUser(a.user),
         type: a.type,
+        refKey: a.refKey,
         data: a.payload,
         createdAt: a.createdAt,
         cheers: a.reactionsCount,
         cheeredByMe: a.myReaction != null,
       })),
   };
+}
+
+/** GET /me/achievements — mes réussites, réduites à leur clé `type:refKey`. */
+export async function fetchMyAchievementKeys(): Promise<Set<string>> {
+  const res = await apiFetch<Page<BackendAchievement>>('/me/achievements');
+  return new Set(res.items.map((a) => `${a.type}:${a.refKey}`));
 }
 
 /** PUT / DELETE /me/achievements/:id/reaction — « bravo » en bascule. */

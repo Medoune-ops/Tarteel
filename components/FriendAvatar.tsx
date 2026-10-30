@@ -1,4 +1,5 @@
 import { View, Text } from 'react-native';
+import Avatar, { type AvatarConfig } from './Avatar';
 
 const PALETTE = ['#6B4DFF', '#2C9CE0', '#E0387E', '#F0820C', '#2A9E1C', '#C0392B', '#16A085', '#8E44AD'];
 
@@ -10,19 +11,28 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/** Pastille avatar colorée à partir du nom/identifiant de l'ami. */
-export default function FriendAvatar({ name, id, size = 46 }: { name: string; id?: string; size?: number }) {
+/** Couleur stable dérivée du nom/identifiant de l'ami. */
+export function friendColor(seed: string): string {
   let hash = 0;
-  const seed = id ?? name;
   for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
-  const color = PALETTE[Math.abs(hash) % PALETTE.length];
+  return PALETTE[Math.abs(hash) % PALETTE.length];
+}
+
+/**
+ * Avatar d'un ami : l'avatar qu'il a composé s'il en a un, sinon une pastille
+ * colorée à ses initiales.
+ */
+export default function FriendAvatar({
+  name, id, size = 46, avatarStyle,
+}: { name: string; id?: string; size?: number; avatarStyle?: AvatarConfig | null }) {
+  if (avatarStyle) return <Avatar config={avatarStyle} size={size} />;
   return (
     <View
       style={{
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: color,
+        backgroundColor: friendColor(id ?? name),
         alignItems: 'center',
         justifyContent: 'center',
       }}

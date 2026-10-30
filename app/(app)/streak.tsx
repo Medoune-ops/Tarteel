@@ -128,6 +128,7 @@ export default function StreakScreen() {
   const streakFreezes = useUserStore((s) => s.streakFreezes) ?? 0;
   const gems = useUserStore((s) => s.gems) ?? 0;
   const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
+  const friendsEnabled = useAppConfigStore((s) => s.friendsEnabled);
   const FREEZE_COST = useAppConfigStore((s) => s.pricing.gemCostStreakFreeze);
 
   const [history, setHistory] = useState<GemLedgerEntry[] | null>(null);
@@ -303,6 +304,20 @@ export default function StreakScreen() {
               <Text style={styles.gemChipVal}>{gems.toLocaleString()}</Text>
             </Pressable>
           </View>
+
+          {/* Ma série / Entre amis — l'onglet amis ouvre la page Amis. */}
+          {friendsEnabled && (
+            <View style={styles.tabs}>
+              <View style={[styles.tab, styles.tabOn]}>
+                <FlameIcon size={14} />
+                <Text style={[styles.tabText, { color: lit ? '#B4560A' : '#4E4258' }]}>{tr('streak.tabMine')}</Text>
+              </View>
+              <Pressable style={styles.tab} onPress={() => router.push('/(app)/friends')}>
+                <Feather name="users" size={14} color="#fff" />
+                <Text style={[styles.tabText, { color: '#fff' }]}>{tr('streak.tabFriends')}</Text>
+              </Pressable>
+            </View>
+          )}
 
           {/* Anneau + flamme */}
           <View style={styles.ringWrap}>
@@ -631,6 +646,13 @@ export default function StreakScreen() {
 }
 
 const styles = StyleSheet.create({
+  tabs: {
+    flexDirection: 'row', alignSelf: 'stretch', marginTop: 12, padding: 4, gap: 4,
+    borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.14)',
+  },
+  tab: { flex: 1, height: 38, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  tabOn: { backgroundColor: '#fff' },
+  tabText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 14 },
   screen: { flex: 1 },
   scroll: { paddingBottom: 12 },
 

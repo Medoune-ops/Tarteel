@@ -10,9 +10,7 @@ import { useTheme } from '../../utils/useTheme';
 import { friendPalette } from '../../utils/friendTheme';
 import { fetchFriendsActivity, cheerActivity, type FriendActivityView } from '../../lib/api';
 import { useT } from '../../lib/i18n';
-import type { I18nKey } from '../../lib/i18n';
-
-type Tr = (key: I18nKey, vars?: Record<string, string | number>) => string;
+import { activityLine } from '../../utils/friendActivity';
 
 // Accent + icône par type d'événement (pastille devant l'avatar).
 const TYPE_META: Record<string, { icon: keyof typeof Feather.glyphMap; color: string; bg: string; bgDark: string }> = {
@@ -22,18 +20,6 @@ const TYPE_META: Record<string, { icon: keyof typeof Feather.glyphMap; color: st
   challenge_won: { icon: 'award', color: '#E0A10C', bg: '#FFF3D2', bgDark: '#3A3012' },
   league_promoted: { icon: 'trending-up', color: '#6B4DFF', bg: '#EDE8FF', bgDark: '#241F3D' },
 };
-
-function activityLine(tr: Tr, item: FriendActivityView): string {
-  const d = (item.data ?? {}) as { nom?: string; days?: number; titre?: string; title?: string; league?: string };
-  switch (item.type) {
-    case 'sourate_mastered': return tr('friends.activitySourate', { nom: d.nom ?? '' });
-    case 'streak_milestone': return tr('friends.activityStreakMilestone', { streak: d.days ?? 0 });
-    case 'section_completed': return tr('friends.activitySection', { titre: d.titre ?? '' });
-    case 'challenge_won': return tr('friends.activityChallengeWon', { title: d.title ?? '' });
-    case 'league_promoted': return tr('friends.activityLeague', { league: d.league ?? '' });
-    default: return tr('friends.activityLevel');
-  }
-}
 
 /** Bouton « bravo » avec pop animé au tap. */
 function CheerButton({ count, active, onPress }: { count: number; active: boolean; onPress: () => void }) {
