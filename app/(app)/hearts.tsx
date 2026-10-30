@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -105,18 +105,21 @@ function HeroHeart({ hearts, isPremium }: { hearts: number; isPremium: boolean }
  */
 function OptionCard({
   icon, iconBg, iconFg, gain, title, sub, cta, ctaBg, ctaFg,
-  pct, showBar, onPress, disabled, loading, T,
+  pct, showBar, onPress, disabled, loading, T, width,
 }: {
   icon: React.ReactNode; iconBg: string; iconFg: string; gain: string;
   title: string; sub: string; cta: string; ctaBg: string; ctaFg: string;
   pct?: number; showBar: boolean;
   onPress: () => void; disabled?: boolean; loading?: boolean;
   T: ReturnType<typeof useTheme>;
+  /** Largeur exacte d'une demi-ligne (deux cartes côte à côte). */
+  width: number;
 }) {
   return (
     <Pressable
       style={[
         styles.opt,
+        { width },
         { backgroundColor: T.cardBg, shadowColor: T.shadow },
         disabled && { opacity: 0.55 },
       ]}
@@ -156,6 +159,9 @@ export default function HeartsScreen() {
   const router = useRouter();
   const tr = useT();
   const T = useTheme();
+  // Deux cartes par ligne : largeur calculée (padding 13×2 + écart 10).
+  const { width: screenW } = useWindowDimensions();
+  const optWidth = Math.floor((screenW - 26 - OPT_GAP) / 2);
   // Voir streak.tsx : on normalise les compteurs a la lecture.
   const hearts = useUserStore((s) => s.hearts) ?? 0;
   const gems = useUserStore((s) => s.gems) ?? 0;
@@ -350,7 +356,7 @@ export default function HeartsScreen() {
             <Text style={[styles.titreSection, { color: T.text }]}>{tr('heartsPage.rechargeTitle')}</Text>
             <View style={styles.grilleOpts}>
               <OptionCard
-                T={T}
+                T={T} width={optWidth}
                 icon={<GemIcon size={22} color="#1CB0F6" />}
                 iconBg={SOFT.blue} iconFg="#2BA8EC"
                 gain="+5"
@@ -374,7 +380,7 @@ export default function HeartsScreen() {
 
               {paymentsEnabled && (
                 <OptionCard
-                  T={T}
+                  T={T} width={optWidth}
                   icon={<Feather name="credit-card" size={21} color="#E0A02C" />}
                   iconBg={SOFT.gold} iconFg="#E0A02C"
                   gain="+5"
@@ -391,7 +397,7 @@ export default function HeartsScreen() {
               )}
 
               <OptionCard
-                T={T}
+                T={T} width={optWidth}
                 icon={<Feather name="book-open" size={21} color="#2E9A5A" />}
                 iconBg={SOFT.green} iconFg="#2E9A5A"
                 gain="+1"
@@ -406,7 +412,7 @@ export default function HeartsScreen() {
               />
 
               <OptionCard
-                T={T}
+                T={T} width={optWidth}
                 icon={<Feather name="users" size={21} color="#6B4DFF" />}
                 iconBg={SOFT.purple} iconFg="#6B4DFF"
                 gain="+5"
@@ -483,6 +489,8 @@ export default function HeartsScreen() {
     </View>
   );
 }
+
+const OPT_GAP = 10;
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
@@ -571,13 +579,10 @@ const styles = StyleSheet.create({
 
   /* ── Options ── */
   titreSection: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 20, marginHorizontal: 20, marginTop: 24, marginBottom: 10 },
-  grilleOpts: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 13 },
+  grilleOpts: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 13, columnGap: OPT_GAP, rowGap: OPT_GAP },
   opt: {
-    width: '50%', minHeight: 182,
-    borderRadius: 22, padding: 14, margin: 5,
-    // `width: 50%` + marge dépasserait la ligne : on retire la marge de la
-    // largeur calculée.
-    maxWidth: '47%',
+    minHeight: 182,
+    borderRadius: 22, padding: 14,
     shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 2,
   },
   optTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

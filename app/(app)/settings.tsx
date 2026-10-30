@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import Toggle from '../../components/Toggle';
 import { useUserStore } from '../../store/userStore';
 import { useAppConfigStore } from '../../store/appConfigStore';
 import { useTheme } from '../../utils/useTheme';
-import { logout, updateSettings, fetchFriendsSummary } from '../../lib/api';
+import { logout, updateSettings } from '../../lib/api';
 import { fetchNotificationPrefs, updateNotificationPrefs } from '../../lib/api/notifications';
 import { useT } from '../../lib/i18n';
 
@@ -80,21 +80,9 @@ export default function SettingsScreen() {
   const setTheme = useUserStore((s) => s.setTheme);
   const isPremium = useUserStore((s) => s.isPremium);
   const paymentsEnabled = useAppConfigStore((s) => s.paymentsEnabled);
-  const friendsEnabled = useAppConfigStore((s) => s.friendsEnabled);
   const langue = LANGUES[language as 'fr' | 'en'] ?? LANGUES.fr;
   const T = useTheme();
   const tr = useT();
-
-  // Compteur de non lus Amis (badge sur la ligne Messages).
-  const [unreadMsgs, setUnreadMsgs] = useState(0);
-  useFocusEffect(() => {
-    if (!friendsEnabled) return;
-    let cancelled = false;
-    fetchFriendsSummary()
-      .then((r) => { if (!cancelled) setUnreadMsgs(r.unreadMessages); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  });
 
   const confirmLogout = () => {
     Alert.alert(tr('settings.logout'), tr('settings.logoutConfirm'), [
@@ -191,45 +179,6 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(app)/notifications')}
           />
         </View>
-
-        {/* AMIS — masqué si désactivé côté serveur (FRIENDS_ENABLED=false). */}
-        {friendsEnabled && (
-          <>
-            <Text style={[styles.sectionLabel, { color: T.sectionLabel }]}>{tr('friends.settingsAmis')}</Text>
-            <View style={[styles.card, { backgroundColor: T.cardBg }]}>
-              <Row
-                iconBg="#6B4DFF" icon="users"
-                title={tr('friends.settingsAmis')} subtitle={tr('friends.settingsAmisSub')}
-                titleColor={T.text} subColor={T.textSecondary}
-                onPress={() => router.push('/(app)/friends')}
-              />
-              <View style={[styles.divider, { backgroundColor: T.divider }]} />
-              <Row
-                iconBg="#F0820C" icon="award"
-                title={tr('friends.settingsDefis')}
-                titleColor={T.text} subColor={T.textSecondary}
-                onPress={() => router.push('/(app)/friends-challenges')}
-              />
-              <View style={[styles.divider, { backgroundColor: T.divider }]} />
-              <Row
-                iconBg="#E0387E" icon="inbox"
-                title={tr('friends.settingsInbox')}
-                titleColor={T.text} subColor={T.textSecondary}
-                right={unreadMsgs > 0
-                  ? <View style={styles.unreadPill}><Text style={styles.unreadPillText}>{unreadMsgs}</Text></View>
-                  : undefined}
-                onPress={() => router.push('/(app)/friends-inbox')}
-              />
-              <View style={[styles.divider, { backgroundColor: T.divider }]} />
-              <Row
-                iconBg="#2A9E1C" icon="zap"
-                title={tr('friends.activity')}
-                titleColor={T.text} subColor={T.textSecondary}
-                onPress={() => router.push('/(app)/friends-activity')}
-              />
-            </View>
-          </>
-        )}
 
         {/* ABONNEMENT — masqué seulement si pas premium ET paiements
             désactivés (ex: revue store en cours) ; un abonné actif garde
@@ -345,11 +294,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   logoutText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 16, color: '#E5484D' },
-  unreadPill: {
-    minWidth: 24, height: 24, borderRadius: 12, backgroundColor: '#E5484D',
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
-  },
-  unreadPillText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: '#fff' },
   profileCard: {
     backgroundColor: '#E8E2FB', borderRadius: 18, padding: 18,
     flexDirection: 'row', alignItems: 'center', gap: 14,

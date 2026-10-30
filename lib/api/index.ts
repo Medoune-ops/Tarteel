@@ -50,7 +50,7 @@ export type { AppConfig, AppConfigPricing } from './appConfig';
 export {
   fetchFriendCode, addFriend, fetchFriendRequests, acceptFriendRequest, declineFriendRequest,
   fetchFriendsSummary, fetchFriends, fetchFriendProgress, removeFriend, blockFriend, unblockFriend,
-  reportFriend, fetchFriendsLeaderboard, fetchFriendsActivity, cheerActivity,
+  reportFriend, fetchFriendsLeaderboard, fetchFriendsActivity, cheerActivity, fetchMyAchievementKeys,
   fetchChallenges, createChallenge, fetchChallenge, acceptChallenge, declineChallenge,
   leaveChallenge, cancelChallenge, fetchFriendsInbox, sendToFriend, markFriendMessageRead,
   resetFriendsIdentity,

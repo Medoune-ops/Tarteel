@@ -10,6 +10,7 @@ import { getOrJoinLeague, type LeagueView, type LeagueMember } from '../../../li
 import { swrFetch } from '../../../lib/api/swr';
 import { useT, type I18nKey } from '../../../lib/i18n';
 import OfflineState from '../../../components/OfflineState';
+import Avatar from '../../../components/Avatar';
 
 // Style VISUEL du podium par rang (avatar, marche). Les DONNÉES (nom,
 // initiales, xp) viennent du backend ; seul l'habillage est ici.
@@ -253,7 +254,9 @@ export default function LiguesScreen() {
                       borderColor: T.cardBg,
                     }]}
                   >
-                    <Text style={[styles.podInitials, { fontSize: first ? 24 : 20 }]}>{p.initials}</Text>
+                    {p.avatarStyle
+                      ? <Avatar config={p.avatarStyle} size={st.avatar - 8} />
+                      : <Text style={[styles.podInitials, { fontSize: first ? 24 : 20 }]}>{p.initials}</Text>}
                   </LinearGradient>
                 </View>
                 <Text style={[styles.podName, { color: T.text }]} numberOfLines={1}>{p.name}</Text>
@@ -314,9 +317,13 @@ export default function LiguesScreen() {
                 <View style={[styles.rankBox, { backgroundColor: p.me ? '#6B4DFF' : T.selectorBg }]}>
                   <Text style={[styles.rankText, { color: p.me ? '#fff' : p.relegation ? '#FF4B4B' : T.textSecondary }]}>{p.rang}</Text>
                 </View>
-                <View style={[styles.avatar, { backgroundColor: p.me ? '#6B4DFF' : rowColor(p.userId) }]}>
-                  <Text style={styles.avatarText}>{p.initials}</Text>
-                </View>
+                {p.avatarStyle ? (
+                  <Avatar config={p.avatarStyle} size={38} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: p.me ? '#6B4DFF' : rowColor(p.userId) }]}>
+                    <Text style={styles.avatarText}>{p.initials}</Text>
+                  </View>
+                )}
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.name, { color: T.text }]} numberOfLines={1}>{p.name}</Text>
                   <Text style={[styles.rowSub, { color: p.relegation ? '#FF4B4B' : T.textSecondary }]} numberOfLines={1}>

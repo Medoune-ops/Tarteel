@@ -90,9 +90,18 @@ function flowerPath(cx: number, cy: number, rc: number, r: number, n: number): s
 const FLOWER = flowerPath(37, 37, 27, 12.5, 8);
 const FLOWER_RING = flowerPath(37, 40, 35, 16, 8);
 
-/** [haut, milieu, bas du dégradé, flanc, liseré, opacité du reflet]. */
-function flowerPalette(state: LessonState, isDark: boolean): [string, string, string, string, string, number] {
-  if (state === 'completed') return ['#A8EE8C', '#45C935', '#1F9A14', '#1A7E10', 'rgba(255,255,255,0.55)', 0.45];
+/** `rgba()` d'un hex, pour l'ombre portée teintée du nœud. */
+function hexAlpha(hex: string, a: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  return `rgba(${num >> 16},${(num >> 8) & 0xff},${num & 0xff},${a})`;
+}
+
+/** [haut, milieu, bas du dégradé, flanc, liseré, opacité du reflet].
+ *  Une leçon terminée prend la couleur de sa section. */
+function flowerPalette(state: LessonState, isDark: boolean, accent: string): [string, string, string, string, string, number] {
+  if (state === 'completed') {
+    return [shadeColor(accent, 35), accent, shadeColor(accent, -14), shadeColor(accent, -22), 'rgba(255,255,255,0.55)', 0.45];
+  }
   if (state === 'active') return ['#C9B8FF', '#7A5CFF', '#3F22E8', '#3218B8', 'rgba(255,255,255,0.6)', 0.45];
   return isDark
     ? ['#3A3852', '#2C2A42', '#232137', '#16152A', 'rgba(255,255,255,0.08)', 0.08]
@@ -104,16 +113,16 @@ const NODE_GLYPH: Record<NodeIcon, React.ComponentProps<typeof Feather>['name']>
   note: 'music', moon: 'moon', trophy: 'award', crescent: 'moon',
 };
 
-function FlowerNode({ node, isDark, onPress }: { node: ParcoursNode; isDark: boolean; onPress: () => void }) {
+function FlowerNode({ node, isDark, accent, onPress }: { node: ParcoursNode; isDark: boolean; accent: string; onPress: () => void }) {
   const { state } = node;
-  const [c1, c2, c3, side, rim, hi] = flowerPalette(state, isDark);
+  const [c1, c2, c3, side, rim, hi] = flowerPalette(state, isDark, accent);
   const locked = state === 'locked';
   const glyph = locked ? (node.icon === 'trophy' ? 'award' : 'lock') : (NODE_GLYPH[node.icon] ?? 'star');
   // Identifiants de dégradé propres au nœud : plusieurs Svg cohabitent à l'écran.
   const gid = `fg${node.id.replace(/\W/g, '')}`;
   const hid = `fh${node.id.replace(/\W/g, '')}`;
   const floor = state === 'completed'
-    ? `rgba(54,174,37,${isDark ? 0.35 : 0.22})`
+    ? hexAlpha(accent, isDark ? 0.35 : 0.22)
     : state === 'active'
       ? `rgba(98,68,245,${isDark ? 0.45 : 0.25})`
       : (isDark ? 'rgba(0,0,0,0.35)' : 'rgba(30,20,70,0.08)');
@@ -991,15 +1000,32 @@ function nodeOffset(align: ParcoursNode['align']): number {
   return 0;
 }
 
+/** Ce qu'enseigne une leçon : sourate + plage de versets, ou lettres de l'alphabet. */
+function lessonContent(node: ParcoursNode, section: ParcoursSection): { sub: string; detail?: string } {
+  const sourate = node.sourateNumero != null
+    ? section.sourates.find((x) => x.numero === node.sourateNumero)
+    : undefined;
+  if (sourate || node.sourateNumero != null) {
+    const a = node.versetDebut;
+    const b = node.versetFin;
+    const detail = a == null ? undefined
+      : b == null || b === a ? t('parcours.verse', { a })
+      : t('parcours.verses', { a, b });
+    // Le titre backend est « Nom 3-4 » : on préfère le nom seul de la sourate.
+    return { sub: sourate?.nom ?? node.titre ?? section.titre, detail };
+  }
+  return { sub: node.titre || section.titre };
+}
+
 /**
- * Bulle « COMMENCER » posée à côté du nœud courant, du côté où il reste de la
+ * Bulle « COMMENCER » posée à côté du nœud touché, du côté où il reste de la
  * place. Elle est une sœur du nœud (et pas un enfant) : sur Android, un
  * enfant qui déborde de son parent ne reçoit pas les touchers.
  */
 function LessonPopover({
-  dx, title, sub, onPress, T,
+  dx, title, sub, detail, onPress, T,
 }: {
-  dx: number; title: string; sub: string; onPress: () => void; T: Theme;
+  dx: number; title: string; sub: string; detail?: string; onPress: () => void; T: Theme;
 }) {
   const onRight = dx <= 0;
   const gap = 37 + 16;
@@ -1019,7 +1045,8 @@ function LessonPopover({
         ]}
       />
       <Text style={[styles.popoverTitle, { color: T.text }]} numberOfLines={1}>{title}</Text>
-      <Text style={[styles.popoverSub, { color: T.textSecondary }]} numberOfLines={1}>{sub}</Text>
+      <Text style={[styles.popoverSub, { color: T.text }]} numberOfLines={2}>{sub}</Text>
+      {!!detail && <Text style={[styles.popoverDetail, { color: T.textSecondary }]} numberOfLines={1}>{detail}</Text>}
       <Pressable onPress={onPress} style={({ pressed }) => [styles.popoverBtnWrap, pressed && { paddingBottom: 1, marginTop: 10 }]}>
         <View style={styles.popoverBtn}>
           <Text style={styles.popoverBtnText}>{t('parcours.start')}</Text>
@@ -1038,10 +1065,15 @@ const SectionBlock = memo(function SectionBlock({
   onLessonPress,
   theme,
   onActiveNodeLayout,
+  openNodeId,
+  onNodeTap,
 }: {
   section: ParcoursSection;
   index: number;
   onLessonPress: (n: ParcoursNode) => void;
+  /** Nœud dont la bulle est ouverte (null = aucune dans cette section). */
+  openNodeId: string | null;
+  onNodeTap: (n: ParcoursNode) => void;
   theme: Theme;
   /** Position Y du nœud actif DANS cette section (pour scroller pile dessus). */
   onActiveNodeLayout?: (yInSection: number) => void;
@@ -1100,13 +1132,15 @@ const SectionBlock = memo(function SectionBlock({
         // à l'offset du nœud actif, ça donne sa position dans la section entière.
         onLayout={(e) => { pathYRef.current = e.nativeEvent.layout.y; }}
       >
-        {section.nodes.map((node) => {
+        {section.nodes.map((node, i) => {
           const dx = nodeOffset(node.align);
           const active = node.state === 'active';
+          const open = node.id === openNodeId;
+          const content = open ? lessonContent(node, section) : null;
           return (
             <View
               key={node.id}
-              style={[styles.nodeSlot, active && { zIndex: 2 }]}
+              style={[styles.nodeSlot, open && { zIndex: 2 }]}
               // Le nœud actif remonte sa position Y (relative à la section) pour
               // que le retap sur l'onglet scrolle exactement dessus.
               onLayout={
@@ -1116,13 +1150,14 @@ const SectionBlock = memo(function SectionBlock({
               }
             >
               <View style={{ transform: [{ translateX: dx }] }}>
-                <FlowerNode node={node} isDark={theme.isDark} onPress={() => onLessonPress(node)} />
+                <FlowerNode node={node} isDark={theme.isDark} accent={section.couleur} onPress={() => onNodeTap(node)} />
               </View>
-              {active && (
+              {content && (
                 <LessonPopover
                   dx={dx}
-                  title={node.label ?? t('parcours.lessonFallback')}
-                  sub={section.titre}
+                  title={t('parcours.lessonN', { n: node.lessonNumber ?? i + 1 })}
+                  sub={content.sub}
+                  detail={content.detail}
                   onPress={() => onLessonPress(node)}
                   T={theme}
                 />
@@ -1390,6 +1425,11 @@ export default function ParcoursScreen() {
   const shownRef = useRef(0);
   // Index (dans la liste affichée) de la section active — pour l'auto-scroll.
   const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
+  // Bulle « Commencer » : ouverte seulement au toucher d'un nœud (re-toucher la ferme).
+  const [openNodeId, setOpenNodeId] = useState<string | null>(null);
+  const toggleNode = useCallback((n: ParcoursNode) => {
+    setOpenNodeId((cur) => (cur === n.id ? null : n.id));
+  }, []);
   const hasAutoScrolledRef = useRef(false);
 
   /** Applique la liste complète en gardant le nb de sections déjà affichées. */
@@ -1504,6 +1544,7 @@ export default function ParcoursScreen() {
       router.push('/(app)/lesson/out-of-hearts');
       return;
     }
+    setOpenNodeId(null);
     router.push({
       pathname: '/(app)/lesson/play',
       params: node.lessonId ? { lessonId: node.lessonId } : undefined,
@@ -1518,9 +1559,11 @@ export default function ParcoursScreen() {
         onLessonPress={openLesson}
         theme={T}
         onActiveNodeLayout={index === activeSectionIndex ? handleActiveNodeLayout : undefined}
+        openNodeId={openNodeId && item.nodes.some((x) => x.id === openNodeId) ? openNodeId : null}
+        onNodeTap={toggleNode}
       />
     ),
-    [openLesson, T, activeSectionIndex, handleActiveNodeLayout],
+    [openLesson, T, activeSectionIndex, handleActiveNodeLayout, openNodeId, toggleNode],
   );
 
   // Mémoïsés comme renderItem juste au-dessus : sans useCallback, le FlatList
@@ -1768,13 +1811,14 @@ const styles = StyleSheet.create({
   flowerGlyph: { textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1.5 }, textShadowRadius: 0 },
 
   popover: {
-    position: 'absolute', top: -4, width: 132,
+    position: 'absolute', top: -4, width: 148,
     paddingTop: 10, paddingBottom: 10, paddingHorizontal: 11, borderRadius: 18, borderWidth: 1.5,
     shadowColor: '#1E1446', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.14, shadowRadius: 28, elevation: 8,
   },
   popoverArrow: { position: 'absolute', top: 36, width: 13, height: 13, transform: [{ rotate: '45deg' }] },
   popoverTitle: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 15, lineHeight: 18 },
-  popoverSub: { fontFamily: 'Nunito_700Bold', fontSize: 11, marginTop: 2 },
+  popoverSub: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, lineHeight: 15, marginTop: 2 },
+  popoverDetail: { fontFamily: 'Nunito_700Bold', fontSize: 11, marginTop: 1 },
   popoverBtnWrap: { marginTop: 8, borderRadius: 11, paddingBottom: 3, backgroundColor: '#4A2FC4' },
   popoverBtn: { height: 32, borderRadius: 11, backgroundColor: '#6B4DFF', alignItems: 'center', justifyContent: 'center' },
   popoverBtnText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 13.5, color: '#fff', letterSpacing: 0.4 },

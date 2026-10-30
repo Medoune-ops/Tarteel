@@ -40,6 +40,12 @@ export interface ParcoursNode {
    *  `section.sourates`, ça suppose à tort "1 nœud = 1 sourate". */
   sourateNumero: number | null;
   label?: string;          // ex: "Leçon 4" — affiché sous le nœud actif
+  /** Numéro de la leçon dans sa section (1-based), titre (nom de sourate ou
+   *  lettres) et plage de versets — renvoyés par GET /sections. */
+  lessonNumber?: number;
+  titre?: string;
+  versetDebut?: number | null;
+  versetFin?: number | null;
   icon: NodeIcon;
   align: NodeAlign;
   state: LessonState;
