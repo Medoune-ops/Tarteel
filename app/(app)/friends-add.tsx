@@ -68,11 +68,15 @@ export default function FriendsAddScreen() {
     setSubmitting(true);
     setScanning(false);
     try {
-      await addFriend(c);
-      setCelebrate(true);
-      Alert.alert(tr('friends.addedTitle'), tr('friends.addedMessage'), [
-        { text: tr('common.ok'), onPress: () => router.back() },
-      ]);
+      const res = await addFriend(c);
+      if (res.accepted) setCelebrate(true);
+      Alert.alert(
+        res.accepted ? tr('friends.addedTitle') : tr('friends.requestSentTitle'),
+        res.accepted ? tr('friends.addedMessage') : tr('friends.requestSentMessage'),
+        [
+          { text: tr('common.ok'), onPress: () => router.back() },
+        ],
+      );
     } catch (e) {
       const reason = e instanceof ApiError ? e.message : tr('friends.errorCode');
       const isLimit = e instanceof ApiError && e.code === 'FRIEND_LIMIT_REACHED';

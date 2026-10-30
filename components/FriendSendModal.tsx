@@ -9,8 +9,8 @@ import FriendButton from './FriendButton';
 import { useTheme } from '../utils/useTheme';
 import { friendPalette } from '../utils/friendTheme';
 import {
-  sendToFriend, fetchSendQuota, fetchChallenges,
-  type FriendUser, type ChallengeView, type SendQuotaStatus,
+  sendToFriend, fetchChallenges,
+  type FriendUser, type ChallengeView,
 } from '../lib/api';
 import { ApiError } from '../lib/api/client';
 import { useT } from '../lib/i18n';
@@ -48,7 +48,6 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
   const [text, setText] = useState('');
   const [challenges, setChallenges] = useState<ChallengeView[]>([]);
   const [challengeId, setChallengeId] = useState<string | null>(null);
-  const [quota, setQuota] = useState<SendQuotaStatus | null>(null);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -58,7 +57,6 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
     setType(initial === 'success' && successSourateNumero == null ? 'encouragement' : initial);
     setText('');
     setSending(false);
-    fetchSendQuota().then(setQuota).catch(() => setQuota(null));
     fetchChallenges()
       .then((r) => {
         const active = r.challenges.filter((c) => c.status === 'active');
@@ -95,16 +93,13 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
         type === 'success' ? { type, numero: successSourateNumero!, text: text.trim() || undefined } as const :
         type === 'reminder' ? { type, challengeId: challengeId! } as const :
         { type, collectionId: hadithRef!.collectionId, n: hadithRef!.n, text: text.trim() || undefined } as const;
-      const res = await sendToFriend(friend.id, payload);
-      setQuota(res.quota);
+      await sendToFriend(friend.id, payload);
       Alert.alert(tr('friends.sendDone'));
       onSent?.();
       onClose();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : tr('friends.errorCode');
       Alert.alert(tr('friends.addErrorTitle'), msg);
-      setQuota(null);
-      fetchSendQuota().then(setQuota).catch(() => {});
     } finally {
       setSending(false);
     }
@@ -122,13 +117,6 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
               <Text style={[styles.sheetTitle, { color: T.text }]}>
                 {tr('friends.sendTo', { name: friend?.displayName ?? '' })}
               </Text>
-              {quota && (
-                <Text style={[styles.quotaText, { color: T.textSecondary }]}>
-                  {quota.remaining > 0
-                    ? tr('friends.quotaLeft', { n: quota.remaining })
-                    : tr('friends.quotaGone')}
-                </Text>
-              )}
             </View>
             <Pressable onPress={onClose} hitSlop={10}>
               <Feather name="x" size={24} color={T.textSecondary} />
@@ -180,7 +168,6 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.challengeName, { color: T.text }]}>{c.title}</Text>
                           <Text style={[styles.challengeMeta, { color: T.textSecondary }]}>
-                            {c.metric === 'xp' && tr('friends.challengeTargetXp')}
                             {c.metric === 'streak' && tr('friends.challengeTargetStreak')}
                             {c.metric === 'sourates' && tr('friends.challengeTargetSourates')}
                             {' → '}{c.targetValue}
@@ -203,7 +190,7 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
                   multiline
                   value={text}
                   onChangeText={setText}
-                  maxLength={280}
+                  maxLength={140}
                 />
               </View>
             )}
@@ -226,7 +213,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1,
   },
   sheetTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17 },
-  quotaText: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 2 },
   sheetBody: { padding: 18, gap: 14 },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   typeChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 9 },

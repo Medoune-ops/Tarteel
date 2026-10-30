@@ -48,17 +48,19 @@ export type {
 export { fetchAppConfig } from './appConfig';
 export type { AppConfig, AppConfigPricing } from './appConfig';
 export {
-  fetchFriendCode, regenerateFriendCode, addFriend, fetchFriends,
-  fetchFriendProgress, removeFriend, blockFriend, unblockFriend, reportFriend,
-  fetchFriendsLeaderboard, fetchFriendsActivity, cheerActivity,
-  fetchChallenges, createChallenge, fetchChallenge, leaveChallenge,
-  fetchFriendsInbox, fetchSendQuota, sendToFriend, markFriendMessageRead,
+  fetchFriendCode, addFriend, fetchFriendRequests, acceptFriendRequest, declineFriendRequest,
+  fetchFriendsSummary, fetchFriends, fetchFriendProgress, removeFriend, blockFriend, unblockFriend,
+  reportFriend, fetchFriendsLeaderboard, fetchFriendsActivity, cheerActivity,
+  fetchChallenges, createChallenge, fetchChallenge, acceptChallenge, declineChallenge,
+  leaveChallenge, cancelChallenge, fetchFriendsInbox, sendToFriend, markFriendMessageRead,
+  resetFriendsIdentity,
 } from './friends';
 export type {
-  FriendView, FriendUser, FriendProgressView, LeaderboardEntry,
-  FriendActivityView, FriendActivityType, ChallengeView, ChallengeParticipantView,
-  ChallengeMetric, CreateChallengeInput, FriendSendType, SendQuotaStatus,
-  FriendInboxView, FriendInboxMessage, SendToFriendInput,
+  FriendView, FriendUser, FriendRequestView, FriendRequestsView, FriendsSummary,
+  FriendProgressView, LeaderboardEntry, FriendActivityView, FriendActivityType,
+  ChallengeView, ChallengeParticipantView, ChallengeParticipantStatus, ChallengeMetric,
+  CreateChallengeInput, FriendSendType, FriendMessageKind, FriendInboxView,
+  FriendInboxMessage, SendToFriendInput,
 } from './friends';
 export { fetchSudaisManifest, sudaisFileUrl } from './audio';
 export type { SudaisManifest, SudaisManifestEntry } from './audio';

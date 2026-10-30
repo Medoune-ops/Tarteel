@@ -8,8 +8,8 @@ import FriendAvatar from '../../components/FriendAvatar';
 import { useTheme } from '../../utils/useTheme';
 import { friendPalette } from '../../utils/friendTheme';
 import {
-  fetchFriendsInbox, markFriendMessageRead, fetchSendQuota,
-  type FriendInboxMessage, type SendQuotaStatus,
+  fetchFriendsInbox, markFriendMessageRead,
+  type FriendInboxMessage,
 } from '../../lib/api';
 import { loadCollection, hadithLangFor, COLLECTIONS } from '../../lib/hadiths';
 import { useUserStore } from '../../store/userStore';
@@ -20,9 +20,8 @@ for (const c of COLLECTIONS) COLLECTION_LABEL[c.id] = c.id.charAt(0).toUpperCase
 
 const TYPE_ICON: Record<string, keyof typeof Feather.glyphMap> = {
   encouragement: 'smile',
-  success: 'star',
+  achievement: 'star',
   hadith: 'book-open',
-  reminder: 'target',
 };
 
 export default function FriendsInboxScreen() {
@@ -33,7 +32,6 @@ export default function FriendsInboxScreen() {
   const language = useUserStore((s) => s.language);
   const [messages, setMessages] = useState<FriendInboxMessage[]>([]);
   const [unread, setUnread] = useState(0);
-  const [quota, setQuota] = useState<SendQuotaStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [hadithText, setHadithText] = useState<Record<string, string>>({});
@@ -43,10 +41,9 @@ export default function FriendsInboxScreen() {
     setLoading(true);
     setError(false);
     try {
-      const [inbox, q] = await Promise.all([fetchFriendsInbox(), fetchSendQuota()]);
+      const inbox = await fetchFriendsInbox();
       setMessages(inbox.messages);
       setUnread(inbox.unread);
-      setQuota(q);
     } catch {
       setError(true);
     } finally {
@@ -64,9 +61,9 @@ export default function FriendsInboxScreen() {
       setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, read: true } : x)));
     }
     if (m.type === 'hadith' && !hadithText[m.id]) {
-      const p = m.payload as { collectionId?: string; n?: number };
-      if (p?.collectionId && p.n) {
-        loadCollection(p.collectionId as never, hadithLangFor(language))
+      const p = m.payload as { collection?: string; n?: number };
+      if (p?.collection && p.n) {
+        loadCollection(p.collection as never, hadithLangFor(language))
           .then((col) => {
             const h = col.hadiths.find((x) => x.n === p.n);
             if (h) setHadithText((prev) => ({ ...prev, [m.id]: h.t }));
@@ -77,17 +74,16 @@ export default function FriendsInboxScreen() {
   };
 
   const renderBody = (m: FriendInboxMessage) => {
-    const p = m.payload as { text?: string; collectionId?: string; n?: number; numero?: number };
-    switch (m.type) {
-      case 'encouragement': return p.text ?? null;
-      case 'success': return p.text ?? null;
-      case 'hadith': {
-        const ref = p?.collectionId ? `${COLLECTION_LABEL[p.collectionId] ?? p.collectionId} #${p.n ?? ''}` : null;
-        return ref && <Text style={[styles.hadithRef, { color: '#6B4DFF' }]}>📖 {ref}</Text>;
-      }
-      case 'reminder': return null;
-      default: return null;
-    }
+    const p = (m.payload ?? {}) as { collection?: string; n?: number };
+    const ref = m.type === 'hadith' && p.collection
+      ? `${COLLECTION_LABEL[p.collection] ?? p.collection} #${p.n ?? ''}`
+      : null;
+    return (
+      <>
+        {ref && <Text style={[styles.hadithRef, { color: '#6B4DFF' }]}>📖 {ref}</Text>}
+        {m.note ? <Text style={[styles.note, { color: T.text }]}>{m.note}</Text> : null}
+      </>
+    );
   };
 
   return (
@@ -96,7 +92,6 @@ export default function FriendsInboxScreen() {
       <FriendsHeader
         emoji="✉️"
         title={tr('friends.inbox')}
-        subtitle={quota && quota.remaining > 0 ? tr('friends.quotaLeft', { n: quota.remaining }) : tr('friends.quotaGone')}
         right={unread > 0 ? (
           <View style={styles.unreadBadge}>
             <Text style={styles.unreadText}>{unread}</Text>
@@ -146,9 +141,8 @@ export default function FriendsInboxScreen() {
                       </View>
                       <Text style={[styles.msgType, { color: T.textSecondary }]}>
                         {m.type === 'encouragement' && tr('friends.sendEncouragement')}
-                        {m.type === 'success' && tr('friends.sendSuccess')}
+                        {m.type === 'achievement' && tr('friends.sendSuccess')}
                         {m.type === 'hadith' && tr('friends.sendHadith')}
-                        {m.type === 'reminder' && tr('friends.sendReminder')}
                       </Text>
                       {renderBody(m)}
                       {isOpen && m.type === 'hadith' && (
@@ -198,5 +192,6 @@ const styles = StyleSheet.create({
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#6B4DFF' },
   msgType: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 2 },
   hadithRef: { fontFamily: 'Nunito_700Bold', fontSize: 13, marginTop: 6 },
+  note: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, marginTop: 6 },
   hadithBody: { fontFamily: 'ScheherazadeNew_400Regular', fontSize: 19, lineHeight: 30, marginTop: 8 },
 });

@@ -30,7 +30,7 @@ export default function FriendProgressScreen() {
   const tr = useT();
   const T = useTheme();
   const P = friendPalette(T.isDark);
-  const { userId, name, friendshipId } = useLocalSearchParams<{ userId: string; name: string; friendshipId?: string }>();
+  const { userId, name } = useLocalSearchParams<{ userId: string; name: string }>();
   const [progress, setProgress] = useState<FriendProgressView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -58,9 +58,7 @@ export default function FriendProgressScreen() {
       {
         text: tr('friends.remove'), style: 'destructive',
         onPress: async () => {
-          if (friendshipId) {
-            try { await removeFriend(friendshipId); } catch { /* best-effort */ }
-          }
+          try { await removeFriend(userId); } catch { /* best-effort */ }
           router.back();
         },
       },

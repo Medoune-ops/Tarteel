@@ -51,7 +51,7 @@ export default function FriendPickerModal({ visible, onClose, onPick }: Props) {
             ) : (
               <View style={[styles.listCard, { backgroundColor: T.cardBg }]}>
                 {friends.map((f, i) => (
-                  <Pressable key={f.friendshipId} onPress={() => onPick(f.user)}>
+                  <Pressable key={f.user.id} onPress={() => onPick(f.user)}>
                     {i > 0 && <View style={[styles.divider, { backgroundColor: T.divider }]} />}
                     <View style={styles.friendRow}>
                       <FriendAvatar name={f.user.displayName} id={f.user.id} size={44} />

@@ -15,7 +15,8 @@ import ChallengeVictoryModal from '../../components/ChallengeVictoryModal';
 import { useTheme } from '../../utils/useTheme';
 import { friendPalette } from '../../utils/friendTheme';
 import {
-  fetchChallenges, createChallenge, leaveChallenge, fetchFriends,
+  fetchChallenges, createChallenge, leaveChallenge, cancelChallenge, acceptChallenge,
+  declineChallenge, fetchFriends,
   type ChallengeView, type FriendView, type ChallengeMetric, type FriendUser,
 } from '../../lib/api';
 import { ApiError } from '../../lib/api/client';
@@ -23,10 +24,10 @@ import { useChallengeSeenStore } from '../../store/challengeSeenStore';
 import { useT, type I18nKey } from '../../lib/i18n';
 
 const DURATIONS_DAYS = [7, 14, 30, 60];
-const METRIC_ICON: Record<ChallengeMetric, string> = { xp: '✨', streak: '🔥', sourates: '📖' };
+const METRIC_ICON: Record<ChallengeMetric, string> = { streak: '🔥', sourates: '📖' };
 
-const targetLabel = (tr: (key: I18nKey) => string) => ({
-  xp: tr('friends.challengeTargetXp'), streak: tr('friends.challengeTargetStreak'), sourates: tr('friends.challengeTargetSourates'),
+const targetLabel = (tr: (key: I18nKey) => string): Record<ChallengeMetric, string> => ({
+  streak: tr('friends.challengeTargetStreak'), sourates: tr('friends.challengeTargetSourates'),
 });
 
 /** Barre de progression au remplissage dégradé, animée de 0 à `ratio`. */
@@ -57,8 +58,11 @@ export default function FriendsChallengesScreen() {
   const [error, setError] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState('');
-  const [metric, setMetric] = useState<ChallengeMetric>('xp');
+  const [metric, setMetric] = useState<ChallengeMetric>('streak');
+  // Série : `target` = nombre de jours. Sourates : de `target` à `targetTo`.
   const [target, setTarget] = useState('');
+  const [targetTo, setTargetTo] = useState('');
+  const [acting, setActing] = useState<string | null>(null);
   const [days, setDays] = useState(7);
   const [friendIds, setFriendIds] = useState<string[]>([]);
   const [friends, setFriends] = useState<FriendView[]>([]);
@@ -105,9 +109,10 @@ export default function FriendsChallengesScreen() {
     setCreateOpen(true);
     setTitle('');
     setTarget('');
+    setTargetTo('');
     setDays(7);
     setFriendIds([]);
-    setMetric('xp');
+    setMetric('streak');
     try {
       setFriends(await fetchFriends());
     } catch {
@@ -119,16 +124,27 @@ export default function FriendsChallengesScreen() {
     setFriendIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
   const onCreate = async () => {
-    const targetValue = Number(target);
-    const endsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    const first = Number(target);
+    const last = Number(targetTo);
     if (!title.trim()) { Alert.alert(tr('friends.challengeEmptyTitle')); return; }
-    if (!Number.isFinite(targetValue) || targetValue < 1) { Alert.alert(tr('friends.addErrorTitle')); return; }
+    if (metric === 'streak' && !(Number.isInteger(first) && first >= 3 && first <= days)) {
+      Alert.alert(tr('friends.challengeStreakTooLong'));
+      return;
+    }
+    if (metric === 'sourates' && !(
+      Number.isInteger(first) && Number.isInteger(last)
+      && first >= 1 && last <= 114 && first <= last && last - first < 30
+    )) {
+      Alert.alert(tr('friends.challengeSouratesRange'));
+      return;
+    }
     if (friendIds.length === 0) { Alert.alert(tr('friends.challengeEmptyFriends')); return; }
     setCreating(true);
     try {
-      await createChallenge({
-        title: title.trim(), metric, targetValue, endsAt: endsAt.toISOString(), friendIds,
-      });
+      const base = { title: title.trim(), durationDays: days, friendIds };
+      await createChallenge(metric === 'streak'
+        ? { ...base, metric, days: first }
+        : { ...base, metric, from: first, to: last });
       setCreateOpen(false);
       load();
     } catch (e) {
@@ -138,19 +154,35 @@ export default function FriendsChallengesScreen() {
     }
   };
 
+  /** Avant le début, le créateur annule le défi ; sinon on le quitte. */
   const onLeave = (c: ChallengeView) => {
-    if (c.isCreator) { Alert.alert(tr('friends.challengeCreator'), tr('friends.challengeEndPast')); return; }
-    Alert.alert(tr('friends.leaveChallenge'), tr('friends.leaveConfirm'), [
+    const cancel = c.isCreator && c.status === 'pending';
+    const label = cancel ? tr('friends.challengeCancel') : tr('friends.leaveChallenge');
+    Alert.alert(label, cancel ? tr('friends.challengeCancelConfirm') : tr('friends.leaveConfirm'), [
       { text: tr('common.cancel'), style: 'cancel' },
       {
-        text: tr('friends.leaveChallenge'), style: 'destructive',
+        text: label, style: 'destructive',
         onPress: async () => {
-          try { await leaveChallenge(c.id); } catch { /* best-effort */ }
+          try { await (cancel ? cancelChallenge(c.id) : leaveChallenge(c.id)); } catch { /* best-effort */ }
           setExpandedId(null);
           load();
         },
       },
     ]);
+  };
+
+  /** Réponse à une invitation (avant le début du défi). */
+  const onAnswer = async (c: ChallengeView, accept: boolean) => {
+    if (acting) return;
+    setActing(c.id);
+    try {
+      await (accept ? acceptChallenge(c.id) : declineChallenge(c.id));
+      await load();
+    } catch (e) {
+      Alert.alert(tr('friends.addErrorTitle'), e instanceof ApiError ? e.message : undefined);
+    } finally {
+      setActing(null);
+    }
   };
 
   /** Relance d'un ami sur un défi (décompte du quota d'envois). */
@@ -195,6 +227,9 @@ export default function FriendsChallengesScreen() {
                 const me = c.participants.find((p) => p.isMe);
                 const expanded = expandedId === c.id;
                 const active = c.status === 'active';
+                const pending = c.status === 'pending';
+                const invited = pending && c.myStatus === 'invited';
+                const shown = c.participants.filter((p) => p.status === 'accepted' || p.status === 'invited');
                 return (
                   <Pressable
                     key={c.id}
@@ -212,14 +247,37 @@ export default function FriendsChallengesScreen() {
                         </Text>
                       </View>
                       <View style={[styles.badge, { backgroundColor: active ? P.greenBg : P.neutralBg }]}>
-                        <Feather name={active ? 'play-circle' : 'check' } size={11} color={active ? P.greenText : P.neutralText} />
+                        <Feather name={active ? 'play-circle' : pending ? 'clock' : 'check'} size={11} color={active ? P.greenText : P.neutralText} />
                         <Text style={[styles.badgeText, { color: active ? P.greenText : P.neutralText }]}>
-                          {active ? tr('friends.challengeActive') : tr('friends.challengeEnded')}
+                          {active ? tr('friends.challengeActive') : pending ? tr('friends.challengePending') : tr('friends.challengeEnded')}
                         </Text>
                       </View>
                     </View>
 
-                    {me && (
+                    {pending && (
+                      <Text style={[styles.pendingHint, { color: T.textSecondary }]}>
+                        {invited ? tr('friends.challengeInvited') : tr('friends.challengeStartsTomorrow')}
+                      </Text>
+                    )}
+
+                    {invited && (
+                      <View style={styles.answerRow}>
+                        {acting === c.id ? (
+                          <ActivityIndicator color="#6B4DFF" />
+                        ) : (
+                          <>
+                            <Pressable style={[styles.answerBtn, { backgroundColor: P.neutralBg }]} onPress={() => onAnswer(c, false)}>
+                              <Text style={[styles.answerText, { color: P.neutralText }]}>{tr('friends.decline')}</Text>
+                            </Pressable>
+                            <Pressable style={[styles.answerBtn, { backgroundColor: '#6B4DFF' }]} onPress={() => onAnswer(c, true)}>
+                              <Text style={[styles.answerText, { color: '#fff' }]}>{tr('friends.accept')}</Text>
+                            </Pressable>
+                          </>
+                        )}
+                      </View>
+                    )}
+
+                    {me && !pending && c.targetValue > 0 && (
                       <View style={styles.myProgress}>
                         <Text style={[styles.myProgressText, { color: T.textSecondary }]}>
                           {tr('friends.player')}: {me.progress}/{c.targetValue}
@@ -231,14 +289,14 @@ export default function FriendsChallengesScreen() {
                     {expanded && (
                       <>
                         <View style={[styles.partList, { backgroundColor: T.pageBg }]}>
-                          {c.participants.map((p) => (
+                          {shown.map((p) => (
                             <View key={p.user.id} style={styles.partRow}>
                               <FriendAvatar name={p.user.displayName} id={p.user.id} size={34} />
                               <Text style={[styles.partName, { color: T.text }]}>{p.user.displayName}{p.isMe ? ` (${tr('friends.player')})` : ''}</Text>
                               {c.winnerIds.includes(p.user.id) && <Text style={styles.trophy}>🏆</Text>}
                               {p.achieved && <Feather name="check-circle" size={15} color="#2A9E1C" />}
                               <Text style={[styles.partProgress, { color: T.textSecondary }]}>{p.progress}/{c.targetValue}</Text>
-                              {c.status === 'active' && !p.isMe && (
+                              {active && !p.isMe && p.status === 'accepted' && (
                                 <Pressable
                                   onPress={() => onRemind(c, p.user)}
                                   hitSlop={8}
@@ -257,10 +315,12 @@ export default function FriendsChallengesScreen() {
                             {c.winnerIds.length > 1 ? tr('friends.challengeWinners') : tr('friends.challengeWinner')}: 🏆
                           </Text>
                         )}
-                        {!c.isCreator && (
+                        {(active || pending) && c.myStatus === 'accepted' && (
                           <Pressable style={styles.leaveBtn} onPress={() => onLeave(c)}>
                             <Feather name="log-out" size={15} color={P.danger} />
-                            <Text style={[styles.leaveText, { color: P.danger }]}>{tr('friends.leaveChallenge')}</Text>
+                            <Text style={[styles.leaveText, { color: P.danger }]}>
+                              {c.isCreator && pending ? tr('friends.challengeCancel') : tr('friends.leaveChallenge')}
+                            </Text>
                           </Pressable>
                         )}
                       </>
@@ -293,7 +353,7 @@ export default function FriendsChallengesScreen() {
                 placeholderTextColor="#A0A5AE"
                 value={title}
                 onChangeText={setTitle}
-                maxLength={80}
+                maxLength={60}
               />
               <View style={styles.metricRow}>
                 {(Object.keys(label) as ChallengeMetric[]).map((m) => {
@@ -310,17 +370,44 @@ export default function FriendsChallengesScreen() {
                   );
                 })}
               </View>
-              <View style={[styles.fieldInput, { backgroundColor: T.cardBg }]}>
-                <TextInput
-                  style={[styles.targetInput, { color: T.text }]}
-                  placeholder="1000"
-                  placeholderTextColor="#A0A5AE"
-                  keyboardType="number-pad"
-                  value={target}
-                  onChangeText={setTarget}
-                />
-              </View>
-              <Text style={[styles.fieldLabel, { color: T.textSecondary }]}>{tr('friends.challengeEnds')}</Text>
+              {metric === 'streak' ? (
+                <View style={[styles.fieldInput, { backgroundColor: T.cardBg }]}>
+                  <TextInput
+                    style={[styles.targetInput, { color: T.text }]}
+                    placeholder="7"
+                    placeholderTextColor="#A0A5AE"
+                    keyboardType="number-pad"
+                    value={target}
+                    onChangeText={setTarget}
+                  />
+                </View>
+              ) : (
+                <View style={styles.rangeRow}>
+                  <Text style={[styles.fieldLabel, { color: T.textSecondary, marginTop: 0 }]}>{tr('friends.challengeFrom')}</Text>
+                  <View style={[styles.fieldInput, styles.rangeInput, { backgroundColor: T.cardBg }]}>
+                    <TextInput
+                      style={[styles.targetInput, { color: T.text }]}
+                      placeholder="78"
+                      placeholderTextColor="#A0A5AE"
+                      keyboardType="number-pad"
+                      value={target}
+                      onChangeText={setTarget}
+                    />
+                  </View>
+                  <Text style={[styles.fieldLabel, { color: T.textSecondary, marginTop: 0 }]}>{tr('friends.challengeTo')}</Text>
+                  <View style={[styles.fieldInput, styles.rangeInput, { backgroundColor: T.cardBg }]}>
+                    <TextInput
+                      style={[styles.targetInput, { color: T.text }]}
+                      placeholder="114"
+                      placeholderTextColor="#A0A5AE"
+                      keyboardType="number-pad"
+                      value={targetTo}
+                      onChangeText={setTargetTo}
+                    />
+                  </View>
+                </View>
+              )}
+              <Text style={[styles.fieldLabel, { color: T.textSecondary }]}>{tr('friends.challengeDuration')} ({tr('friends.challengeDays')})</Text>
               <View style={styles.daysRow}>
                 {DURATIONS_DAYS.map((d) => {
                   const on = days === d;
@@ -423,6 +510,12 @@ const styles = StyleSheet.create({
   winners: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, marginTop: 10 },
   leaveBtn: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-end', padding: 6 },
   leaveText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13 },
+  pendingHint: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 10 },
+  answerRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10 },
+  answerBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12 },
+  answerText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13 },
+  rangeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  rangeInput: { width: 72 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 26, maxHeight: '90%', overflow: 'hidden' },
   sheetAccent: { height: 5, width: '100%' },
