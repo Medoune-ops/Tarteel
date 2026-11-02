@@ -19,7 +19,7 @@ import DeviceStatusBar from '../../components/StatusBar';
 import QiblaCompass from '../../components/QiblaCompass';
 import { useTheme } from '../../utils/useTheme';
 import {
-  usePrayerStore, ADHAN_SOUNDS, REMINDER_BEFORE_OPTIONS, type AdhanSound,
+  usePrayerStore, type AdhanSound,
 } from '../../store/prayerStore';
 import { useUserStore } from '../../store/userStore';
 import {
@@ -90,8 +90,6 @@ export default function PrieresScreen() {
   const toggleReminderPrayer = usePrayerStore((s) => s.toggleReminderPrayer);
   const adhanSound = usePrayerStore((s) => s.adhanSound);
   const setAdhanSound = usePrayerStore((s) => s.setAdhanSound);
-  const reminderBefore = usePrayerStore((s) => s.reminderBefore);
-  const setReminderBefore = usePrayerStore((s) => s.setReminderBefore);
 
   // Aperçu de la voix choisie.
   // TODO(backend) : un seul fichier embarqué pour l'instant
@@ -405,19 +403,41 @@ export default function PrieresScreen() {
                 })}
               </View>
 
-              {/* ── Rappels ── */}
+              {/* ── Rappels ── : seulement le son (pour l'entendre) et l'activation. */}
               <Text style={[styles.sectionTitle, { color: C.ink }]}>{tr('prayer.reminder.sectionTitle')}</Text>
               <View style={[styles.card, { backgroundColor: C.card }]}>
+                <View style={styles.sounds}>
+                  <Pressable
+                    onPress={() => togglePreview(adhanSound)}
+                    style={[styles.soundRow, { backgroundColor: C.accentSoft, borderColor: 'transparent' }]}
+                    accessibilityLabel={playingId ? tr('prayer.reminder.stop') : tr('prayer.reminder.preview')}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.soundName, { color: C.ink }]}>{tr('prayer.reminder.soundTitle')}</Text>
+                      <Text style={[styles.soundSub, { color: C.muted }]}>{tr('prayer.reminder.preview')}</Text>
+                    </View>
+                    <View style={[styles.playBtn, { backgroundColor: playingId ? C.accent : C.seg }]}>
+                      <Feather
+                        name={playingId ? 'pause' : 'play'}
+                        size={14}
+                        color={playingId ? '#fff' : C.ink}
+                        style={playingId ? undefined : { marginLeft: 2 }}
+                      />
+                    </View>
+                  </Pressable>
+                </View>
+
+                <View style={[styles.hr, { backgroundColor: C.line }]} />
                 <View style={styles.reminderHead}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.rowTitle, { color: C.ink }]}>{tr('prayer.reminder.adhanToggle')}</Text>
+                    <Text style={[styles.rowTitle, { color: C.ink }]}>{tr('prayer.reminder.toggle')}</Text>
                     <Text style={[styles.rowSub, { color: C.muted }]}>{tr('prayer.reminder.adhanHint')}</Text>
                   </View>
                   <Pressable
                     onPress={onToggleReminders}
                     accessibilityRole="switch"
                     accessibilityState={{ checked: remindersEnabled }}
-                    accessibilityLabel={tr('prayer.reminder.adhanToggle')}
+                    accessibilityLabel={tr('prayer.reminder.toggle')}
                     style={[
                       styles.switch,
                       { backgroundColor: remindersEnabled ? C.accent : C.swOff, alignItems: remindersEnabled ? 'flex-end' : 'flex-start' },
@@ -425,67 +445,6 @@ export default function PrieresScreen() {
                   >
                     <View style={styles.switchKnob} />
                   </Pressable>
-                </View>
-
-                <View style={[styles.sounds, { opacity: remindersEnabled ? 1 : 0.4 }]}>
-                  {ADHAN_SOUNDS.map((id) => {
-                    const sel = adhanSound === id;
-                    const playing = playingId === id;
-                    return (
-                      <Pressable
-                        key={id}
-                        onPress={() => setAdhanSound(id)}
-                        style={[
-                          styles.soundRow,
-                          { backgroundColor: sel ? C.accentSoft : 'transparent', borderColor: sel ? 'transparent' : C.line },
-                        ]}
-                      >
-                        <View style={[styles.radio, { borderColor: sel ? C.accent : C.radioOff }]}>
-                          <View style={[styles.radioDot, { backgroundColor: sel ? C.accent : 'transparent' }]} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.soundName, { color: C.ink }]}>{tr(`prayer.reminder.sound.${id}`)}</Text>
-                          <Text style={[styles.soundSub, { color: C.muted }]}>{tr(`prayer.reminder.sound.${id}Sub`)}</Text>
-                        </View>
-                        <Pressable
-                          onPress={() => togglePreview(id)}
-                          style={[styles.playBtn, { backgroundColor: playing ? C.accent : C.seg }]}
-                          accessibilityLabel={playing ? tr('prayer.reminder.stop') : tr('prayer.reminder.preview')}
-                        >
-                          <Feather
-                            name={playing ? 'pause' : 'play'}
-                            size={14}
-                            color={playing ? '#fff' : C.ink}
-                            style={playing ? undefined : { marginLeft: 2 }}
-                          />
-                        </Pressable>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
-                <View style={[styles.hr, { backgroundColor: C.line }]} />
-                <View style={styles.beforeRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.rowTitleSm, { color: C.ink }]}>{tr('prayer.reminder.before')}</Text>
-                    <Text style={[styles.rowSub, { color: C.muted }]}>{tr('prayer.reminder.beforeHint')}</Text>
-                  </View>
-                  <View style={[styles.segment, { backgroundColor: C.seg }]}>
-                    {REMINDER_BEFORE_OPTIONS.map((v) => {
-                      const sel = reminderBefore === v;
-                      return (
-                        <Pressable
-                          key={v}
-                          onPress={() => setReminderBefore(v)}
-                          style={[styles.segItem, sel && [styles.segItemOn, { backgroundColor: C.segOn }]]}
-                        >
-                          <Text style={[styles.segText, { color: sel ? C.ink : C.muted }]}>
-                            {v === 0 ? tr('prayer.reminder.beforeNone') : tr('prayer.reminder.beforeMin', { m: v })}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
                 </View>
               </View>
 
@@ -599,22 +558,15 @@ const styles = StyleSheet.create({
     width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff',
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
-  sounds: { paddingHorizontal: 18, paddingBottom: 18, gap: 8 },
+  sounds: { padding: 18, gap: 8 },
   soundRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 10, paddingRight: 10, paddingLeft: 14, borderRadius: 16, borderWidth: 1.5,
   },
-  radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  radioDot: { width: 8, height: 8, borderRadius: 4 },
   soundName: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14 },
   soundSub: { fontFamily: 'Nunito_600SemiBold', fontSize: 12 },
   playBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   hr: { height: 1 },
-  beforeRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 16 },
-  segment: { flexDirection: 'row', gap: 4, padding: 3, borderRadius: 12 },
-  segItem: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9 },
-  segItemOn: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
-  segText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12 },
 
   positionCard: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingLeft: 18, paddingRight: 16 },
   positionIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
