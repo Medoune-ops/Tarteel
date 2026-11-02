@@ -1185,6 +1185,7 @@ function DailyChestButton() {
   const [available, setAvailable] = useState(false);
   const [opening, setOpening] = useState(false);
   const showGift = useGiftModalStore((s) => s.show);
+  const T = useTheme();
 
   useEffect(() => {
     fetchDailyChestAvailable().then(setAvailable).catch(() => setAvailable(false));
@@ -1228,26 +1229,53 @@ function DailyChestButton() {
 
   return (
     <Animated.View style={[chestStyles.floating, shakeStyle]}>
-      <Pressable onPress={open} hitSlop={12} style={chestStyles.bubble}>
-        <Text style={chestStyles.emoji}>🎁</Text>
+      <Pressable onPress={open} hitSlop={12} style={({ pressed }) => [chestStyles.step, pressed && { opacity: 0.9 }]}>
+        <LinearGradient
+          colors={['#FFD35C', '#F59F0B']}
+          start={{ x: 0.3, y: 0 }}
+          end={{ x: 0.7, y: 1 }}
+          style={chestStyles.bubble}
+        >
+          <GiftGlyph />
+        </LinearGradient>
+        <View style={[chestStyles.dot, { borderColor: T.pageBg }]} />
       </Pressable>
     </Animated.View>
+  );
+}
+
+/** Icône cadeau de la maquette : couvercle plein, boîte et nœud au trait. */
+function GiftGlyph({ size = 26, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={3.5} y={8} width={17} height={5} rx={1.5} fill={color} stroke={color} strokeWidth={2} />
+      <Path
+        d="M5 13v6.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V13M12 8v13M12 8S9.5 3.5 7.5 5c-1.6 1.2.5 3 4.5 3zm0 0s2.5-4.5 4.5-3c1.6 1.2-.5 3-4.5 3z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
   );
 }
 
 const chestStyles = StyleSheet.create({
   // Flotte au-dessus du parcours, ancré en bas à droite (au-dessus de la tab bar).
   floating: {
-    position: 'absolute', right: 18, bottom: 24, zIndex: 20,
+    position: 'absolute', right: 16, bottom: 24, zIndex: 20,
   },
-  bubble: {
-    width: 62, height: 62, borderRadius: 31,
-    backgroundColor: '#F0A41E',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#E07A0C', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-    borderWidth: 3, borderColor: '#FFD97A',
+  // Socle foncé visible sous le rond (relief « bouton » de la maquette) + halo doré.
+  step: {
+    width: 56, height: 61, borderRadius: 28, backgroundColor: '#C27A06',
+    shadowColor: '#FFC93D', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
   },
-  emoji: { fontSize: 30 },
+  bubble: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  // Pastille rouge « nouveau » en haut à droite, détourée de la couleur du fond.
+  dot: {
+    position: 'absolute', top: -2, right: -2, width: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#FF5D73', borderWidth: 2.5,
+  },
 });
 
 /**
