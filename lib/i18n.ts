@@ -700,6 +700,8 @@ const fr = {
   // ─── Moteur de leçon (play.tsx) ────────────────────────────────────────────
   'play.loadError': 'Impossible de charger la leçon.',
   'play.backToPath': 'Retour au parcours',
+  'play.connectionLost': 'Connexion perdue. Ta progression est gardée, ta réponse partira dès le retour du réseau.',
+  'finish.pendingSync': 'Pas de connexion. Ta leçon est gardée et sera validée dès ton retour en ligne.',
   'play.loading': 'Chargement de la leçon…',
   'play.notAvailable': "Cette leçon n'est pas encore disponible.",
   'play.tagFullVerse': 'Verset complet',
@@ -2490,6 +2492,8 @@ const en: Dict = {
   // ─── Lesson engine (play.tsx) ───────────────────────────────────────────────
   'play.loadError': 'Could not load the lesson.',
   'play.backToPath': 'Back to path',
+  'play.connectionLost': 'Connection lost. Your progress is saved, your answer will be sent as soon as you are back online.',
+  'finish.pendingSync': 'No connection. Your lesson is saved and will be validated as soon as you are back online.',
   'play.loading': 'Loading lesson…',
   'play.notAvailable': 'This lesson is not available yet.',
   'play.tagFullVerse': 'Full verse',

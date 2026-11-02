@@ -28,6 +28,7 @@ import { swrFetch } from '../../../lib/api/swr';
 import { fetchDailyChestAvailable, claimDailyChestApi } from '../../../lib/api/rewards';
 import { useT, t } from '../../../lib/i18n';
 import OfflineState from '../../../components/OfflineState';
+import { onLessonSynced } from '../../../lib/api/lessonSync';
 import { playSound } from '../../../constants/sounds';
 
 type Theme = ReturnType<typeof useTheme>;
@@ -1602,6 +1603,9 @@ export default function ParcoursScreen() {
       loadSections();
     }, [syncHearts, loadSections]),
   );
+
+  // Une leçon terminée sans réseau vient d'être validée : la suivante s'ouvre.
+  useEffect(() => onLessonSynced(() => { void loadSections(); }), [loadSections]);
 
   // Position Y du nœud actif à l'intérieur de sa section (remontée par
   // SectionBlock via onLayout) — permet de viser la LEÇON à faire, pas juste

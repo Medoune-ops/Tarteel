@@ -12,8 +12,8 @@ import CountUp from '../../../components/CountUp';
 import { playSound, finishFeedback } from '../../../constants/sounds';
 import { useUserStore } from '../../../store/userStore';
 import { useReviewPromptStore } from '../../../store/reviewPromptStore';
-import { completeLesson } from '../../../lib/api';
-import { invalidate } from '../../../lib/api/swr';
+import { enqueueCompletion, flushCompletions, hasPendingCompletion, onLessonSynced, type MeResponse } from '../../../lib/api';
+import { clearLessonResume } from '../../../lib/lessonResume';
 import SourateMasteredModal from '../../../components/SourateMasteredModal';
 import { useT } from '../../../lib/i18n';
 
@@ -59,47 +59,48 @@ export default function FinishScreen() {
   // Série renvoyée par le serveur si elle vient d'augmenter (1re leçon du
   // jour) → « Continuer » passe par l'écran de célébration.
   const [streakUp, setStreakUp] = useState<number | null>(null);
+  // Pas de réseau : la leçon est gardée sur le téléphone, le serveur la validera
+  // au retour de la connexion (lib/api/lessonSync.ts).
+  const [syncPending, setSyncPending] = useState(false);
+
+  // Lu AVANT l'envoi : la validation hydrate le store avec la nouvelle série.
+  const streakBefore = useRef(useUserStore.getState().streak);
+
+  // Écoute à part de l'envoi : la validation peut arriver bien après, si le
+  // réseau revient alors que cet écran est encore affiché.
+  useEffect(() => onLessonSynced((lessonId, data: MeResponse) => {
+    if (lessonId !== params.lessonId) return;
+    setSyncPending(false);
+    setXpGained(data.xpGained ?? 0);
+    setDoubleXpWasActive(!!data.doubleXpWasActive);
+    // La série n'augmente qu'une fois par jour, côté serveur : les leçons
+    // suivantes du même jour renvoient la même valeur.
+    if (data.streak > streakBefore.current) setStreakUp(data.streak);
+    if (data.sourateMastered) {
+      setMastered(data.sourateMastered);
+      setShowMastered(true);
+    }
+  }), []);
 
   useEffect(() => {
     if (completedRef.current) return;
     completedRef.current = true;
-    if (!params.lessonId) return; // maquette / pas de leçon réelle : rien à enregistrer
-    // Lu AVANT l'appel : completeLesson hydrate le store avec la nouvelle série.
-    const streakBefore = useUserStore.getState().streak;
+    const lessonId = params.lessonId;
+    if (!lessonId) return; // maquette / pas de leçon réelle : rien à enregistrer
     // Compteur local de leçons terminées : garde-fou de la demande de note.
     useReviewPromptStore.getState().recordLesson();
-    completeLesson({
-      lessonId: params.lessonId,
-      correctAnswers: correct,
-      totalAnswers: total,
-      durationMs: durationMs || undefined,
-    })
-      .then((data) => {
-        console.log('[finish] completeLesson OK', data);
-        setXpGained(data.xpGained ?? 0);
-        setDoubleXpWasActive(!!data.doubleXpWasActive);
-        // La série n'augmente qu'une fois par jour, côté serveur : les leçons
-        // suivantes du même jour renvoient la même valeur.
-        if (data.streak > streakBefore) setStreakUp(data.streak);
-        // Leçon validée → parcours, classement et calendrier d'activité ont
-        // changé : forcer un vrai re-fetch au prochain affichage.
-        // ⚠️ La clé du parcours inclut la langue (`sections:fr`, cf.
-        // parcours.tsx#loadSections) et `invalidate` fait une correspondance
-        // EXACTE : invalider 'sections' ne supprimait rien, et le parcours
-        // pouvait resservir jusqu'à 30 s de cache — donc afficher encore la
-        // leçon qu'on vient de terminer comme étant l'active.
-        invalidate(`sections:${useUserStore.getState().language}`);
-        invalidate('league');
-        invalidate(`activity:${new Date().toISOString().slice(0, 7)}`);
-        if (data.sourateMastered) {
-          setMastered(data.sourateMastered);
-          setShowMastered(true);
-        }
-      })
-      .catch((err) => {
-        console.log('[finish] completeLesson FAILED', err);
-        /* hors-ligne : la progression reste locale, resync au prochain /me */
+    void (async () => {
+      // Écrite AVANT l'appel réseau : même l'app coupée à cet instant ne perd rien.
+      await enqueueCompletion({
+        lessonId,
+        correctAnswers: correct,
+        totalAnswers: total,
+        durationMs: durationMs || undefined,
       });
+      await clearLessonResume();
+      await flushCompletions();
+      setSyncPending(await hasPendingCompletion(lessonId));
+    })();
   }, []);
 
   // « Continuer » ramène au PARCOURS, jamais directement dans la leçon
@@ -198,14 +199,18 @@ export default function FinishScreen() {
             <Feather name="zap" size={24} color="#E0A800" />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
-            <CountUp
-              value={xpGained ?? 0}
-              prefix="+"
-              suffix=" XP"
-              delay={550}
-              duration={850}
-              style={styles.statVal}
-            />
+            {syncPending ? (
+              <Text style={styles.statVal}>—</Text>
+            ) : (
+              <CountUp
+                value={xpGained ?? 0}
+                prefix="+"
+                suffix=" XP"
+                delay={550}
+                duration={850}
+                style={styles.statVal}
+              />
+            )}
             {doubleXpWasActive && (
               <View style={styles.doubleXpBadge}>
                 <Text style={styles.doubleXpBadgeText}>×2</Text>
@@ -249,6 +254,13 @@ export default function FinishScreen() {
           {streak > 0 ? tr(streak > 1 ? 'finish.streakDays' : 'finish.streakDay', { n: streak }) : tr('finish.streakStart')}
         </Text>
       </Animated.View>
+
+      {syncPending && (
+        <View style={styles.pendingBadge}>
+          <Feather name="wifi-off" size={18} color="#fff" />
+          <Text style={styles.pendingText}>{tr('finish.pendingSync')}</Text>
+        </View>
+      )}
 
       {/* Niveau */}
       <Animated.View entering={FadeInDown.delay(1150)} style={styles.levelTrack}>
@@ -299,6 +311,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24,
   },
   streakText: { fontFamily: 'Baloo2_800ExtraBold', fontSize: 18, color: '#fff' },
+  pendingBadge: {
+    width: '100%', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12,
+  },
+  pendingText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 14, color: '#fff' },
   levelTrack: { width: '100%', height: 14, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden', marginTop: 24 },
   levelFill: { height: '100%', backgroundColor: '#fff', borderRadius: 8 },
   cta: {

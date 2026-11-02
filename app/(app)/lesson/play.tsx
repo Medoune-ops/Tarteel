@@ -17,7 +17,9 @@ import {
   type MatchingStep,
   type VoiceStep,
 } from '../../../constants/lessonEngine';
-import { fetchLesson, answerStep, reciteLessonStep, ApiError } from '../../../lib/api';
+import NetInfo from '@react-native-community/netinfo';
+import { fetchLesson, answerStep, reciteLessonStep, ApiError, isRetryableError } from '../../../lib/api';
+import { answerKey, newAttemptId, readLessonResume, sameSteps, saveLessonResume } from '../../../lib/lessonResume';
 import { useAudioRecorder, RecordingPresets } from 'expo-audio';
 import { ensureMicPermission, enterRecordingMode, exitRecordingMode } from '../../../lib/audio/recorder';
 import { playRemoteAudio, playRemoteAudioAsync, stopRemoteAudio, setRemotePlaybackRate, correctFeedback, wrongFeedback } from '../../../constants/sounds';
@@ -40,19 +42,7 @@ export default function LessonPlayScreen() {
   // sont nécessaires pour le judging serveur.
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loadError, setLoadError] = useState(false);
-
-  useEffect(() => {
-    if (!lessonId) { setLoadError(true); return; }
-    let cancelled = false;
-    fetchLesson(lessonId, useUserStore.getState().language)
-      .then((l) => {
-        if (cancelled) return;
-        // « Voix & enregistrements » désactivé → on saute les étapes micro.
-        setLesson(voiceEnabled ? l : { ...l, steps: l.steps.filter((s) => s.type !== 'voice') });
-      })
-      .catch(() => { if (!cancelled) setLoadError(true); });
-    return () => { cancelled = true; };
-  }, [lessonId, voiceEnabled]);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('answering');
@@ -61,17 +51,82 @@ export default function LessonPlayScreen() {
   const [judging, setJudging] = useState(false);
   // Bonne réponse révélée par le serveur APRÈS la réponse (pour surligner).
   const [revealed, setRevealed] = useState<string | null>(null);
+  // Une réponse attend le retour du réseau : elle est verrouillée jusqu'au renvoi.
+  const [connectionLost, setConnectionLost] = useState(false);
+  const pendingSend = useRef<(() => void) | null>(null);
 
   // Horodatage de début pour mesurer la durée de la leçon (envoyée au backend).
   const startedAt = useRef(Date.now());
+  // Identifie cette tentative : base des clés d'idempotence des réponses.
+  const attemptId = useRef(newAttemptId());
+
+  useEffect(() => {
+    if (!lessonId) { setLoadError(true); return; }
+    let cancelled = false;
+    (async () => {
+      const saved = await readLessonResume(lessonId);
+      let fresh: Lesson | null = null;
+      try {
+        const l = await fetchLesson(lessonId, useUserStore.getState().language);
+        // « Voix & enregistrements » désactivé → on saute les étapes micro.
+        fresh = voiceEnabled || !l.steps ? l : { ...l, steps: l.steps.filter((s) => s.type !== 'voice') };
+      } catch (e) {
+        // Sans réseau, on repart de la copie gardée si on en a une.
+        if (!saved || !isRetryableError(e)) {
+          if (!cancelled) setLoadError(true);
+          return;
+        }
+      }
+      if (cancelled) return;
+      // Le contenu a changé entre-temps : l'étape gardée ne veut plus rien dire.
+      const resume = saved && (!fresh || sameSteps(fresh, saved.lesson)) ? saved : null;
+      if (resume) {
+        attemptId.current = resume.attemptId;
+        startedAt.current = Date.now() - resume.elapsedMs;
+        setIndex(resume.index);
+        setCorrectCount(resume.correctCount);
+      }
+      setLesson(fresh ?? resume!.lesson);
+    })();
+    return () => { cancelled = true; };
+  }, [lessonId, voiceEnabled, loadAttempt]);
+
+  // Gardée à chaque étape franchie, donc avec un compte de bonnes réponses qui
+  // correspond toujours à l'étape : une réponse pas encore franchie sera rejouée.
+  useEffect(() => {
+    if (!lesson || (index === 0 && !connectionLost)) return;
+    void saveLessonResume({
+      lesson,
+      attemptId: attemptId.current,
+      index,
+      correctCount,
+      elapsedMs: Date.now() - startedAt.current,
+    });
+  }, [lesson, index, connectionLost]);
+
+  const retryPendingAnswer = () => {
+    const send = pendingSend.current;
+    pendingSend.current = null;
+    send?.();
+  };
+
+  useEffect(() => NetInfo.addEventListener((state) => {
+    if (state.isConnected !== false && state.isInternetReachable !== false) retryPendingAnswer();
+  }), []);
 
   if (loadError) {
     return (
       <View style={[styles.screen, styles.centerState]}>
         <Feather name="wifi-off" size={34} color="#9AA0AA" />
         <Text style={styles.stateText}>{tr('play.loadError')}</Text>
-        <Pressable style={styles.retryBtn} onPress={() => router.replace('/(app)/(tabs)/parcours')}>
-          <Text style={styles.retryLabel}>{tr('play.backToPath')}</Text>
+        <Pressable
+          style={styles.retryBtn}
+          onPress={() => { setLoadError(false); setLoadAttempt((n) => n + 1); }}
+        >
+          <Text style={styles.retryLabel}>{tr('common.retry')}</Text>
+        </Pressable>
+        <Pressable onPress={() => router.replace('/(app)/(tabs)/parcours')}>
+          <Text style={styles.backLabel}>{tr('play.backToPath')}</Text>
         </Pressable>
       </View>
     );
@@ -127,13 +182,14 @@ export default function LessonPlayScreen() {
     setPhase('answering');
   };
 
-  // Soumet une réponse écrite au JUDGING SERVEUR (autoritaire). Le serveur
-  // décide correct/faux et gère la perte de cœur ; on reflète son verdict.
-  const onSubmitWritten = async (st: WrittenStep, optionId: string) => {
-    if (judging) return;
+  // Soumet une réponse au JUDGING SERVEUR (autoritaire) : il décide correct/faux
+  // et gère la perte de cœur, on reflète son verdict. Sans réseau, on reste sur
+  // l'étape et la même réponse repartira avec la même clé, sans recoûter de cœur.
+  const submitAnswer = async (send: () => Promise<{ correct: boolean; bonneReponse?: string }>) => {
     setJudging(true);
+    setConnectionLost(false);
     try {
-      const res = await answerStep(lesson.id, st.id, { optionId });
+      const res = await send();
       setRevealed(res.bonneReponse ?? null);
       if (res.correct) {
         setCorrectCount((c) => c + 1);
@@ -144,9 +200,12 @@ export default function LessonPlayScreen() {
         wrongFeedback();
       }
     } catch (e) {
-      // OUT_OF_HEARTS (403) ou réseau : on bascule au blocage si plus de cœurs.
       if (e instanceof ApiError && e.status === 403) {
+        // OUT_OF_HEARTS : plus de cœurs, on bascule au blocage.
         router.replace('/(app)/lesson/out-of-hearts');
+      } else if (isRetryableError(e)) {
+        pendingSend.current = () => { void submitAnswer(send); };
+        setConnectionLost(true);
       } else {
         setLoadError(true);
       }
@@ -155,54 +214,24 @@ export default function LessonPlayScreen() {
     }
   };
 
-  const onSubmitOrdering = async (st: OrderingStep, positions: number[]) => {
+  const onSubmitWritten = (st: WrittenStep, optionId: string) => {
     if (judging) return;
-    setJudging(true);
-    try {
-      const res = await answerStep(lesson.id, st.id, { positions });
-      if (res.correct) {
-        setCorrectCount((c) => c + 1);
-        setPhase('correct');
-        correctFeedback();
-      } else {
-        setPhase('wrong');
-        wrongFeedback();
-      }
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 403) {
-        router.replace('/(app)/lesson/out-of-hearts');
-      } else {
-        setLoadError(true);
-      }
-    } finally {
-      setJudging(false);
-    }
+    const key = answerKey(attemptId.current, `written:${optionId}`);
+    void submitAnswer(() => answerStep(lesson.id, st.id, { optionId }, key));
+  };
+
+  const onSubmitOrdering = (st: OrderingStep, positions: number[]) => {
+    if (judging) return;
+    const key = answerKey(attemptId.current, `ordering:${positions.join(',')}`);
+    void submitAnswer(() => answerStep(lesson.id, st.id, { positions }, key));
   };
 
   // Soumet l'enregistrement d'une étape 'voice' au jugement Whisper serveur.
   // Même sémantique que written : le serveur décide et gère les cœurs.
-  const onSubmitVoice = async (st: VoiceStep, audioUri: string) => {
+  const onSubmitVoice = (st: VoiceStep, audioUri: string) => {
     if (judging) return;
-    setJudging(true);
-    try {
-      const res = await reciteLessonStep(lesson.id, st.id, audioUri);
-      if (res.correct) {
-        setCorrectCount((c) => c + 1);
-        setPhase('correct');
-        correctFeedback();
-      } else {
-        setPhase('wrong');
-        wrongFeedback();
-      }
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 403) {
-        router.replace('/(app)/lesson/out-of-hearts');
-      } else {
-        setLoadError(true);
-      }
-    } finally {
-      setJudging(false);
-    }
+    const key = answerKey(attemptId.current, `voice:${audioUri}`);
+    void submitAnswer(() => reciteLessonStep(lesson.id, st.id, audioUri, key));
   };
 
   // "Continuer" après un feedback : si plus de cœurs → écran de blocage.
@@ -218,6 +247,16 @@ export default function LessonPlayScreen() {
   return (
     <View style={styles.screen}>
       <LessonHeader progress={progress} progressColor={phase === 'wrong' ? '#FF4B4B' : '#34C724'} />
+
+      {connectionLost && (
+        <View style={styles.connectionBanner}>
+          <Feather name="wifi-off" size={18} color="#B4600A" />
+          <Text style={styles.connectionText}>{tr('play.connectionLost')}</Text>
+          <Pressable style={styles.connectionRetry} onPress={retryPendingAnswer}>
+            <Text style={styles.connectionRetryLabel}>{tr('common.retry')}</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* La key={index} force le re-montage à chaque étape → déclenche le glissement. */}
       <Animated.View
@@ -235,7 +274,7 @@ export default function LessonPlayScreen() {
           <WrittenView
             step={step}
             phase={phase}
-            judging={judging}
+            judging={judging || connectionLost}
             revealed={revealed}
             onValidate={(optionId) => onSubmitWritten(step, optionId)}
             onContinue={onContinueAfterFeedback}
@@ -245,7 +284,7 @@ export default function LessonPlayScreen() {
           <OrderingView
             step={step}
             phase={phase}
-            judging={judging}
+            judging={judging || connectionLost}
             onValidate={(positions) => onSubmitOrdering(step, positions)}
             onContinue={onContinueAfterFeedback}
           />
@@ -257,7 +296,7 @@ export default function LessonPlayScreen() {
           <VoiceView
             step={step}
             phase={phase}
-            judging={judging}
+            judging={judging || connectionLost}
             onValidate={(uri) => onSubmitVoice(step, uri)}
             onContinue={onContinueAfterFeedback}
           />
@@ -1021,6 +1060,14 @@ const styles = StyleSheet.create({
   stateText: { fontFamily: 'Nunito_700Bold', fontSize: 16, color: '#7A828F', textAlign: 'center' },
   retryBtn: { marginTop: 6, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, backgroundColor: '#6B4DFF' },
   retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
+  backLabel: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: '#7A828F', padding: 8 },
+  connectionBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 8,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: '#FFF3E0',
+  },
+  connectionText: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 13, color: '#8A4A08' },
+  connectionRetry: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: '#6B4DFF' },
+  connectionRetryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, color: '#fff' },
   stepWrap: { flex: 1 },
   body: { flex: 1 },
   content: { paddingHorizontal: 24, paddingTop: 12, alignItems: 'center' },

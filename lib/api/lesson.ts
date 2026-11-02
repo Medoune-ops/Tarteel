@@ -64,22 +64,13 @@ export interface AnswerResult {
 }
 
 /**
- * POST /lessons/:id/steps/:stepId/answer — soumet une réponse, le serveur juge
- * et gère les cœurs. On reflète l'état des cœurs renvoyé dans le store local
- * pour rester en phase avec la source de vérité serveur.
+ * Reflète l'état des cœurs renvoyé par le judging dans le store (sans timer
+ * local : on pose l'ancre maintenant si on vient de perdre un cœur, null si
+ * plein/illimité).
  */
-export async function answerStep(
-  lessonId: string,
-  stepId: string,
-  input: AnswerInput,
-): Promise<AnswerResult> {
-  const result = await apiFetch<AnswerResult>(
-    `/lessons/${lessonId}/steps/${stepId}/answer`,
-    { method: 'POST', json: input },
-  );
-
-  // Refléter l'état des cœurs serveur dans le store (sans timer local : on pose
-  // l'ancre maintenant si on vient de perdre un cœur, null si plein/illimité).
+export function syncHeartsFromAnswer(
+  result: Pick<AnswerResult, 'heartsLeft' | 'unlimited' | 'msUntilNextHeart'>,
+): void {
   const store = useUserStore.getState();
   if (result.unlimited || result.heartsLeft >= 5) {
     store.refillHearts();
@@ -89,6 +80,31 @@ export async function answerStep(
       lastHeartLossAt: result.msUntilNextHeart > 0 ? Date.now() : store.lastHeartLossAt,
     });
   }
+}
 
+/**
+ * POST /lessons/:id/steps/:stepId/answer — soumet une réponse, le serveur juge
+ * et gère les cœurs. On reflète l'état des cœurs renvoyé dans le store local
+ * pour rester en phase avec la source de vérité serveur.
+ *
+ * `idempotencyKey` : renvoyer la même clé après une coupure rejoue le verdict
+ * sans recoûter de cœur.
+ */
+export async function answerStep(
+  lessonId: string,
+  stepId: string,
+  input: AnswerInput,
+  idempotencyKey?: string,
+): Promise<AnswerResult> {
+  const result = await apiFetch<AnswerResult>(
+    `/lessons/${lessonId}/steps/${stepId}/answer`,
+    {
+      method: 'POST',
+      json: input,
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+    },
+  );
+
+  syncHeartsFromAnswer(result);
   return result;
 }

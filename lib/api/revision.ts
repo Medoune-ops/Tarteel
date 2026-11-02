@@ -39,6 +39,7 @@
  * (1–114).
  */
 import { apiFetch } from './client';
+import { syncHeartsFromAnswer } from './lesson';
 
 /** Sourate apprise + état SRS AGRÉGÉ tous segments confondus (GET /me/revisions). */
 export interface SourateRevisionView {
@@ -131,6 +132,10 @@ export interface ReciteVersetResult {
 export interface ReciteStepResult {
   correct: boolean;
   score?: number;
+  heartsLeft: number;
+  outOfHearts: boolean;
+  unlimited: boolean;
+  msUntilNextHeart: number;
 }
 
 /** Construit le corps multipart avec le fichier audio local (uri expo-audio). */
@@ -285,10 +290,15 @@ export async function reciteLessonStep(
   lessonId: string,
   stepId: string,
   audioUri: string,
+  idempotencyKey?: string,
 ): Promise<ReciteStepResult> {
-  return apiFetch<ReciteStepResult>(`/lessons/${lessonId}/steps/${stepId}/answer-voice`, {
+  const result = await apiFetch<ReciteStepResult>(`/lessons/${lessonId}/steps/${stepId}/answer-voice`, {
     method: 'POST',
     formData: audioForm(audioUri),
     timeoutMs: RECITE_TIMEOUT_MS,
+    headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
   });
+  // Une récitation ratée coûte un cœur côté serveur : le compteur doit suivre.
+  syncHeartsFromAnswer(result);
+  return result;
 }
