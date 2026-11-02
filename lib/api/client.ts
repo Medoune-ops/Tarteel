@@ -240,6 +240,16 @@ function isTransientStatus(status: number): boolean {
 }
 
 /**
+ * L'erreur est passagère (réseau coupé, serveur indisponible, session
+ * momentanément impossible à rafraîchir) : réessayer plus tard a du sens.
+ */
+export function isRetryableError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  if (error.status === 401) return lastRefreshFailedTransiently;
+  return error.status === 0 || isTransientStatus(error.status);
+}
+
+/**
  * Tente de rafraîchir l'access token via le refresh token stocké.
  * Renvoie true si réussi (nouveaux tokens enregistrés), false sinon.
  *

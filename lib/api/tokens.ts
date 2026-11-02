@@ -14,6 +14,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ACCESS_KEY = 'tarteel.accessToken';
 const REFRESH_KEY = 'tarteel.refreshToken';
 const DEVICE_KEY = 'tarteel.deviceId';
+// Progression liée au compte : effacée avec la session, pour qu'un autre compte
+// connecté ensuite sur ce téléphone n'en hérite jamais.
+export const LESSON_RESUME_KEY = 'tarteel.lesson.resume';
+export const PENDING_COMPLETIONS_KEY = 'tarteel.lesson.pendingCompletions';
 
 export interface StoredTokens {
   accessToken: string;
@@ -40,7 +44,7 @@ export async function setTokens(tokens: StoredTokens): Promise<void> {
 
 /** Efface les jetons (déconnexion). Le deviceId est conservé. */
 export async function clearTokens(): Promise<void> {
-  await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY]);
+  await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY, LESSON_RESUME_KEY, PENDING_COMPLETIONS_KEY]);
 }
 
 /**

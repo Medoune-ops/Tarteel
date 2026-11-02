@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { Stack } from 'expo-router';
+import NetInfo from '@react-native-community/netinfo';
 import { fetchMe, fetchPendingGift, ackPendingGift, syncTimezone } from '../../lib/api/me';
+import { flushCompletions } from '../../lib/api/lessonSync';
 import { registerForPushNotifications } from '../../lib/pushNotifications';
 import { restoreLocalNotifications } from '../../lib/localNotifications';
 import { dailyReminderMessage, reminderLangFor } from '../../constants/reminderMessages';
@@ -99,6 +101,26 @@ function useRefreshMeOnForeground() {
   }, []);
 }
 
+/**
+ * Envoie les leçons terminées sans réseau dès que possible : à l'ouverture de
+ * l'app, au retour au premier plan et au retour de la connexion.
+ */
+function useSyncPendingLessons() {
+  useEffect(() => {
+    void flushCompletions();
+    const appState = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'active') void flushCompletions();
+    });
+    const network = NetInfo.addEventListener((state) => {
+      if (state.isConnected !== false && state.isInternetReachable !== false) void flushCompletions();
+    });
+    return () => {
+      appState.remove();
+      network();
+    };
+  }, []);
+}
+
 // Intervalle de polling du cadeau admin en attente — voir usePendingGiftPolling.
 const PENDING_GIFT_POLL_MS = 15_000;
 
@@ -166,6 +188,7 @@ export default function AppLayout() {
   useRegisterPushOnMount();
   useRestoreLocalNotifications();
   useRefreshMeOnForeground();
+  useSyncPendingLessons();
   usePendingGiftPolling();
   useInitReviewPrompt();
   // Règle 8 : l'entrée « Amis » n'existe que si le serveur l'a confirmé
