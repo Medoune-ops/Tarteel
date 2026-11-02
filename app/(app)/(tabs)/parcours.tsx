@@ -3,9 +3,10 @@ import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, useAnimatedProps, withRepeat, withSequence, withTiming,
-  withDelay, Easing, FadeInDown,
+  withDelay, Easing, FadeIn,
 } from 'react-native-reanimated';
 import { useEffect, useCallback, useState, useRef, memo } from 'react';
+import type { ViewToken } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
   Rect, Path, Circle, Ellipse, Line, Defs, RadialGradient, Stop, G, LinearGradient as SvgGradient,
@@ -18,7 +19,6 @@ import { useTheme } from '../../../utils/useTheme';
 import { Colors, type ThemeColors } from '../../../constants/colors';
 import {
   type LessonState,
-  type NodeIcon,
   type ParcoursNode,
   type ParcoursSection,
 } from '../../../constants/parcours';
@@ -101,7 +101,9 @@ function hexAlpha(hex: string, a: number): string {
  *  Une leçon terminée prend la couleur de sa section. */
 function flowerPalette(state: LessonState, isDark: boolean, accent: string): [string, string, string, string, string, number] {
   if (state === 'completed') {
-    return [shadeColor(accent, 35), accent, shadeColor(accent, -14), shadeColor(accent, -22), 'rgba(255,255,255,0.55)', 0.45];
+    // Mêmes écarts que la maquette (vert : #A8EE8C → #45C935 → #1F9A14, flanc #1A7E10),
+    // appliqués à la couleur de la section.
+    return [shadeColor(accent, 50), shadeColor(accent, 12), shadeColor(accent, -8), shadeColor(accent, -22), 'rgba(255,255,255,0.55)', 0.45];
   }
   if (state === 'active') return ['#C9B8FF', '#7A5CFF', '#3F22E8', '#3218B8', 'rgba(255,255,255,0.6)', 0.45];
   return isDark
@@ -109,16 +111,47 @@ function flowerPalette(state: LessonState, isDark: boolean, accent: string): [st
     : ['#FFFFFF', '#ECE9F3', '#DCD7E7', '#C4BED3', 'rgba(255,255,255,0.9)', 0.5];
 }
 
-const NODE_GLYPH: Record<NodeIcon, React.ComponentProps<typeof Feather>['name']> = {
-  star: 'star', book: 'book-open', pen: 'edit-3', mosque: 'home', kaaba: 'box',
-  note: 'music', moon: 'moon', trophy: 'award', crescent: 'moon',
+/**
+ * Icônes des badges, tracés repris tels quels de la maquette (grille 24,
+ * trait 2.1, bouts arrondis). L'étoile est pleine, les autres au trait.
+ */
+type BadgeGlyph = 'star' | 'book-open' | 'type' | 'mic' | 'lock' | 'trophy';
+const BADGE_ICONS: Record<BadgeGlyph, { fill?: boolean; paths: string[]; rect?: { x: number; y: number; w: number; h: number; rx: number } }> = {
+  star: { fill: true, paths: ['M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.123 2.123 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'] },
+  'book-open': { paths: ['M12 7v14', 'M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z'] },
+  type: { paths: ['M4 7V4h16v3', 'M9 20h6', 'M12 4v16'] },
+  mic: { paths: ['M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z', 'M19 10v2a7 7 0 0 1-14 0v-2', 'M12 19v3'] },
+  lock: { paths: ['M7 11V7a5 5 0 0 1 10 0v4'], rect: { x: 3, y: 11, w: 18, h: 11, rx: 2 } },
+  trophy: { paths: ['M6 9H4.5a2.5 2.5 0 0 1 0-5H6', 'M18 9h1.5a2.5 2.5 0 0 0 0-5H18', 'M4 22h16', 'M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22', 'M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22', 'M18 2H6v7a6 6 0 0 0 12 0V2Z'] },
 };
 
-function FlowerNode({ node, isDark, accent, onPress }: { node: ParcoursNode; isDark: boolean; accent: string; onPress: () => void }) {
+function BadgeIcon({ glyph, color, size = 26 }: { glyph: BadgeGlyph; color: string; size?: number }) {
+  const g = BADGE_ICONS[glyph];
+  const paint = g.fill
+    ? { fill: color, stroke: 'none' }
+    : { fill: 'none', stroke: color, strokeWidth: 2.1, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {g.rect && <Rect x={g.rect.x} y={g.rect.y} width={g.rect.w} height={g.rect.h} rx={g.rect.rx} {...paint} />}
+      {g.paths.map((d) => <Path key={d} d={d} {...paint} />)}
+    </Svg>
+  );
+}
+
+/** Icônes des leçons terminées, dans l'ordre de la maquette. */
+const DONE_GLYPHS: BadgeGlyph[] = ['star', 'book-open', 'type'];
+
+function FlowerNode({ node, index, isLast, isDark, accent, onPress }: {
+  node: ParcoursNode; index: number; isLast: boolean; isDark: boolean; accent: string; onPress: () => void;
+}) {
   const { state } = node;
   const [c1, c2, c3, side, rim, hi] = flowerPalette(state, isDark, accent);
   const locked = state === 'locked';
-  const glyph = locked ? (node.icon === 'trophy' ? 'award' : 'lock') : (NODE_GLYPH[node.icon] ?? 'star');
+  // Maquette : micro sur la leçon en cours, cadenas sur les verrouillées,
+  // trophée en fin de section.
+  const glyph: BadgeGlyph = isLast
+    ? 'trophy'
+    : locked ? 'lock' : state === 'active' ? 'mic' : DONE_GLYPHS[index % DONE_GLYPHS.length]!;
   // Identifiants de dégradé propres au nœud : plusieurs Svg cohabitent à l'écran.
   const gid = `fg${node.id.replace(/\W/g, '')}`;
   const hid = `fh${node.id.replace(/\W/g, '')}`;
@@ -144,7 +177,16 @@ function FlowerNode({ node, isDark, accent, onPress }: { node: ParcoursNode; isD
 
   return (
     <Pressable onPress={onPress} disabled={locked} hitSlop={6} style={styles.flower}>
-      <View style={[styles.flowerFloor, { backgroundColor: floor }]} />
+      {/* Ombre au sol floue (blur 4px de la maquette) : ellipse en dégradé radial. */}
+      <Svg width={82} height={22} style={styles.flowerFloor} pointerEvents="none">
+        <Defs>
+          <RadialGradient id={`ff${gid}`} cx="50%" cy="50%" rx="50%" ry="50%">
+            <Stop offset="0.45" stopColor={floor} />
+            <Stop offset="1" stopColor={floor} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Ellipse cx={41} cy={11} rx={41} ry={11} fill={`url(#ff${gid})`} />
+      </Svg>
       {state === 'active' && (
         <Animated.View style={[styles.flowerSvg, ringStyle]} pointerEvents="none">
           <Svg width={104} height={112} viewBox="-15 -15 104 112">
@@ -169,12 +211,14 @@ function FlowerNode({ node, isDark, accent, onPress }: { node: ParcoursNode; isD
         <Path d={FLOWER} fill={`url(#${hid})`} />
         <Path d={FLOWER} fill="none" stroke={rim} strokeWidth={1.5} />
       </Svg>
-      <Feather
-        name={glyph}
-        size={26}
-        color={locked ? (isDark ? '#57536B' : '#A9A4B8') : '#fff'}
-        style={!locked && styles.flowerGlyph}
-      />
+      {/* Ombre portée de l'icône (drop-shadow 0 1.5px de la maquette) : copie
+          sombre décalée sous l'icône blanche. */}
+      {!locked && (
+        <View style={styles.flowerGlyphShadow} pointerEvents="none">
+          <BadgeIcon glyph={glyph} color="rgba(0,0,0,0.15)" />
+        </View>
+      )}
+      <BadgeIcon glyph={glyph} color={locked ? (isDark ? '#57536B' : '#A9A4B8') : '#fff'} />
     </Pressable>
   );
 }
@@ -1057,7 +1101,53 @@ function LessonPopover({
   );
 }
 
-/** Carte d'unité d'une section + ses nœuds en zigzag.
+/**
+ * Carte de la section en cours, FIXÉE en haut du parcours (sous la barre des
+ * compteurs) : elle ne défile pas, et change de contenu quand les badges de la
+ * section suivante arrivent en haut de la liste.
+ */
+function SectionCard({ section }: { section: ParcoursSection }) {
+  const done = section.nodes.filter((n) => n.state === 'completed').length;
+  const total = section.nodes.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const [from, to] = section.degrade;
+  return (
+    <Animated.View key={section.id} style={styles.unitWrap} entering={FadeIn.duration(250)}>
+      {/* Ombre « marche » : la carte repose sur un bord plus sombre. */}
+      <View style={[styles.unitStep, { backgroundColor: shadeColor(to, -22) }]}>
+        <LinearGradient
+          colors={[shadeColor(from, 8), from, to]}
+          locations={[0, 0.6, 1]}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={styles.unitCard}
+        >
+          <View style={styles.unitGlow} pointerEvents="none" />
+          <View style={styles.unitTop}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.unitKicker} numberOfLines={1}>{section.kicker}</Text>
+              <Text style={styles.unitTitle} numberOfLines={2}>{section.titre}</Text>
+              {!!section.sousTitre && (
+                <Text style={styles.unitSub} numberOfLines={1}>{section.sousTitre}</Text>
+              )}
+            </View>
+            <View style={styles.unitBadge}>
+              <Feather name={section.headerIcon as any} size={22} color="#fff" />
+            </View>
+          </View>
+          <View style={styles.unitProgRow}>
+            <View style={styles.unitTrack}>
+              <View style={[styles.unitFill, { width: `${pct}%` }]} />
+            </View>
+            <Text style={styles.unitCount}>{done}/{total}</Text>
+          </View>
+        </LinearGradient>
+      </View>
+    </Animated.View>
+  );
+}
+
+/** Nœuds d'une section en zigzag, précédés d'un séparateur (sauf la 1re).
  *  memo : chaque section contient ~10 nœuds animés — on ne re-rend que si
  *  la section elle-même change (les données rafraîchies gardent le même id). */
 const SectionBlock = memo(function SectionBlock({
@@ -1079,53 +1169,22 @@ const SectionBlock = memo(function SectionBlock({
   /** Position Y du nœud actif DANS cette section (pour scroller pile dessus). */
   onActiveNodeLayout?: (yInSection: number) => void;
 }) {
-  const done = section.nodes.filter((n) => n.state === 'completed').length;
-  const total = section.nodes.length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  // Offset vertical du bloc de nœuds sous la carte d'en-tête de section.
+  // Offset vertical du bloc de nœuds dans la section.
   const pathYRef = useRef(0);
-  const [from, to] = section.degrade;
 
   return (
     <View style={styles.sectionWrap}>
-      <Animated.View
-        style={styles.unitWrap}
-        entering={FadeInDown.delay(index * 130)
-          .duration(550)
-          .springify()
-          .damping(14)}
-      >
-        {/* Ombre « marche » : la carte repose sur un bord plus sombre. */}
-        <View style={[styles.unitStep, { backgroundColor: shadeColor(to, -22) }]}>
-          <LinearGradient
-            colors={[shadeColor(from, 8), from, to]}
-            locations={[0, 0.6, 1]}
-            start={{ x: 0.1, y: 0 }}
-            end={{ x: 0.9, y: 1 }}
-            style={styles.unitCard}
-          >
-            <View style={styles.unitGlow} pointerEvents="none" />
-            <View style={styles.unitTop}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.unitKicker} numberOfLines={1}>{section.kicker}</Text>
-                <Text style={styles.unitTitle} numberOfLines={2}>{section.titre}</Text>
-                {!!section.sousTitre && (
-                  <Text style={styles.unitSub} numberOfLines={1}>{section.sousTitre}</Text>
-                )}
-              </View>
-              <View style={styles.unitBadge}>
-                <Feather name={section.headerIcon as any} size={22} color="#fff" />
-              </View>
-            </View>
-            <View style={styles.unitProgRow}>
-              <View style={styles.unitTrack}>
-                <View style={[styles.unitFill, { width: `${pct}%` }]} />
-              </View>
-              <Text style={styles.unitCount}>{done}/{total}</Text>
-            </View>
-          </LinearGradient>
+      {/* Séparateur entre deux sections : la carte complète est fixée en haut
+          de l'écran (SectionCard), ici on marque juste le passage. */}
+      {index > 0 && (
+        <View style={styles.sectionDivider}>
+          <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+          <Text style={[styles.dividerText, { color: theme.textSecondary }]} numberOfLines={1}>
+            {section.titre}
+          </Text>
+          <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
         </View>
-      </Animated.View>
+      )}
 
       <View
         style={styles.path}
@@ -1151,7 +1210,14 @@ const SectionBlock = memo(function SectionBlock({
               }
             >
               <View style={{ transform: [{ translateX: dx }] }}>
-                <FlowerNode node={node} isDark={theme.isDark} accent={section.couleur} onPress={() => onNodeTap(node)} />
+                <FlowerNode
+                  node={node}
+                  index={i}
+                  isLast={i === section.nodes.length - 1}
+                  isDark={theme.isDark}
+                  accent={section.couleur}
+                  onPress={() => onNodeTap(node)}
+                />
               </View>
               {content && (
                 <LessonPopover
@@ -1185,6 +1251,7 @@ function DailyChestButton() {
   const [available, setAvailable] = useState(false);
   const [opening, setOpening] = useState(false);
   const showGift = useGiftModalStore((s) => s.show);
+  const T = useTheme();
 
   useEffect(() => {
     fetchDailyChestAvailable().then(setAvailable).catch(() => setAvailable(false));
@@ -1228,26 +1295,53 @@ function DailyChestButton() {
 
   return (
     <Animated.View style={[chestStyles.floating, shakeStyle]}>
-      <Pressable onPress={open} hitSlop={12} style={chestStyles.bubble}>
-        <Text style={chestStyles.emoji}>🎁</Text>
+      <Pressable onPress={open} hitSlop={12} style={({ pressed }) => [chestStyles.step, pressed && { opacity: 0.9 }]}>
+        <LinearGradient
+          colors={['#FFD35C', '#F59F0B']}
+          start={{ x: 0.3, y: 0 }}
+          end={{ x: 0.7, y: 1 }}
+          style={chestStyles.bubble}
+        >
+          <GiftGlyph />
+        </LinearGradient>
+        <View style={[chestStyles.dot, { borderColor: T.pageBg }]} />
       </Pressable>
     </Animated.View>
+  );
+}
+
+/** Icône cadeau de la maquette : couvercle plein, boîte et nœud au trait. */
+function GiftGlyph({ size = 26, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={3.5} y={8} width={17} height={5} rx={1.5} fill={color} stroke={color} strokeWidth={2} />
+      <Path
+        d="M5 13v6.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V13M12 8v13M12 8S9.5 3.5 7.5 5c-1.6 1.2.5 3 4.5 3zm0 0s2.5-4.5 4.5-3c1.6 1.2-.5 3-4.5 3z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
   );
 }
 
 const chestStyles = StyleSheet.create({
   // Flotte au-dessus du parcours, ancré en bas à droite (au-dessus de la tab bar).
   floating: {
-    position: 'absolute', right: 18, bottom: 24, zIndex: 20,
+    position: 'absolute', right: 16, bottom: 24, zIndex: 20,
   },
-  bubble: {
-    width: 62, height: 62, borderRadius: 31,
-    backgroundColor: '#F0A41E',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#E07A0C', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-    borderWidth: 3, borderColor: '#FFD97A',
+  // Socle foncé visible sous le rond (relief « bouton » de la maquette) + halo doré.
+  step: {
+    width: 56, height: 61, borderRadius: 28, backgroundColor: '#C27A06',
+    shadowColor: '#FFC93D', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
   },
-  emoji: { fontSize: 30 },
+  bubble: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  // Pastille rouge « nouveau » en haut à droite, détourée de la couleur du fond.
+  dot: {
+    position: 'absolute', top: -2, right: -2, width: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#FF5D73', borderWidth: 2.5,
+  },
 });
 
 /**
@@ -1427,6 +1521,18 @@ export default function ParcoursScreen() {
   const shownRef = useRef(0);
   // Index (dans la liste affichée) de la section active — pour l'auto-scroll.
   const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
+  // Section montrée par la carte fixe : la plus haute dont des badges sont
+  // visibles. Suit le scroll ; avant toute mesure, c'est la section active.
+  const [visibleSectionIndex, setVisibleSectionIndex] = useState<number | null>(null);
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const idx = viewableItems
+      .filter((v) => v.isViewable && v.index != null)
+      .map((v) => v.index as number);
+    if (idx.length > 0) setVisibleSectionIndex(Math.min(...idx));
+  }).current;
+  // Dès qu'un pixel d'une section est visible elle compte : la carte bascule
+  // quand la section précédente a entièrement quitté le haut de la liste.
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 0, minimumViewTime: 0 }).current;
   // Bulle « Commencer » : ouverte seulement au toucher d'un nœud (re-toucher la ferme).
   const [openNodeId, setOpenNodeId] = useState<string | null>(null);
   const toggleNode = useCallback((n: ParcoursNode) => {
@@ -1568,15 +1674,9 @@ export default function ParcoursScreen() {
     [openLesson, T, activeSectionIndex, handleActiveNodeLayout, openNodeId, toggleNode],
   );
 
-  // Mémoïsés comme renderItem juste au-dessus : sans useCallback, le FlatList
+  // Mémoïsé comme renderItem juste au-dessus : sans useCallback, le FlatList
   // reçoit une nouvelle référence à chaque render du composant et redémonte
-  // ListHeaderComponent/ListFooterComponent (au lieu de les mettre à jour en
-  // place), ce qui ajoute un coût inutile à chaque re-render de l'écran.
-  const renderHeader = useCallback(() => (
-    <>
-      <WeekCard T={T} onPress={() => router.push('/(app)/streak')} />
-    </>
-  ), [T, router]);
+  // ListFooterComponent (au lieu de le mettre à jour en place).
 
   const renderFooter = useCallback(() => {
     if (!canLoadMore) return <View style={{ height: 40 }} />;
@@ -1665,6 +1765,16 @@ export default function ParcoursScreen() {
         </View>
       </View>
 
+      {!loadError && sections.length > 0 && (
+        <View style={styles.stickySection}>
+          <SectionCard section={sections[Math.min(visibleSectionIndex ?? activeSectionIndex ?? 0, sections.length - 1)]} />
+          {/* « Cette semaine » reste fixe elle aussi, juste sous la section. */}
+          <View style={styles.stickyWeek}>
+            <WeekCard T={T} onPress={() => router.push('/(app)/streak')} />
+          </View>
+        </View>
+      )}
+
       {loadError ? (
         // Rien en cache et chargement raté : écran hors-ligne (ou panne serveur).
         <OfflineState error={loadError} onRetry={loadSections} showOfflineExits context="learn" />
@@ -1681,10 +1791,11 @@ export default function ParcoursScreen() {
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.scroll}
-          ListHeaderComponent={renderHeader}
           ListFooterComponent={renderFooter}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           scrollIndicatorInsets={{ bottom: 0 }}
           showsVerticalScrollIndicator={false}
           // Chaque section est très haute (~10 nœuds) : on rend peu d'items
@@ -1760,7 +1871,16 @@ const styles = StyleSheet.create({
 
   // ── Carte d'unité ────────────────────────────────────────────────────────
   sectionWrap: { width: '100%', alignItems: 'center' },
-  unitWrap: { width: '100%', maxWidth: 520, paddingHorizontal: 16, marginTop: 18 },
+  unitWrap: { width: '100%', maxWidth: 520, paddingHorizontal: 16 },
+  // Bloc fixe sous la barre du haut : carte de section puis « Cette semaine ».
+  stickySection: { alignItems: 'center', paddingTop: 12, paddingBottom: 4, zIndex: 4 },
+  stickyWeek: { width: '100%', maxWidth: 520 },
+  sectionDivider: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    width: '100%', maxWidth: 520, paddingHorizontal: 24, marginTop: 18,
+  },
+  dividerLine: { flex: 1, height: 2, borderRadius: 1 },
+  dividerText: { flexShrink: 1, fontFamily: 'Nunito_900Black', fontSize: 13 },
   unitStep: { borderRadius: 24, paddingBottom: 6 },
   unitCard: { borderRadius: 24, paddingVertical: 16, paddingLeft: 18, paddingRight: 16, overflow: 'hidden' },
   unitGlow: {
@@ -1794,8 +1914,9 @@ const styles = StyleSheet.create({
   nodeSlot: { width: '100%', height: 108, alignItems: 'center', justifyContent: 'flex-start' },
   flower: { width: 74, height: 74, alignItems: 'center', justifyContent: 'center' },
   flowerSvg: { position: 'absolute', left: -15, top: -15 },
-  flowerFloor: { position: 'absolute', left: 4, right: 4, bottom: -20, height: 14, borderRadius: 7 },
-  flowerGlyph: { textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1.5 }, textShadowRadius: 0 },
+  // Ombre au sol : 66×14 de la maquette élargie de 8 px par côté pour le flou.
+  flowerFloor: { position: 'absolute', left: -4, bottom: -24 },
+  flowerGlyphShadow: { position: 'absolute', transform: [{ translateY: 1.5 }] },
 
   popover: {
     position: 'absolute', top: -4, width: 148,
