@@ -3,8 +3,9 @@ import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue, useAnimatedStyle, useAnimatedProps, withRepeat, withSequence, withTiming,
-  withDelay, Easing, FadeIn,
+  withDelay, withSpring, Easing, FadeIn, FadeOut, ZoomIn,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useEffect, useCallback, useState, useRef, memo } from 'react';
 import type { ViewToken } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -175,8 +176,25 @@ function FlowerNode({ node, index, isLast, isDark, accent, onPress }: {
   }, [state]);
   const ringStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
+  // Toucher : le badge s'enfonce, puis rebondit au relâcher.
+  const press = useSharedValue(1);
+  const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
+  const onPressIn = () => { press.value = withTiming(0.88, { duration: 90 }); };
+  const onPressOut = () => { press.value = withSpring(1, { damping: 7, stiffness: 260 }); };
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onPress();
+  };
+
   return (
-    <Pressable onPress={onPress} disabled={locked} hitSlop={6} style={styles.flower}>
+    <AnimatedPressable
+      onPress={handlePress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      disabled={locked}
+      hitSlop={6}
+      style={[styles.flower, pressStyle]}
+    >
       {/* Ombre au sol floue (blur 4px de la maquette) : ellipse en dégradé radial. */}
       <Svg width={82} height={22} style={styles.flowerFloor} pointerEvents="none">
         <Defs>
@@ -219,7 +237,7 @@ function FlowerNode({ node, index, isLast, isDark, accent, onPress }: {
         </View>
       )}
       <BadgeIcon glyph={glyph} color={locked ? (isDark ? '#57536B' : '#A9A4B8') : '#fff'} />
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -280,6 +298,7 @@ const CLOUD_POSITIONS: Array<[number, number, number, number]> = [
  * aucune animation lancée) pour ne rien changer au rendu d'origine.
  */
 const AnimatedG = Animated.createAnimatedComponent(G);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
  * ⚠️ Le scintillement est désactivé sur ANDROID UNIQUEMENT.
@@ -1075,7 +1094,10 @@ function LessonPopover({
   const onRight = dx <= 0;
   const gap = 37 + 16;
   return (
-    <View
+    // Apparition en zoom à ressort quand on touche le badge.
+    <Animated.View
+      entering={ZoomIn.springify().damping(14).stiffness(220)}
+      exiting={FadeOut.duration(120)}
       style={[
         styles.popover,
         { backgroundColor: T.cardBg, borderColor: T.border },
@@ -1097,7 +1119,7 @@ function LessonPopover({
           <Text style={styles.popoverBtnText}>{t('parcours.start')}</Text>
         </View>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 

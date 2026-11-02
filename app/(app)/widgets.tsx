@@ -13,6 +13,7 @@ import { useUserStore } from '../../store/userStore';
 import { currentMotivationMsg } from '../../utils/widgetData';
 import { nameOfTheDay } from '../../utils/nameOfDay';
 import { useT, type I18nKey } from '../../lib/i18n';
+import { PrayerNextPreview, PrayerAllPreview, PrayerLargePreview } from '../../components/PrayerWidgetPreviews';
 
 // `expo-alternate-app-icons` est un module NATIF : dans Expo Go (pas de code
 // natif custom), le simple `import` déclenche `requireNativeModule` qui plante
@@ -430,6 +431,41 @@ export default function WidgetsScreen() {
               </LinearGradient>
               <View style={styles.capRow}>
                 <WidgetCaption P={P} title={tr('widgets.wordOfDay.title')} desc={tr('widgets.wordOfDay.desc')} />
+              </View>
+            </View>
+          )}
+
+          {/* ── Heures de prière ── */}
+          {showS && (
+            <View style={[styles.card, { backgroundColor: P.card }, cardShadow]}>
+              <LinearGradient colors={P.wall} {...G160} style={styles.wall}>
+                <PrayerNextPreview isDark={T.isDark} />
+              </LinearGradient>
+              <View style={styles.capRow}>
+                <WidgetCaption P={P} title={tr('widgets.prayerNext.title')} desc={tr('widgets.prayerNext.desc')} />
+              </View>
+            </View>
+          )}
+
+          {showM && (
+            <View style={[styles.card, { backgroundColor: P.card }, cardShadow]}>
+              <LinearGradient colors={P.wall} {...G160} style={styles.wall}>
+                <PrayerAllPreview isDark={T.isDark} />
+              </LinearGradient>
+              <View style={styles.capRow}>
+                <WidgetCaption P={P} title={tr('widgets.prayerAll.title')} desc={tr('widgets.prayerAll.desc')} />
+              </View>
+            </View>
+          )}
+
+          {/* Le 4×4 n'a pas de filtre « Grands » : il suit « Moyens ». */}
+          {showM && (
+            <View style={[styles.card, { backgroundColor: P.card }, cardShadow]}>
+              <LinearGradient colors={P.wall} {...G160} style={styles.wall}>
+                <PrayerLargePreview isDark={T.isDark} />
+              </LinearGradient>
+              <View style={styles.capRow}>
+                <WidgetCaption P={P} title={tr('widgets.prayerLarge.title')} desc={tr('widgets.prayerLarge.desc')} />
               </View>
             </View>
           )}
