@@ -246,32 +246,7 @@ export default function ProfilScreen() {
             </Pressable>
           </View>
 
-          {/* ── Ton style (avatar) ── */}
-          {avatarStyle && (
-            <>
-              <Text style={[styles.sectionTitle, { color: T.text }]}>{tr('profil.yourStyle')}</Text>
-              <View style={[styles.styleCard, { backgroundColor: T.cardBg, borderColor: T.border }]}>
-                {([
-                  ['avatar.tab.hair', `avatar.opt.hair.${avatarStyle.hair}`, avatarStyle.hairColor],
-                  ['avatar.tab.eyes', `avatar.opt.eyes.${avatarStyle.eyes}`, '#2a1d17'],
-                  ['avatar.tab.mouth', `avatar.opt.mouth.${avatarStyle.mouth}`, '#7a2e2e'],
-                  ['avatar.tab.outfit', `avatar.opt.outfit.${avatarStyle.outfit}`, avatarStyle.outfitColor],
-                  ['avatar.tab.bg', null, avatarStyle.bg],
-                ] as [I18nKey, string | null, string][]).map(([k, v, color], i, all) => (
-                  <View
-                    key={k}
-                    style={[styles.styleRow, i < all.length - 1 && { borderBottomWidth: 1, borderBottomColor: T.border }]}
-                  >
-                    <Text style={[styles.styleKey, { color: T.textSecondary }]}>{tr(k)}</Text>
-                    <View style={styles.styleVal}>
-                      <Text style={[styles.styleValText, { color: T.text }]}>{v ? tr(v as I18nKey) : '—'}</Text>
-                      <View style={[styles.styleDot, { backgroundColor: color, borderColor: T.border }]} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
+          {/* ── Avatar ── */}
           <Pressable
             onPress={() => router.push('/(app)/avatar')}
             style={({ pressed }) => [styles.avatarBtn, pressed && { opacity: 0.8 }]}
@@ -432,12 +407,6 @@ const styles = StyleSheet.create({
   avatarRing: {
     width: 78, height: 78, borderRadius: 39, padding: 3, backgroundColor: 'rgba(255,255,255,0.9)',
   },
-  styleCard: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 4 },
-  styleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
-  styleKey: { fontFamily: 'Nunito_700Bold', fontSize: 14 },
-  styleVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  styleValText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 14 },
-  styleDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1 },
   avatarBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderRadius: 18, borderWidth: 2, borderColor: '#7357ff', paddingVertical: 12,
