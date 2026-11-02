@@ -26,6 +26,7 @@ import { fetchSections, fetchActivity } from '../../../lib/api';
 import { swrFetch } from '../../../lib/api/swr';
 import { fetchDailyChestAvailable, claimDailyChestApi } from '../../../lib/api/rewards';
 import { useT, t } from '../../../lib/i18n';
+import OfflineState from '../../../components/OfflineState';
 import { playSound } from '../../../constants/sounds';
 
 type Theme = ReturnType<typeof useTheme>;
@@ -1415,7 +1416,8 @@ export default function ParcoursScreen() {
 
   const [sections, setSections] = useState<ParcoursSection[]>([]);
 
-  const [loadError, setLoadError] = useState(false);
+  // Erreur du dernier chargement (null = OK) : sert à distinguer hors-ligne et panne serveur.
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [canLoadMore, setCanLoadMore] = useState(true);
   const ITEMS_PER_PAGE = 5;
@@ -1450,7 +1452,7 @@ export default function ParcoursScreen() {
   }, []);
 
   const loadSections = useCallback(async () => {
-    setLoadError(false);
+    setLoadError(null);
     try {
       // SWR : le cache est affiché immédiatement, le refresh arrive en fond.
       // Clé de cache incluant la langue : sinon un changement de langue en
@@ -1458,9 +1460,9 @@ export default function ParcoursScreen() {
       const lang = useUserStore.getState().language;
       const all = await swrFetch(`sections:${lang}`, () => fetchSections(lang), applyAll);
       applyAll(all);
-    } catch {
+    } catch (e) {
       // On ne montre l'erreur que si on n'a rien à afficher.
-      if (orderedRef.current.length === 0) setLoadError(true);
+      if (orderedRef.current.length === 0) setLoadError(e ?? new Error('load failed'));
     } finally {
       setIsLoading(false);
     }
@@ -1572,20 +1574,9 @@ export default function ParcoursScreen() {
   // place), ce qui ajoute un coût inutile à chaque re-render de l'écran.
   const renderHeader = useCallback(() => (
     <>
-      {!loadError && <WeekCard T={T} onPress={() => router.push('/(app)/streak')} />}
-      {loadError && (
-        <View style={styles.centerState}>
-          <Feather name="wifi-off" size={32} color={T.textSecondary} />
-          <Text style={[styles.stateText, { color: T.textSecondary }]}>
-            {t('parcours.loadError')}
-          </Text>
-          <Pressable style={styles.retryBtn} onPress={loadSections}>
-            <Text style={styles.retryLabel}>{t('common.retry')}</Text>
-          </Pressable>
-        </View>
-      )}
+      <WeekCard T={T} onPress={() => router.push('/(app)/streak')} />
     </>
-  ), [loadError, T, loadSections, router]);
+  ), [T, router]);
 
   const renderFooter = useCallback(() => {
     if (!canLoadMore) return <View style={{ height: 40 }} />;
@@ -1674,7 +1665,10 @@ export default function ParcoursScreen() {
         </View>
       </View>
 
-      {isLoading && sections.length === 0 ? (
+      {loadError ? (
+        // Rien en cache et chargement raté : écran hors-ligne (ou panne serveur).
+        <OfflineState error={loadError} onRetry={loadSections} showOfflineExits context="learn" />
+      ) : isLoading && sections.length === 0 ? (
         <View style={styles.scroll}>
           {Array.from({ length: 4 }).map((_, i) => (
             <SectionSkeleton key={i} theme={T} />
@@ -1763,13 +1757,6 @@ const styles = StyleSheet.create({
   weekDotText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 9 },
 
   scroll: { flexGrow: 1 },
-  centerState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 14 },
-  stateText: { fontFamily: 'Nunito_700Bold', fontSize: 15, textAlign: 'center' },
-  retryBtn: {
-    marginTop: 6, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14,
-    backgroundColor: '#6B4DFF',
-  },
-  retryLabel: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: '#fff' },
 
   // ── Carte d'unité ────────────────────────────────────────────────────────
   sectionWrap: { width: '100%', alignItems: 'center' },

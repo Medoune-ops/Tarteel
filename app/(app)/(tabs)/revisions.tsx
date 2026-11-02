@@ -498,7 +498,7 @@ export default function RevisionsScreen() {
     return (
       <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
-        <OfflineState error={loadError} onRetry={load} showOfflineExits />
+        <OfflineState error={loadError} onRetry={load} showOfflineExits title={tr('tabs.revisions')} context="review" />
       </View>
     );
   }
