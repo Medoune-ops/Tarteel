@@ -140,7 +140,7 @@ export default function LiguesScreen() {
     return (
       <View style={[styles.screen, { backgroundColor: T.pageBg }]}>
         <DeviceStatusBar />
-        <OfflineState error={error} onRetry={load} showOfflineExits />
+        <OfflineState error={error} onRetry={load} showOfflineExits title={tr('tabs.ligues')} context="league" />
       </View>
     );
   }
