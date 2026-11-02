@@ -8,7 +8,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
-import { login, register, resendVerificationCode, ApiError } from '../../lib/api';
+import { login, register, resendVerificationCode, socialSignIn, ApiError } from '../../lib/api';
+import { requestAppleCredential, requestGoogleCredential, type SocialProvider } from '../../lib/socialAuth';
+import SocialSignInButtons from '../../components/SocialSignInButtons';
 import { redirectToVerifyEmail } from '../../lib/emailVerificationRedirect';
 import { useT } from '../../lib/i18n';
 
@@ -78,6 +80,28 @@ export default function SignupScreen() {
       router.replace('/(setup)/niveau');
     } else {
       router.replace('/(app)/(tabs)/parcours');
+    }
+  };
+
+  const submitSocial = async (provider: SocialProvider) => {
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const credential = provider === 'google' ? await requestGoogleCredential() : await requestAppleCredential();
+      if (!credential) return; // annulé par l'utilisateur
+      const { isNewUser } = await socialSignIn(credential);
+      routeAfterAuth(isNewUser);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'EMAIL_TAKEN') {
+        // Compte à mot de passe : jamais relié automatiquement (voir auth.service.ts).
+        setMode('login');
+        setError(tr('signup.socialEmailTaken'));
+        return;
+      }
+      setError(e instanceof ApiError ? e.message : tr('signup.errGeneric'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -199,16 +223,26 @@ export default function SignupScreen() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <LinearGradient colors={['#8467FF', '#6B4DFF']} style={styles.headerGrad} />
+      {/* L'en-tête violet et l'avatar défilent AVEC le formulaire : ils sont
+          dans le ScrollView, pas posés au-dessus. */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Violet au-dessus du contenu : le rebond iOS en haut ne montre pas de blanc. */}
+        <View style={styles.overscroll} />
+        <LinearGradient colors={['#8467FF', '#6B4DFF']} style={styles.headerGrad} />
 
-      {/* Avatar */}
-      <View style={styles.avatar}>
-        <View style={styles.avatarClip}>
-          <Otter size={74} />
+        {/* Avatar */}
+        <View style={styles.avatar}>
+          <View style={styles.avatarClip}>
+            <Otter size={74} />
+          </View>
         </View>
-      </View>
 
-        <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <View style={[styles.card, styles.cardContent]}>
           <Text style={styles.appName}>Tarteel</Text>
           <Text style={styles.welcome}>{isSignup ? tr('signup.createTitle') : tr('signup.welcomeBack')}</Text>
           <Text style={styles.sub}>
@@ -225,10 +259,7 @@ export default function SignupScreen() {
             </Pressable>
           </View>
 
-          {/* Connexion Google / Apple : masquee tant que ces providers ne
-              sont pas configures cote backend. Email/mot de passe reste
-              le seul mode d'authentification visible. */}
-          <View style={{ height: 28 }} />
+          <SocialSignInButtons disabled={loading} isSignup={isSignup} onPress={submitSocial} />
 
           {/* Champs spécifiques à l'inscription */}
           {isSignup && (
@@ -293,6 +324,7 @@ export default function SignupScreen() {
               <Text style={styles.switchStrong}>{isSignup ? tr('signup.login') : tr('signup.register')}</Text>
             </Text>
           </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -300,8 +332,11 @@ export default function SignupScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#EDEDF2' },
+  scroll: { flex: 1, backgroundColor: '#fff' },
+  scrollContent: { flexGrow: 1 },
+  overscroll: { position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: '#8467FF' },
   headerGrad: { height: 230 },
-  card: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 34, borderTopRightRadius: 34, marginTop: -34 },
+  card: { flexGrow: 1, backgroundColor: '#fff', borderTopLeftRadius: 34, borderTopRightRadius: 34, marginTop: -34 },
   cardContent: { alignItems: 'center', paddingHorizontal: 32, paddingTop: 64, paddingBottom: 30 },
   avatar: {
     position: 'absolute', top: 148, alignSelf: 'center',
