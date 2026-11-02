@@ -8,7 +8,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Otter from '../../components/Otter';
 import { useUserStore } from '../../store/userStore';
-import { login, register, resendVerificationCode, ApiError } from '../../lib/api';
+import { login, register, resendVerificationCode, socialSignIn, ApiError } from '../../lib/api';
+import { requestAppleCredential, requestGoogleCredential, type SocialProvider } from '../../lib/socialAuth';
+import SocialSignInButtons from '../../components/SocialSignInButtons';
 import { redirectToVerifyEmail } from '../../lib/emailVerificationRedirect';
 import { useT } from '../../lib/i18n';
 
@@ -78,6 +80,28 @@ export default function SignupScreen() {
       router.replace('/(setup)/niveau');
     } else {
       router.replace('/(app)/(tabs)/parcours');
+    }
+  };
+
+  const submitSocial = async (provider: SocialProvider) => {
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const credential = provider === 'google' ? await requestGoogleCredential() : await requestAppleCredential();
+      if (!credential) return; // annulé par l'utilisateur
+      const { isNewUser } = await socialSignIn(credential);
+      routeAfterAuth(isNewUser);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'EMAIL_TAKEN') {
+        // Compte à mot de passe : jamais relié automatiquement (voir auth.service.ts).
+        setMode('login');
+        setError(tr('signup.socialEmailTaken'));
+        return;
+      }
+      setError(e instanceof ApiError ? e.message : tr('signup.errGeneric'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -235,10 +259,7 @@ export default function SignupScreen() {
             </Pressable>
           </View>
 
-          {/* Connexion Google / Apple : masquee tant que ces providers ne
-              sont pas configures cote backend. Email/mot de passe reste
-              le seul mode d'authentification visible. */}
-          <View style={{ height: 28 }} />
+          <SocialSignInButtons disabled={loading} isSignup={isSignup} onPress={submitSocial} />
 
           {/* Champs spécifiques à l'inscription */}
           {isSignup && (
