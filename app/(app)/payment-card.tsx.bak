@@ -1,3 +1,12 @@
+/**
+ * Écran carte bancaire (Stripe) — DÉSACTIVÉ.
+ *
+ * L'extension `.bak` le sort du routing expo-router (qui ne collecte que les
+ * fichiers `.js/.jsx/.ts/.tsx`) : il n'est plus accessible depuis l'application
+ * ni par deep link. Conservé pour pouvoir réactiver la carte en repassant
+ * `CARD_PAYMENTS_ENABLED` à `true` (constants/payments.ts) puis en renommant
+ * ce fichier en `payment-card.tsx`.
+ */
 import { useState } from 'react';
 import {
   View, Text, Pressable, ScrollView, StyleSheet,

@@ -240,7 +240,7 @@ export default function StreakScreen() {
     return { atteints: n, pctPaliers: Math.min(100, Math.max(0, pct)) };
   }, [streak]);
 
-  // Restaure la série cassée en payant — ouvre le checkout DexPay (carte).
+  // Restaure la série cassée en payant — ouvre le checkout DexPay (Mobile Money).
   const onRepair = useCallback(async () => {
     if (repairing) return;
     const provider = await askPaymentProvider();

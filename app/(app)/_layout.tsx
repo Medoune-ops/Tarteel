@@ -240,7 +240,6 @@ export default function AppLayout() {
           <Stack.Screen name="friend-progress" />
         </Stack.Protected>
         <Stack.Screen name="payment-method" />
-        <Stack.Screen name="payment-card" />
         <Stack.Screen name="revision" />
         <Stack.Screen name="docs" />
         <Stack.Screen name="lesson" />

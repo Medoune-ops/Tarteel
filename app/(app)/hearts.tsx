@@ -204,7 +204,7 @@ export default function HeartsScreen() {
     }
   };
 
-  /** Acheter un refill complet avec de l'argent — demande le mode de paiement puis ouvre le checkout. */
+  /** Acheter un refill complet avec de l'argent — ouvre directement le checkout DexPay (Mobile Money). */
   const onBuyMoney = async () => {
     if (buying || full) return;
     const provider = await askPaymentProvider();

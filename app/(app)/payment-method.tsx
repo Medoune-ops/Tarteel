@@ -9,6 +9,7 @@ import DexPayCheckout from '../../components/DexPayCheckout';
 import { buildPlans } from './subscription';
 import { useT } from '../../lib/i18n';
 import { useAppConfigStore } from '../../store/appConfigStore';
+import { CARD_PAYMENTS_ENABLED } from '../../constants/payments';
 
 export default function PaymentMethodScreen() {
   const router = useRouter();
@@ -18,13 +19,16 @@ export default function PaymentMethodScreen() {
   const PLANS = buildPlans(tr, pricing);
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 
-  // Deux providers réels : 'dexpay' = mobile money (Afrique de l'Ouest/
-  // Centrale uniquement), 'stripe' = carte bancaire (couverture mondiale).
+  // 'dexpay' = mobile money (Afrique de l'Ouest/Centrale) ; 'stripe' = carte
+  // bancaire (couverture mondiale). La carte est masquée quand
+  // CARD_PAYMENTS_ENABLED vaut false — DexPay reste toujours affiché.
   // Le choix ici détermine directement quel provider traite le paiement —
   // voir billing.service.ts côté backend.
   const METHODES: { id: PaymentProvider; label: string; sub: string; icon: keyof typeof Feather.glyphMap; iconBg: string }[] = [
     { id: 'dexpay', label: tr('paymentMethod.mobileMoney'),  sub: tr('paymentMethod.mobileMoneySub'), icon: 'smartphone',  iconBg: '#34C724' },
-    { id: 'stripe', label: tr('paymentMethod.cardLabel'),    sub: tr('paymentMethod.cardSub'),        icon: 'credit-card', iconBg: '#6B4DFF' },
+    ...(CARD_PAYMENTS_ENABLED
+      ? [{ id: 'stripe' as PaymentProvider, label: tr('paymentMethod.cardLabel'), sub: tr('paymentMethod.cardSub'), icon: 'credit-card' as const, iconBg: '#6B4DFF' }]
+      : []),
   ];
 
   const [method, setMethod] = useState<PaymentProvider>('dexpay');
