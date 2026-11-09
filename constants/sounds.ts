@@ -6,11 +6,13 @@ import * as Haptics from 'expo-haptics';
  * Fichiers générés dans assets/sounds/.
  */
 export const SOUND_SOURCES = {
-  correct:  require('../assets/sounds/correct_answer.wav'),
+  correct:  require('../assets/sounds/Trouvé-3.wav'),
   wrong:    require('../assets/sounds/wrong_answer.wav'),
-  finish:   require('../assets/sounds/lesson_complete.wav'),
+  finish:   require("../assets/sounds/Tre's bien-4.wav"),
   start:    require('../assets/sounds/start.wav'),
   progress: require('../assets/sounds/progress.wav'),
+  victoire: require('../assets/sounds/victoire.wav'),
+  gift:     require('../assets/sounds/gift.wav'),
 } as const;
 
 export type SoundName = keyof typeof SOUND_SOURCES;
