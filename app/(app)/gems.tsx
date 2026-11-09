@@ -221,9 +221,9 @@ export default function GemsScreen() {
   };
 
   // Achat d'un pack de gemmes avec de l'argent — ouvre le checkout DexPay
-  // (carte). Contrairement aux autres actions (payées en gemmes), celle-ci
-  // ne crédite rien immédiatement : il faut confirmer via le paiement carte
-  // puis attendre le webhook (voir components/DexPayCheckout.tsx).
+  // (Mobile Money). Contrairement aux autres actions (payées en gemmes),
+  // celle-ci ne crédite rien immédiatement : il faut confirmer via le
+  // paiement puis attendre le webhook (voir components/DexPayCheckout.tsx).
   const onBuyPack = async (p: (typeof PACKS)[number]) => {
     const key = `pack-${p.id}`;
     if (busy) return;

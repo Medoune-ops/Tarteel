@@ -10,6 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.tarteel.app",
+      "usesAppleSignIn": true,
       "appStoreUrl": "https://apps.apple.com/app/id6795987191",
       "infoPlist": {
         "UIBackgroundModes": [
@@ -115,6 +116,7 @@
       "expo-router",
       "expo-audio",
       "expo-localization",
+      "expo-apple-authentication",
       [
         "expo-notifications",
         {

@@ -120,7 +120,7 @@ export default function HouseholdScreen() {
   };
 
   // Active le plan familial choisi : crée la session de paiement DexPay puis
-  // ouvre le checkout carte — l'abonnement (et le premium de tout le foyer)
+  // ouvre le checkout Mobile Money — l'abonnement (et le premium de tout le foyer)
   // n'est activé qu'à la confirmation du webhook, jamais avant (voir
   // components/DexPayCheckout.tsx).
   const subscribeFamily = (planId: 'famille_mensuel' | 'famille_annuel', titre: string, prix: string) => {

@@ -1,5 +1,5 @@
 /**
- * Checkout carte via DexPay (DEXCHANGE PAY) — la WebView charge `paymentUrl`
+ * Checkout Mobile Money via DexPay (DEXCHANGE PAY) — la WebView charge `paymentUrl`
  * DIRECTEMENT, en occupant tout l'écran (navigation top-level), PAS dans un
  * cadre/iframe embarqué.
  *
@@ -13,7 +13,7 @@
  * En chargeant `paymentUrl` en navigation directe (toute la WebView, pas un
  * cadre à l'intérieur), on respecte cette règle et DexPay s'affiche.
  *
- * Le numéro de carte ne transite JAMAIS par notre code : il reste dans la
+ * Les informations de paiement ne transitent JAMAIS par notre code : elles restent dans la
  * page DexPay affichée par la WebView (conformité PCI-DSS).
  *
  * Flux :

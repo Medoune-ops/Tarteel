@@ -1,7 +1,7 @@
 /** Point d'entrée de la couche API. Importer depuis `lib/api`. */
 export { API_URL, API_TIMEOUT_MS } from './config';
 export { apiFetch, ApiError, isRetryableError } from './client';
-export { register, login, logout } from './auth';
+export { register, login, socialSignIn, logout } from './auth';
 export type { RegisterInput, LoginInput, RegisterResult } from './auth';
 export { fetchMe, updateProfile, updateSettings, fetchActivity, fetchLearnedSourates, saveOnboarding, deleteAccount } from './me';
 export { fetchNotificationPrefs, updateNotificationPrefs } from './notifications';

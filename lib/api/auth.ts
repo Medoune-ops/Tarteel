@@ -97,6 +97,27 @@ export async function login(input: LoginInput): Promise<void> {
 }
 
 /**
+ * Connexion avec Google ou Apple : le serveur vérifie le jeton d'identité, puis
+ * connecte ou crée le compte. Renvoie `isNewUser` pour orienter vers la config.
+ */
+export async function socialSignIn(input: {
+  provider: 'google' | 'apple';
+  idToken: string;
+  displayName?: string;
+}): Promise<{ isNewUser: boolean }> {
+  const deviceId = await getDeviceId();
+  const data = await apiFetch<AuthResponse & { isNewUser: boolean }>('/auth/social', {
+    method: 'POST',
+    auth: false,
+    json: { ...input, deviceId },
+  });
+  await setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+  await fetchMe();
+  registerForPushNotifications();
+  return { isNewUser: data.isNewUser };
+}
+
+/**
  * Déconnexion : révoque la session côté serveur (best-effort), efface les
  * jetons locaux et réinitialise le store.
  */

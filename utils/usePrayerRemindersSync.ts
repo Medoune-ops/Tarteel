@@ -15,7 +15,9 @@ function currentConfig(): ReminderConfig {
     latitude: s.latitude,
     longitude: s.longitude,
     prayers: s.reminderPrayers,
-    beforeMinutes: s.reminderBefore,
+    // Le réglage « Me prévenir avant » n'est plus affiché (page Prières) :
+    // on n'envoie plus de notification avant, sinon elle serait impossible à couper.
+    beforeMinutes: 0,
   };
 }
 
