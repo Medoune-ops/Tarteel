@@ -54,7 +54,7 @@ export default function GiftModal() {
       withSpring(1, { damping: 7, stiffness: 150, mass: 0.7 }),
     );
 
-    playSound('finish');
+    playSound('gift');
   }, [visible, burstKey]);
 
   const boxStyle = useAnimatedStyle(() => ({

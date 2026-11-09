@@ -12,6 +12,7 @@ import Confetti from '../../components/Confetti';
 import { useUserStore } from '../../store/userStore';
 import { saveOnboarding, fetchSections } from '../../lib/api';
 import { useT } from '../../lib/i18n';
+import { playSound } from '../../constants/sounds';
 
 const DAILY_MINUTES_LABELS: Record<number, string> = {
   5: '1 leçon courte par jour',
@@ -78,6 +79,7 @@ export default function PlanScreen() {
         // prochaine session /me rattrapera l'état une fois le réseau revenu.
       } finally {
         setLoading(false);
+        playSound('victoire');
       }
     })();
   }, []);
