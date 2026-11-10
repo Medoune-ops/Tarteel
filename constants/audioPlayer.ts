@@ -90,6 +90,8 @@ let currentReciter: Reciter | null = null;
 let repeatMode: number = RepeatMode.Queue;
 let playbackRate = 1;
 let isAudioModeSet = false;
+/** true quand CE lecteur est déjà la session média active (écran verrouillé). */
+let lockScreenActive = false;
 
 /** Dernier état connu, servi immédiatement à tout nouvel abonné. */
 let snapshot = {
@@ -247,6 +249,52 @@ async function handleTrackFinished(): Promise<void> {
   setSnapshot({ playing: false });
 }
 
+// ── Écran verrouillé / notification média ───────────────────────────────────
+
+/** Options des contrôles : les boutons ±10 s de la carte média. */
+const LOCK_SCREEN_OPTIONS = { showSeekForward: true, showSeekBackward: true } as const;
+
+function lockScreenMetadata(track: ActiveTrack) {
+  return {
+    title: track.title ?? '',
+    artist: track.artist ?? '',
+    albumTitle: 'Coran',
+  };
+}
+
+/**
+ * Publie — ou rafraîchit — la carte média de l'écran verrouillé.
+ *
+ * Pourquoi ne pas rappeler `setActiveForLockScreen` à chaque sourate :
+ *  - Android : l'appel libère puis reconstruit la MediaSession
+ *    (`hideNotification()` + `MediaSession.Builder`), ce qui fait disparaître
+ *    la carte le temps du changement de piste ;
+ *  - iOS : `MediaController.updateNowPlayingInfo` repart alors d'un état vide.
+ *
+ * On active donc UNE fois, puis on ne met à jour que les métadonnées. La
+ * position et la durée, elles, ne sont pas envoyées par le JS : c'est le natif
+ * qui les publie (AVPlayer / ExoPlayer via la MediaSession), d'où la barre de
+ * progression qui avance sans intervention de l'app.
+ */
+function publishToLockScreen(p: AudioPlayer, track: ActiveTrack): void {
+  const metadata = lockScreenMetadata(track);
+  try {
+    if (lockScreenActive) {
+      // Aucun effet si ce lecteur n'est plus la session active (le natif
+      // ignore l'appel) : c'est sans risque et bien moins coûteux.
+      p.updateLockScreenMetadata(metadata);
+      return;
+    }
+    p.setActiveForLockScreen(true, metadata, LOCK_SCREEN_OPTIONS);
+    lockScreenActive = true;
+  } catch (e) {
+    // Binaire natif sans la méthode (build trop ancien / Expo Go) : on le dit
+    // au lieu de laisser l'écran verrouillé vide sans explication.
+    lockScreenActive = false;
+    console.warn('[audio] contrôles écran verrouillé indisponibles :', e);
+  }
+}
+
 /**
  * Charge la sourate d'indice `index` et démarre si `autoPlay`.
  *
@@ -269,15 +317,7 @@ async function loadIndex(index: number, autoPlay: boolean): Promise<void> {
   setSnapshot({ track, position: 0, duration: 0 });
 
   // Contrôles de l'écran verrouillé et de la notification média.
-  try {
-    p.setActiveForLockScreen(
-      true,
-      { title: track.title, artist: track.artist, albumTitle: 'Coran' },
-      { showSeekForward: true, showSeekBackward: true },
-    );
-  } catch (e) {
-    console.warn('[audio] contrôles écran verrouillé indisponibles :', e);
-  }
+  publishToLockScreen(p, track);
 
   if (autoPlay) p.play();
 }
@@ -319,7 +359,14 @@ export async function changeReciter(reciter: Reciter): Promise<void> {
 }
 
 export const audioControls = {
-  play: () => { ensurePlayer().play(); },
+  play: () => {
+    const p = ensurePlayer();
+    // Après une longue pause, un appel entrant ou une autre app média, le
+    // système peut avoir retiré notre session : on la republie pour que la
+    // carte ET la barre reviennent dès la reprise.
+    if (!lockScreenActive && snapshot.track) publishToLockScreen(p, snapshot.track);
+    p.play();
+  },
   pause: () => { player?.pause(); },
 
   skipToNext: () => {
@@ -364,6 +411,8 @@ export const audioControls = {
     } catch {
       // Le lecteur natif peut déjà être libéré : ne pas faire échouer l'arrêt.
     }
+    // La session est détruite : la prochaine lecture devra la recréer.
+    lockScreenActive = false;
     setSnapshot({ track: undefined, playing: false, position: 0, duration: 0 });
   },
 };
