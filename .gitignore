@@ -47,5 +47,9 @@ yarn-error.*
 /ios
 /android
 
+# Config Firebase (contient une cle API, projet tarteel-501020).
+# Ignore par git, mais .easignore ne l'exclut PAS : EAS Build l'envoie bien.
+/google-services.json
+
 # Backend (dépôt git séparé, gardé en local, non publié sur GitHub)
 /Tarteelback/
