@@ -4,11 +4,17 @@ import * as Haptics from 'expo-haptics';
 /**
  * Sons UI de l'app (effets ponctuels : bonne/mauvaise réponse, fin de leçon…).
  * Fichiers générés dans assets/sounds/.
+ *
+ * ⚠️ Noms de fichiers STRICTEMENT ASCII. Deux fichiers accentués
+ * (`Trouvé-3.wav`, `Très bien-4.wav`) ont fait échouer le bundling Metro, donc
+ * tout build et tout OTA : macOS enregistre ces noms en Unicode décomposé
+ * (é = e + U+0301), Windows les restitue tels quels, et le `require` en forme
+ * composée ne les retrouve plus. Un nom ASCII ne peut pas se décomposer.
  */
 export const SOUND_SOURCES = {
-  correct:  require('../assets/sounds/Trouvé-3.wav'),
+  correct:  require('../assets/sounds/correct-3.wav'),
   wrong:    require('../assets/sounds/wrong_answer.wav'),
-  finish:   require("../assets/sounds/Tre's bien-4.wav"),
+  finish:   require('../assets/sounds/finish-4.wav'),
   start:    require('../assets/sounds/start.wav'),
   progress: require('../assets/sounds/progress.wav'),
   victoire: require('../assets/sounds/victoire.wav'),
