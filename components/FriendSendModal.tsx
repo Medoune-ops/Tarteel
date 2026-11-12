@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Modal, View, Text, Pressable, StyleSheet, Alert, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Keyboard, Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -53,6 +53,32 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
   const [challenges, setChallenges] = useState<ChallengeView[]>([]);
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+
+  /**
+   * Le clavier se lève : la zone de saisie doit rester visible.
+   *
+   * La feuille remonte déjà (KeyboardAvoidingView sur le fond, voir plus bas),
+   * mais quand le contenu est plus haut que la place restante (liste de défis,
+   * long message…), il faut faire défiler jusqu'au champ.
+   */
+  const scrollToInput = useCallback(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, []);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      // On laisse le clavier finir son animation, sinon le scroll part dans
+      // le vide (la mise en page n'est pas encore faite).
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(scrollToInput, 150);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      sub.remove();
+    };
+  }, [scrollToInput]);
 
   useEffect(() => {
     if (!visible) return;
@@ -112,7 +138,23 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      {/*
+        Le KeyboardAvoidingView enveloppe le FOND, pas la feuille : c'est lui
+        qui doit rétrécir quand le clavier monte. Posé à l'intérieur de la
+        feuille (comme avant), il n'avait aucune hauteur bornée : sur iOS son
+        `padding` gonflait la feuille par le bas — le champ restait collé sous
+        le clavier — et sur Android il ne rétrécissait rien du tout.
+
+        - iOS      : `padding` → la zone visible perd la hauteur du clavier ;
+        - Android  : `height`  → la hauteur du fond est réduite d'autant.
+        Dans les deux cas la feuille, alignée en bas, REMONTE au-dessus du
+        clavier.
+      */}
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         <View style={[styles.sheet, { backgroundColor: T.pageBg }]}>
           <LinearGradient colors={['#8B5CF6', '#6B4DFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
           <View style={styles.handle} />
@@ -128,92 +170,93 @@ export default function FriendSendModal({ visible, friend, hadithRef, initialTyp
             </Pressable>
           </View>
 
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={0}
+          <ScrollView
+            ref={scrollRef}
+            style={styles.sheetScroll}
+            contentContainerStyle={styles.sheetBody}
+            keyboardShouldPersistTaps="handled"
           >
-            <ScrollView contentContainerStyle={styles.sheetBody} keyboardShouldPersistTaps="handled">
-              <View style={styles.typeRow}>
-                {types.map((t) => {
-                  const on = type === t.id;
-                  return (
-                    <Pressable
-                      key={t.id}
-                      style={[styles.typeChip, { backgroundColor: on ? P.tint : T.cardBg, borderColor: on ? '#6B4DFF' : T.border }]}
-                      onPress={() => setType(t.id)}
-                    >
-                      <Feather name={t.icon} size={16} color={on ? '#6B4DFF' : T.textSecondary} />
-                      <Text style={[styles.typeChipText, { color: on ? '#6B4DFF' : T.textSecondary }]}>{t.label}</Text>
-                      {on && <Feather name="check" size={14} color="#6B4DFF" />}
-                    </Pressable>
-                  );
-                })}
+            <View style={styles.typeRow}>
+              {types.map((t) => {
+                const on = type === t.id;
+                return (
+                  <Pressable
+                    key={t.id}
+                    style={[styles.typeChip, { backgroundColor: on ? P.tint : T.cardBg, borderColor: on ? '#6B4DFF' : T.border }]}
+                    onPress={() => setType(t.id)}
+                  >
+                    <Feather name={t.icon} size={16} color={on ? '#6B4DFF' : T.textSecondary} />
+                    <Text style={[styles.typeChipText, { color: on ? '#6B4DFF' : T.textSecondary }]}>{t.label}</Text>
+                    {on && <Feather name="check" size={14} color="#6B4DFF" />}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {type === 'hadith' && (
+              <View style={[styles.hintBox, { backgroundColor: T.cardBg }]}>
+                <Feather name="book-open" size={20} color="#6B4DFF" />
+                <Text style={[styles.hintText, { color: T.textSecondary }]}>
+                  {hadithRef ? tr('friends.sendHadithHint') : tr('friends.sendHadithHint')}
+                </Text>
               </View>
+            )}
 
-              {type === 'hadith' && (
-                <View style={[styles.hintBox, { backgroundColor: T.cardBg }]}>
-                  <Feather name="book-open" size={20} color="#6B4DFF" />
-                  <Text style={[styles.hintText, { color: T.textSecondary }]}>
-                    {hadithRef ? tr('friends.sendHadithHint') : tr('friends.sendHadithHint')}
+            {type === 'reminder' && (
+              <View style={[styles.challengeList, { backgroundColor: T.cardBg }]}>
+                {challenges.length === 0 ? (
+                  <Text style={[styles.hintText, { color: T.textSecondary, padding: 14 }]}>
+                    {tr('friends.noChallenges')}
                   </Text>
-                </View>
-              )}
+                ) : (
+                  challenges.map((c) => {
+                    const on = challengeId === c.id;
+                    return (
+                      <Pressable
+                        key={c.id}
+                        style={[styles.challengeRow, { borderColor: T.divider }, on && { backgroundColor: P.tint }]}
+                        onPress={() => setChallengeId(c.id)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.challengeName, { color: T.text }]}>{c.title}</Text>
+                          <Text style={[styles.challengeMeta, { color: T.textSecondary }]}>
+                            {c.metric === 'streak' && tr('friends.challengeTargetStreak')}
+                            {c.metric === 'sourates' && tr('friends.challengeTargetSourates')}
+                            {' → '}{c.targetValue}
+                          </Text>
+                        </View>
+                        {on && <Feather name="check-circle" size={20} color="#6B4DFF" />}
+                      </Pressable>
+                    );
+                  })
+                )}
+              </View>
+            )}
 
-              {type === 'reminder' && (
-                <View style={[styles.challengeList, { backgroundColor: T.cardBg }]}>
-                  {challenges.length === 0 ? (
-                    <Text style={[styles.hintText, { color: T.textSecondary, padding: 14 }]}>
-                      {tr('friends.noChallenges')}
-                    </Text>
-                  ) : (
-                    challenges.map((c) => {
-                      const on = challengeId === c.id;
-                      return (
-                        <Pressable
-                          key={c.id}
-                          style={[styles.challengeRow, { borderColor: T.divider }, on && { backgroundColor: P.tint }]}
-                          onPress={() => setChallengeId(c.id)}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.challengeName, { color: T.text }]}>{c.title}</Text>
-                            <Text style={[styles.challengeMeta, { color: T.textSecondary }]}>
-                              {c.metric === 'streak' && tr('friends.challengeTargetStreak')}
-                              {c.metric === 'sourates' && tr('friends.challengeTargetSourates')}
-                              {' → '}{c.targetValue}
-                            </Text>
-                          </View>
-                          {on && <Feather name="check-circle" size={20} color="#6B4DFF" />}
-                        </Pressable>
-                      );
-                    })
-                  )}
-                </View>
-              )}
+            {(type === 'encouragement' || type === 'success' || (type === 'hadith' && hadithRef)) && (
+              <View style={[styles.inputBox, { backgroundColor: T.cardBg }]}>
+                <TextInput
+                  style={[styles.input, { color: T.text, height: inputHeight }]}
+                  placeholder={tr('friends.sendPlaceholder')}
+                  placeholderTextColor="#A0A5AE"
+                  multiline
+                  scrollEnabled={false}
+                  value={text}
+                  onChangeText={setText}
+                  onFocus={scrollToInput}
+                  onContentSizeChange={(e) => {
+                    const h = e.nativeEvent.contentSize.height;
+                    setInputHeight(Math.min(MAX_INPUT, Math.max(MIN_INPUT, h)));
+                  }}
+                  maxLength={140}
+                />
+              </View>
+            )}
 
-              {(type === 'encouragement' || type === 'success' || (type === 'hadith' && hadithRef)) && (
-                <View style={[styles.inputBox, { backgroundColor: T.cardBg }]}>
-                  <TextInput
-                    style={[styles.input, { color: T.text, height: inputHeight }]}
-                    placeholder={tr('friends.sendPlaceholder')}
-                    placeholderTextColor="#A0A5AE"
-                    multiline
-                    scrollEnabled={false}
-                    value={text}
-                    onChangeText={setText}
-                    onContentSizeChange={(e) => {
-                      const h = e.nativeEvent.contentSize.height;
-                      setInputHeight(Math.min(MAX_INPUT, Math.max(MIN_INPUT, h)));
-                    }}
-                    maxLength={140}
-                  />
-                </View>
-              )}
-
-              <FriendButton label={tr('friends.send')} icon="send" onPress={onSend} loading={sending} disabled={!canSend} />
-            </ScrollView>
-          </KeyboardAvoidingView>
+            <FriendButton label={tr('friends.send')} icon="send" onPress={onSend} loading={sending} disabled={!canSend} />
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -229,6 +272,11 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 17 },
   sheetBody: { padding: 18, gap: 14 },
+  // `flexShrink: 1` : la feuille a une hauteur MAX (85 %) mais pas de hauteur
+  // fixe. Sans ça, le ScrollView garde la hauteur de son contenu, la feuille
+  // le découpe (overflow hidden) et le bas — champ de saisie, bouton —
+  // disparaît au lieu de défiler.
+  sheetScroll: { flexShrink: 1 },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   typeChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 9 },
   typeChipText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13 },
@@ -238,6 +286,8 @@ const styles = StyleSheet.create({
   challengeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderBottomWidth: 1 },
   challengeName: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15 },
   challengeMeta: { fontFamily: 'Nunito_600SemiBold', fontSize: 12, marginTop: 2 },
-  inputBox: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, maxHeight: 160 },
+  // Pas de maxHeight ici : la hauteur du champ est déjà plafonnée
+  // (MAX_INPUT), un maxHeight sur la boîte le rognerait.
+  inputBox: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
   input: { fontFamily: 'Nunito_600SemiBold', fontSize: 14, minHeight: 60, padding: 0, textAlignVertical: 'top' },
 });
