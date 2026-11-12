@@ -4,20 +4,24 @@
  *
  * Deux angles se combinent :
  *  - la direction de la Qibla depuis la position (fixe, calculée par `adhan`) ;
- *  - le cap du téléphone, lu en continu sur le magnétomètre.
+ *  - le cap du téléphone, lu en continu sur la boussole.
  * La flèche affiche la différence, donc elle pointe toujours vers la Kaaba
  * quelle que soit l'orientation de l'appareil.
  *
  * Le cap vient en priorité du SYSTÈME (`Location.watchHeadingAsync`) : il
  * est calibré, compensé quand le téléphone est penché, et corrigé de la
- * déclinaison (nord géographique). Le magnétomètre brut n'est qu'un repli
- * quand la localisation n'est pas autorisée (ville choisie à la main) : il
- * donne le nord MAGNÉTIQUE, sans compensation d'inclinaison — l'affichage
- * reste indicatif, et l'écran le dit.
+ * déclinaison (nord géographique).
+ *
+ * Le repli, quand la localisation n'est pas autorisée (ville choisie à la
+ * main), combine MAGNÉTOMÈTRE et ACCÉLÉROMÈTRE : le magnétomètre seul ne
+ * donne un cap juste que si le téléphone est à plat — penché, l'aiguille part
+ * en vrille (c'était le symptôme « la boussole tourne bizarrement »). Ce
+ * repli donne le nord MAGNÉTIQUE, sans compensation de déclinaison :
+ * l'affichage reste indicatif, et l'écran le dit.
  */
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import { Magnetometer } from 'expo-sensors';
+import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { Magnetometer, Accelerometer } from 'expo-sensors';
 import * as Location from 'expo-location';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, type SharedValue,
@@ -27,6 +31,19 @@ import { useT } from '../lib/i18n';
 
 /** Écart (en degrés) en deçà duquel on considère le téléphone aligné. */
 const ALIGN_TOLERANCE = 4;
+/** Constante de temps du filtre passe-bas sur le cap (ms). */
+const HEADING_TAU = 160;
+/** Bruit de fond du capteur : en dessous, l'aiguille ne bouge pas. */
+const HEADING_NOISE = 0.4;
+/** Au-delà de cet écart, on recale d'un coup : animer 180° fait « tourner » l'aiguille. */
+const SNAP_THRESHOLD = 45;
+/**
+ * Projection horizontale minimale du haut de l'écran (entre 0 et 1).
+ * En dessous, le téléphone est presque vertical : le cap devient du bruit, on
+ * le gèle et on demande de le poser à plat.
+ */
+const MIN_HORIZONTAL = 0.2;
+
 const TICKS = Array.from({ length: 72 }, (_, i) => i * 5);
 const CARDINALS = [
   { l: 'N', a: 0 }, { l: 'E', a: 90 }, { l: 'S', a: 180 }, { l: 'W', a: 270 },
@@ -37,75 +54,235 @@ function shortestDelta(from: number, to: number): number {
   return ((to - from) % 360 + 540) % 360 - 180;
 }
 
+type Vec3 = { x: number; y: number; z: number };
+
+/** Vecteur unitaire, ou null s'il est nul ou indéfini. */
+function normalize(v: Vec3): Vec3 | null {
+  const n = Math.hypot(v.x, v.y, v.z);
+  if (!Number.isFinite(n) || n < 1e-9) return null;
+  return { x: v.x / n, y: v.y / n, z: v.z / n };
+}
+
+/** Produit vectoriel. */
+function cross(a: Vec3, b: Vec3): Vec3 {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x,
+  };
+}
+
+/** Produit scalaire. */
+function dot(a: Vec3, b: Vec3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/**
+ * Cap magnétique compensé de l'inclinaison, en degrés depuis le nord.
+ *
+ * Le magnétomètre seul ne donne un cap juste que si le téléphone est À PLAT :
+ * penché, les composantes x/y du champ sont faussées par la composante
+ * verticale et l'aiguille part en vrille. On lui adjoint l'accéléromètre :
+ *  - l'accéléromètre donne le vecteur « haut » (opposé à la gravité) ;
+ *  - est = champ × haut, puis nord = haut × est ;
+ *  - le cap est l'azimut du HAUT DE L'ÉCRAN (axe Y) dans le plan horizontal.
+ *
+ * `upIsNegative` : iOS et Android n'ont pas la même convention pour
+ * l'accéléromètre (iOS mesure l'accélération *avec* la pesanteur — z = -1 à
+ * plat ; Android mesure l'accélération propre — z = +1). Sans cette
+ * correction, le cap serait décalé de 180°.
+ *
+ * Renvoie null quand le téléphone est presque vertical : le haut de l'écran
+ * est alors projeté sur presque rien et le cap ne serait que du bruit.
+ */
+export function tiltedHeading(field: Vec3, accel: Vec3, upIsNegative: boolean): number | null {
+  const up = normalize(upIsNegative ? { x: -accel.x, y: -accel.y, z: -accel.z } : accel);
+  const mag = normalize(field);
+  if (!up || !mag) return null;
+  const east = normalize(cross(mag, up));
+  if (!east) return null;
+  const north = normalize(cross(up, east));
+  if (!north) return null;
+  // Le haut de l'écran de l'appareil (portrait).
+  const screenUp: Vec3 = { x: 0, y: 1, z: 0 };
+  const e = dot(east, screenUp);
+  const n = dot(north, screenUp);
+  if (Math.hypot(e, n) < MIN_HORIZONTAL) return null;
+  return ((Math.atan2(e, n) * 180) / Math.PI + 360) % 360;
+}
+
+/**
+ * Cap à afficher à partir d'une mesure du cap SYSTÈME, et déclinaison apprise.
+ *
+ * ⚠️ Android (expo-location, `LocationModule.kt`) calcule le nord vrai par
+ * `(magnétique + déclinaison) % 360` en Kotlin : le signe suit le dividende,
+ * donc le résultat peut être NÉGATIF. expo renvoie alors `trueHeading = -1`,
+ * et l'application se rabattait sur le nord magnétique — ce qui faisait
+ * SAUTER l'aiguille de toute la déclinaison (~14° au Sénégal) au passage du
+ * nord. iOS, lui, renvoie toujours un `trueHeading` correct.
+ *
+ * On n'utilise donc jamais `trueHeading` tel quel : on en déduit la
+ * déclinaison, et on recale TOUJOURS le nord magnétique dessus. Une seule
+ * référence, donc aucune rupture — et le cap reste le nord géographique.
+ */
+export function resolveSystemHeading(
+  magHeading: number,
+  trueHeading: number,
+  declination: number | null,
+): { value: number | null; declination: number | null } {
+  let decl = declination;
+  if (magHeading >= 0 && trueHeading >= 0) decl = shortestDelta(magHeading, trueHeading);
+  if (decl != null && magHeading >= 0) return { value: magHeading + decl, declination: decl };
+  if (trueHeading >= 0) return { value: trueHeading, declination: decl };
+  if (magHeading >= 0) return { value: magHeading, declination: decl };
+  return { value: null, declination: decl };
+}
+
 /**
  * Cap du téléphone, lissé.
  *
  * Les mesures brutes tremblent de plusieurs degrés à chaque échantillon : les
  * afficher telles quelles faisait gigoter l'aiguille en permanence. On les
- * filtre (moyenne exponentielle) sur un angle DÉROULÉ, qui peut dépasser 360°
- * ou passer sous 0 : sans ça, franchir le nord (359° → 1°) faisait faire un
- * tour complet au cadran dans le mauvais sens.
+ * filtre (passe-bas à constante de temps) sur un angle DÉROULÉ, qui peut
+ * dépasser 360° ou passer sous 0 : sans ça, franchir le nord (359° → 1°)
+ * faisait faire un tour complet au cadran dans le mauvais sens.
  *
  * - `smooth` : cap déroulé, animé côté UI (rotations du cadran et de l'aiguille) ;
  * - `heading` : même cap ramené à [0, 360[, pour les textes (rafraîchi ~10 fois/s) ;
- * - `lowAccuracy` : le système signale une boussole mal calibrée.
+ * - `lowAccuracy` : le système signale une boussole mal calibrée ;
+ * - `tooTilted` : le téléphone est tenu presque vertical, la mesure n'est pas
+ *   fiable (repli magnétomètre uniquement).
  */
-function useHeading(): { heading: number | null; lowAccuracy: boolean; smooth: SharedValue<number> } {
+function useHeading(): {
+  heading: number | null;
+  lowAccuracy: boolean;
+  tooTilted: boolean;
+  smooth: SharedValue<number>;
+} {
   const [heading, setHeading] = useState<number | null>(null);
   const [lowAccuracy, setLowAccuracy] = useState(false);
+  const [tooTilted, setTooTilted] = useState(false);
   const smooth = useSharedValue(0);
 
   useEffect(() => {
-    let subscription: { remove: () => void } | null = null;
+    const subscriptions: { remove: () => void }[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
     // Le composant peut être démonté pendant un await : sans ce drapeau, on
     // s'abonnerait APRÈS le cleanup et l'abonnement fuiterait (capteur laissé
     // actif sur un écran quitté).
     let cancelled = false;
     let current: number | null = null; // cap lissé, déroulé
+    let lastSampleAt = 0;
     let lastTextUpdate = 0;
+    /** Déclinaison (nord vrai − nord magnétique), déduite du cap système. */
+    let declination: number | null = null;
+    /** Source active du cap : le système prime, le magnétomètre ne sert que de repli. */
+    let source: 'system' | 'magnetometer' | null = null;
 
-    const push = (raw: number, alpha: number) => {
-      if (!Number.isFinite(raw) || raw < 0) return;
+    /**
+     * Un nouveau cap brut : on le filtre, puis on anime l'aiguille.
+     *
+     * Le filtre est un passe-bas à constante de temps FIXE (HEADING_TAU) : son
+     * atténuation dépend de l'écart entre deux mesures, pas de leur nombre.
+     * Sans ça, le lissage changeait d'intensité selon la cadence du capteur
+     * (5 Hz pour le magnétomètre, jusqu'à 20 Hz pour le cap système) et
+     * l'aiguille accélérait ou ralentissait selon la source.
+     */
+    const push = (raw: number) => {
+      if (!Number.isFinite(raw)) return;
+      const now = Date.now();
       if (current == null) {
         current = raw;
+        lastSampleAt = now;
         smooth.value = raw;
       } else {
         const delta = shortestDelta(current, raw);
-        // Bruit de fond du capteur : on ne bouge pas pour moins d'un demi-degré.
-        if (Math.abs(delta) < 0.5) return;
-        current += delta * alpha;
-        smooth.value = withTiming(current, { duration: 150, easing: Easing.linear });
+        const dt = Math.min(500, Math.max(1, now - lastSampleAt));
+        lastSampleAt = now;
+        // Bruit de fond du capteur : on ne bouge pas pour moins de 0,4°.
+        if (Math.abs(delta) < HEADING_NOISE) return;
+        if (Math.abs(delta) > SNAP_THRESHOLD) {
+          // Recalage (source qui change, lecture aberrante) : on saute d'un
+          // coup, sinon l'aiguille fait un tour complet pour rien.
+          current += delta;
+          smooth.value = current;
+        } else {
+          current += delta * (1 - Math.exp(-dt / HEADING_TAU));
+          smooth.value = withTiming(current, { duration: 120, easing: Easing.linear });
+        }
       }
-      const now = Date.now();
       if (now - lastTextUpdate > 100) {
         lastTextUpdate = now;
         setHeading(((current % 360) + 360) % 360);
       }
     };
 
-    /** Repli : magnétomètre brut (nord magnétique, téléphone à plat). */
+    /**
+     * Cap SYSTÈME : calibré, compensé de l'inclinaison, nord géographique.
+     */
+    const startSystemHeading = async () => {
+      const sub = await Location.watchHeadingAsync((h) => {
+        // Le repli magnétomètre a pris le relais : on ne mélange pas les deux.
+        if (source === 'magnetometer') return;
+        source = 'system';
+        setLowAccuracy(h.accuracy <= 1);
+        const resolved = resolveSystemHeading(h.magHeading, h.trueHeading, declination);
+        declination = resolved.declination;
+        if (resolved.value != null) push(resolved.value);
+      });
+      if (cancelled) sub.remove();
+      else subscriptions.push(sub);
+    };
+
+    /**
+     * Repli : magnétomètre + accéléromètre (nord magnétique, inclinaison
+     * compensée).
+     */
     const startMagnetometer = async () => {
-      // Le magnétomètre est absent de nombreux appareils d'entrée de gamme (et
-      // de la plupart des émulateurs) : on retombe alors sur l'affichage du cap
-      // seul. Constaté par exemple sur Galaxy A03 (aucun capteur de champ
-      // magnétique). L'aiguille figée n'est donc pas un bug.
       if (!(await Magnetometer.isAvailableAsync()) || cancelled) return;
+      if (!(await Accelerometer.isAvailableAsync()) || cancelled) return;
       // ⚠️ NE JAMAIS mettre 200 ms ici sur Android — l'aiguille se fige.
       // expo-sensors écoute à SENSOR_DELAY_NORMAL (~200 ms) puis filtre avec
       // `currentTime - lastUpdate > updateInterval` : demander 200 ms rejette
       // quasiment toutes les mesures (constaté sur appareil, build 17).
       // 120 ms laisse passer chaque évènement reçu.
       Magnetometer.setUpdateInterval(120);
-      subscription = Magnetometer.addListener(({ x, y }) => {
+      Accelerometer.setUpdateInterval(120);
+
+      let accel: Vec3 | null = null;
+      const accSub = Accelerometer.addListener(({ x, y, z }) => {
+        accel = { x, y, z };
+      });
+      if (cancelled) {
+        accSub.remove();
+        return;
+      }
+      subscriptions.push(accSub);
+
+      const magSub = Magnetometer.addListener(({ x, y, z }) => {
+        // Le cap système fonctionne : il est calibré et donne le nord
+        // géographique, on ne le mixes pas avec le nord magnétique.
+        if (source === 'system') return;
+        source = 'magnetometer';
         // Capteur pas encore calibré (fréquent au démarrage sur Android) : il
         // émet des (0,0), qui donneraient un faux « plein nord ».
         if (x === 0 && y === 0) return;
-        // Téléphone à plat en portrait : Y vers le haut de l'écran, X vers la
-        // droite. Cap compté depuis le nord dans le sens horaire, et signe
-        // négatif car le champ mesuré pointe à l'opposé du cap (constaté sur
-        // appareil : sans lui, la flèche tournait à l'envers).
-        push((-Math.atan2(x, y) * (180 / Math.PI) + 360) % 360, 0.2);
+        if (!accel) return;
+        const h = tiltedHeading({ x, y, z }, accel, Platform.OS === 'ios');
+        if (h == null) {
+          // Téléphone presque vertical : le cap n'est que du bruit. On gèle
+          // l'aiguille (plutôt que de la laisser foller) et on le dit.
+          setTooTilted(true);
+          return;
+        }
+        setTooTilted(false);
+        push(h);
       });
+      if (cancelled) {
+        magSub.remove();
+        return;
+      }
+      subscriptions.push(magSub);
     };
 
     (async () => {
@@ -115,13 +292,13 @@ function useHeading(): { heading: number | null; lowAccuracy: boolean; smooth: S
         const perm = await Location.getForegroundPermissionsAsync();
         if (cancelled) return;
         if (perm.granted) {
-          const sub = await Location.watchHeadingAsync((h) => {
-            // trueHeading vaut -1 tant que le nord géographique n'est pas connu.
-            push(h.trueHeading >= 0 ? h.trueHeading : h.magHeading, 0.35);
-            setLowAccuracy(h.accuracy <= 1);
-          });
-          if (cancelled) sub.remove();
-          else subscription = sub;
+          await startSystemHeading();
+          // Filet de sécurité : si le cap système reste muet (capteur de champ
+          // qui ne répond pas), on bascule sur le magnétomètre plutôt que de
+          // laisser l'aiguille figée.
+          timers.push(setTimeout(() => {
+            if (!cancelled && source === null) void startMagnetometer();
+          }, 3000));
           return;
         }
       } catch (e) {
@@ -138,11 +315,12 @@ function useHeading(): { heading: number | null; lowAccuracy: boolean; smooth: S
 
     return () => {
       cancelled = true;
-      subscription?.remove();
+      timers.forEach((t) => clearTimeout(t));
+      subscriptions.forEach((s) => s.remove());
     };
   }, []);
 
-  return { heading, lowAccuracy, smooth };
+  return { heading, lowAccuracy, tooTilted, smooth };
 }
 
 interface Props {
@@ -157,7 +335,7 @@ interface Props {
 export default function QiblaCompass({ latitude, longitude, colors, dark = false }: Props) {
   const tr = useT();
   const { width } = useWindowDimensions();
-  const { heading, lowAccuracy, smooth } = useHeading();
+  const { heading, lowAccuracy, tooTilted, smooth } = useHeading();
 
   const qibla = qiblaDirection(latitude, longitude);
   const distance = distanceToKaaba(latitude, longitude);
@@ -297,11 +475,13 @@ export default function QiblaCompass({ latitude, longitude, colors, dark = false
       </View>
 
       <Text style={[styles.hint, { color: colors.textSecondary }]}>
-        {heading == null
-          ? tr('qibla.noSensor')
-          : aligned
-            ? tr('qibla.alignedHint')
-            : lowAccuracy ? tr('qibla.calibrate') : tr('qibla.hint')}
+        {tooTilted
+          ? tr('qibla.tooTilted')
+          : heading == null
+            ? tr('qibla.noSensor')
+            : aligned
+              ? tr('qibla.alignedHint')
+              : lowAccuracy ? tr('qibla.calibrate') : tr('qibla.hint')}
       </Text>
     </View>
   );
