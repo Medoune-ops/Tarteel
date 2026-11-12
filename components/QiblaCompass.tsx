@@ -8,31 +8,44 @@
  * La flèche affiche la différence, donc elle pointe toujours vers la Kaaba
  * quelle que soit l'orientation de l'appareil.
  *
- * Le cap vient en priorité du SYSTÈME (`Location.watchHeadingAsync`) : il
- * est calibré, compensé quand le téléphone est penché, et corrigé de la
- * déclinaison (nord géographique).
+ * ⚠️ Les corrections ci-dessous (déclinaison, inclinaison, lissage, ressort)
+ * ne concernent qu'ANDROID. Sur iOS, le cap système d'expo est déjà correct
+ * — CLLocationManager renvoie toujours un `trueHeading` valide, alors que
+ * l'implémentation Android peut le renvoyer négatif — et le comportement
+ * d'origine est conservé à l'identique. L'app iOS est déjà publiée : on n'y
+ * touche pas.
  *
+ * Sur Android, le cap vient en priorité du SYSTÈME
+ * (`Location.watchHeadingAsync`) : il est calibré, compensé quand le
+ * téléphone est penché, et corrigé de la déclinaison (nord géographique).
  * Le repli, quand la localisation n'est pas autorisée (ville choisie à la
  * main), combine MAGNÉTOMÈTRE et ACCÉLÉROMÈTRE : le magnétomètre seul ne
  * donne un cap juste que si le téléphone est à plat — penché, l'aiguille part
- * en vrille (c'était le symptôme « la boussole tourne bizarrement »). Ce
- * repli donne le nord MAGNÉTIQUE, sans compensation de déclinaison :
- * l'affichage reste indicatif, et l'écran le dit.
+ * en vrille. Ce repli donne le nord MAGNÉTIQUE, sans compensation de
+ * déclinaison : l'affichage reste indicatif, et l'écran le dit.
  */
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { Magnetometer, Accelerometer } from 'expo-sensors';
 import * as Location from 'expo-location';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, Easing, type SharedValue,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, Easing, type SharedValue,
 } from 'react-native-reanimated';
 import { qiblaDirection, distanceToKaaba, cardinalFor } from '../constants/prayerTimes';
 import { useT } from '../lib/i18n';
 
 /** Écart (en degrés) en deçà duquel on considère le téléphone aligné. */
 const ALIGN_TOLERANCE = 4;
-/** Constante de temps du filtre passe-bas sur le cap (ms). */
-const HEADING_TAU = 160;
+/**
+ * Les correctifs de cap ne s'appliquent qu'à Android (voir l'en-tête du
+ * fichier). Sur iOS, tout se passe comme avant.
+ *
+ * Lu à chaque appel (et non une constante de module) : la plateforme ne
+ * change pas en production, mais les tests basculent `Platform.OS`.
+ */
+const isAndroid = () => Platform.OS === 'android';
+/** Constante de temps du filtre passe-bas sur le cap (ms) — Android. */
+const HEADING_TAU = 200;
 /** Bruit de fond du capteur : en dessous, l'aiguille ne bouge pas. */
 const HEADING_NOISE = 0.4;
 /** Au-delà de cet écart, on recale d'un coup : animer 180° fait « tourner » l'aiguille. */
@@ -90,7 +103,8 @@ function dot(a: Vec3, b: Vec3): number {
  * `upIsNegative` : iOS et Android n'ont pas la même convention pour
  * l'accéléromètre (iOS mesure l'accélération *avec* la pesanteur — z = -1 à
  * plat ; Android mesure l'accélération propre — z = +1). Sans cette
- * correction, le cap serait décalé de 180°.
+ * correction, le cap serait décalé de 180°. Seul Android utilise cette
+ * fonction pour l'instant (le chemin iOS garde son comportement d'origine).
  *
  * Renvoie null quand le téléphone est presque vertical : le haut de l'écran
  * est alors projeté sur presque rien et le cap ne serait que du bruit.
@@ -174,6 +188,7 @@ function useHeading(): {
     let current: number | null = null; // cap lissé, déroulé
     let lastSampleAt = 0;
     let lastTextUpdate = 0;
+    let lastTextDegree = -1;
     /** Déclinaison (nord vrai − nord magnétique), déduite du cap système. */
     let declination: number | null = null;
     /** Source active du cap : le système prime, le magnétomètre ne sert que de repli. */
@@ -182,13 +197,16 @@ function useHeading(): {
     /**
      * Un nouveau cap brut : on le filtre, puis on anime l'aiguille.
      *
-     * Le filtre est un passe-bas à constante de temps FIXE (HEADING_TAU) : son
+     * ANDROID : filtre passe-bas à constante de temps FIXE (HEADING_TAU) — son
      * atténuation dépend de l'écart entre deux mesures, pas de leur nombre.
      * Sans ça, le lissage changeait d'intensité selon la cadence du capteur
      * (5 Hz pour le magnétomètre, jusqu'à 20 Hz pour le cap système) et
      * l'aiguille accélérait ou ralentissait selon la source.
+     *
+     * iOS : comportement d'origine, inchangé (filtre à facteur fixe et
+     * `withTiming`).
      */
-    const push = (raw: number) => {
+    const push = (raw: number, alpha: number) => {
       if (!Number.isFinite(raw)) return;
       const now = Date.now();
       if (current == null) {
@@ -197,28 +215,56 @@ function useHeading(): {
         smooth.value = raw;
       } else {
         const delta = shortestDelta(current, raw);
-        const dt = Math.min(500, Math.max(1, now - lastSampleAt));
-        lastSampleAt = now;
-        // Bruit de fond du capteur : on ne bouge pas pour moins de 0,4°.
-        if (Math.abs(delta) < HEADING_NOISE) return;
-        if (Math.abs(delta) > SNAP_THRESHOLD) {
-          // Recalage (source qui change, lecture aberrante) : on saute d'un
-          // coup, sinon l'aiguille fait un tour complet pour rien.
-          current += delta;
-          smooth.value = current;
+        if (isAndroid()) {
+          const dt = Math.min(500, Math.max(1, now - lastSampleAt));
+          lastSampleAt = now;
+          // Bruit de fond du capteur : on ne bouge pas pour moins de 0,4°.
+          if (Math.abs(delta) < HEADING_NOISE) return;
+          if (Math.abs(delta) > SNAP_THRESHOLD) {
+            // Recalage (source qui change, lecture aberrante) : on saute d'un
+            // coup, sinon l'aiguille fait un tour complet pour rien.
+            current += delta;
+            smooth.value = current;
+          } else {
+            current += delta * (1 - Math.exp(-dt / HEADING_TAU));
+            // ⚠️ Un RESSORT, pas un `withTiming` : le cap arrive en cadence
+            // (jusqu'à 20 mesures/s sur Android), et `withTiming` relancé à
+            // chaque mesure repart de VITESSE NULLE — l'aiguille avançait par
+            // à-coups, c'est-à-dire qu'elle TREMBLAIT. Reanimated conserve la
+            // vitesse du ressort interrompu (spring.ts : `previousAnimation
+            // ?.velocity`) : le mouvement reste continu d'une mesure à
+            // l'autre. `dampingRatio: 1` = amorti critique, donc aucun rebond.
+            smooth.value = withSpring(current, { duration: 180, dampingRatio: 1 });
+          }
         } else {
-          current += delta * (1 - Math.exp(-dt / HEADING_TAU));
-          smooth.value = withTiming(current, { duration: 120, easing: Easing.linear });
+          // iOS : filtre à facteur fixe + animation lineaire (comme avant).
+          if (Math.abs(delta) < 0.5) return;
+          current += delta * alpha;
+          smooth.value = withTiming(current, { duration: 150, easing: Easing.linear });
         }
       }
+      // ANDROID : le texte n'est rafraîchi que si le degré affiché change —
+      // inutile de re-rendre 10 fois/s pour un nombre identique (et le
+      // nombre au centre du cadran scintille moins). iOS : comme avant.
       if (now - lastTextUpdate > 100) {
         lastTextUpdate = now;
-        setHeading(((current % 360) + 360) % 360);
+        const value = ((current % 360) + 360) % 360;
+        const rounded = Math.round(value);
+        if (!isAndroid() || rounded !== lastTextDegree) {
+          lastTextDegree = rounded;
+          setHeading(value);
+        }
       }
     };
 
     /**
      * Cap SYSTÈME : calibré, compensé de l'inclinaison, nord géographique.
+     *
+     * ANDROID : expo-location peut renvoyer un `trueHeading` NÉGATIF (voir
+     * `resolveSystemHeading`), on ne l'utilise donc jamais tel quel.
+     *
+     * iOS : le `trueHeading` d'Apple est toujours valide — comportement
+     * d'origine, inchangé.
      */
     const startSystemHeading = async () => {
       const sub = await Location.watchHeadingAsync((h) => {
@@ -226,38 +272,53 @@ function useHeading(): {
         if (source === 'magnetometer') return;
         source = 'system';
         setLowAccuracy(h.accuracy <= 1);
-        const resolved = resolveSystemHeading(h.magHeading, h.trueHeading, declination);
-        declination = resolved.declination;
-        if (resolved.value != null) push(resolved.value);
+        if (isAndroid()) {
+          const resolved = resolveSystemHeading(h.magHeading, h.trueHeading, declination);
+          declination = resolved.declination;
+          if (resolved.value != null) push(resolved.value, 0.35);
+        } else {
+          // iOS : comportement d'origine (le trueHeading d'iOS est toujours
+          // valide). Le garde `raw >= 0` reprend celui d'avant : une mesure
+          // négative n'est pas un cap.
+          const raw = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+          if (raw >= 0) push(raw, 0.35);
+        }
       });
       if (cancelled) sub.remove();
       else subscriptions.push(sub);
     };
 
     /**
-     * Repli : magnétomètre + accéléromètre (nord magnétique, inclinaison
-     * compensée).
+     * Repli : magnétomètre (+ accéléromètre sur Android).
+     *
+     * ANDROID : on combine les deux capteurs, le cap est correct quelle que
+     * soit l'inclinaison du téléphone.
+     *
+     * iOS : comportement d'origine (magnétomètre seul, formule valable
+     * téléphone à plat), inchangé.
      */
     const startMagnetometer = async () => {
       if (!(await Magnetometer.isAvailableAsync()) || cancelled) return;
-      if (!(await Accelerometer.isAvailableAsync()) || cancelled) return;
       // ⚠️ NE JAMAIS mettre 200 ms ici sur Android — l'aiguille se fige.
       // expo-sensors écoute à SENSOR_DELAY_NORMAL (~200 ms) puis filtre avec
       // `currentTime - lastUpdate > updateInterval` : demander 200 ms rejette
       // quasiment toutes les mesures (constaté sur appareil, build 17).
       // 120 ms laisse passer chaque évènement reçu.
       Magnetometer.setUpdateInterval(120);
-      Accelerometer.setUpdateInterval(120);
 
       let accel: Vec3 | null = null;
-      const accSub = Accelerometer.addListener(({ x, y, z }) => {
-        accel = { x, y, z };
-      });
-      if (cancelled) {
-        accSub.remove();
-        return;
+      if (isAndroid()) {
+        if (!(await Accelerometer.isAvailableAsync()) || cancelled) return;
+        Accelerometer.setUpdateInterval(120);
+        const accSub = Accelerometer.addListener(({ x, y, z }) => {
+          accel = { x, y, z };
+        });
+        if (cancelled) {
+          accSub.remove();
+          return;
+        }
+        subscriptions.push(accSub);
       }
-      subscriptions.push(accSub);
 
       const magSub = Magnetometer.addListener(({ x, y, z }) => {
         // Le cap système fonctionne : il est calibré et donne le nord
@@ -267,8 +328,15 @@ function useHeading(): {
         // Capteur pas encore calibré (fréquent au démarrage sur Android) : il
         // émet des (0,0), qui donneraient un faux « plein nord ».
         if (x === 0 && y === 0) return;
+
+        if (!isAndroid()) {
+          // iOS : magnétomètre seul, téléphone à plat (comme avant).
+          push((-Math.atan2(x, y) * (180 / Math.PI) + 360) % 360, 0.2);
+          return;
+        }
+
         if (!accel) return;
-        const h = tiltedHeading({ x, y, z }, accel, Platform.OS === 'ios');
+        const h = tiltedHeading({ x, y, z }, accel, false);
         if (h == null) {
           // Téléphone presque vertical : le cap n'est que du bruit. On gèle
           // l'aiguille (plutôt que de la laisser foller) et on le dit.
@@ -276,7 +344,7 @@ function useHeading(): {
           return;
         }
         setTooTilted(false);
-        push(h);
+        push(h, 0.2);
       });
       if (cancelled) {
         magSub.remove();
@@ -293,12 +361,14 @@ function useHeading(): {
         if (cancelled) return;
         if (perm.granted) {
           await startSystemHeading();
-          // Filet de sécurité : si le cap système reste muet (capteur de champ
-          // qui ne répond pas), on bascule sur le magnétomètre plutôt que de
-          // laisser l'aiguille figée.
-          timers.push(setTimeout(() => {
-            if (!cancelled && source === null) void startMagnetometer();
-          }, 3000));
+          if (isAndroid()) {
+            // Filet de sécurité (Android) : si le cap système reste muet
+            // (capteur de champ qui ne répond pas), on bascule sur le
+            // magnétomètre plutôt que de laisser l'aiguille figée.
+            timers.push(setTimeout(() => {
+              if (!cancelled && source === null) void startMagnetometer();
+            }, 3000));
+          }
           return;
         }
       } catch (e) {
