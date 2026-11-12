@@ -60,9 +60,26 @@ jest.mock('../components/IslamicIcons', () => ({ KaabaColorIcon: () => null }));
 jest.mock('../lib/i18n', () => ({
   useT: () => (k: string) => k,
 }));
+// Reanimated exporte des accesseurs non configurables : impossible de les
+// espionner. On le remplace par un faux minimal (la boussole n'utilise que
+// Animated.View, useSharedValue, useAnimatedStyle et withSpring), ce qui
+// permet notamment de vérifier que l'aiguille est animée par un RESSORT.
+jest.mock('react-native-reanimated', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: { View },
+    useSharedValue: (initial: number) => ({ value: initial }),
+    useAnimatedStyle: (fn: () => unknown) => fn(),
+    withSpring: jest.fn((value: number) => value),
+    withTiming: jest.fn((value: number) => value),
+    Easing: { linear: (t: number) => t },
+  };
+});
 
 import QiblaCompass, { tiltedHeading, resolveSystemHeading } from '../components/QiblaCompass';
 import { qiblaDirection } from '../constants/prayerTimes';
+import * as Reanimated from 'react-native-reanimated';
 
 const COLORS = { text: '#000', textSecondary: '#666', textTertiary: '#999', cardBg: '#fff' };
 // Dakar.
@@ -155,6 +172,7 @@ it("ignore les mesures (0,0) d'un capteur non calibre au lieu d'afficher un faux
 });
 
 it("libere l'abonnement au demontage", async () => {
+  Platform.OS = 'android';
   let r: TestRenderer.ReactTestRenderer | undefined;
   await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });
   await act(async () => { r?.unmount(); });
@@ -252,6 +270,56 @@ it("l'aiguille ne recule pas au passage du nord (cap système Android)", async (
   await act(async () => { r?.unmount(); });
 });
 
+it("l'aiguille suit le cap avec un RESSORT sur ANDROID (le timing relancé à chaque mesure la faisait trembler)", async () => {
+  Platform.OS = 'android';
+  mockLocationGranted = true;
+  const spring = jest.mocked(Reanimated.withSpring);
+  const timing = jest.mocked(Reanimated.withTiming);
+  spring.mockClear();
+  timing.mockClear();
+  let r: TestRenderer.ReactTestRenderer | undefined;
+  await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });
+
+  // Deux mesures successives : l'aiguille doit être animée par un ressort.
+  // Un `withTiming` relancé à chaque mesure repart de vitesse nulle et fait
+  // trembler l'aiguille ; le ressort conserve la vitesse (Reanimated :
+  // previousAnimation?.velocity).
+  fakeNow += 200;
+  await act(async () => { mockHeadingCb?.({ trueHeading: 10, magHeading: 10, accuracy: 3 }); });
+  fakeNow += 200;
+  await act(async () => { mockHeadingCb?.({ trueHeading: 12, magHeading: 12, accuracy: 3 }); });
+
+  expect(spring).toHaveBeenCalled();
+  expect(timing).not.toHaveBeenCalled();
+  expect(spring.mock.calls[0]![1]).toMatchObject({ dampingRatio: 1 });
+
+  await act(async () => { r?.unmount(); });
+});
+
+it("iOS n'est PAS touché : on garde le timing d'origine et pas d'accéléromètre", async () => {
+  Platform.OS = 'ios';
+  const spring = jest.mocked(Reanimated.withSpring);
+  const timing = jest.mocked(Reanimated.withTiming);
+  spring.mockClear();
+  timing.mockClear();
+
+  // Repli magnétomètre (pas de permission de localisation) : iOS ne doit
+  // pas s'abonner à l'accéléromètre et garder l'animation d'origine.
+  let r: TestRenderer.ReactTestRenderer | undefined;
+  await act(async () => { r = TestRenderer.create(<QiblaCompass {...props} />); });
+
+  await act(async () => { mockMagListener?.({ x: 0, y: 25, z: -8 }); });
+  // Une seconde mesure : c'est elle qui déclenche l'animation.
+  fakeNow += 200;
+  await act(async () => { mockMagListener?.({ x: 1, y: 25, z: -8 }); });
+
+  expect(mockAccListener).toBeNull();
+  expect(spring).not.toHaveBeenCalled();
+  expect(timing).toHaveBeenCalled();
+
+  await act(async () => { r?.unmount(); });
+});
+
 // ── Repli magnétomètre : l'inclinaison doit être compensée ──
 
 describe('tiltedHeading', () => {
@@ -308,6 +376,7 @@ it('téléphone vertical : on gèle l\'aiguille et on demande de le poser à pla
 });
 
 it('si le cap système reste muet, on bascule sur le magnétomètre plutôt que de figer l\'aiguille', async () => {
+  Platform.OS = 'android';
   jest.useFakeTimers();
   mockLocationGranted = true;
   let r: TestRenderer.ReactTestRenderer | undefined;
