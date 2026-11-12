@@ -14,7 +14,7 @@ import { useTheme } from '../../utils/useTheme';
 import { friendPalette } from '../../utils/friendTheme';
 import {
   fetchFriendCode, fetchFriends, fetchFriendsLeaderboard, fetchFriendRequests, fetchChallenges,
-  fetchFriendsActivity, acceptFriendRequest, declineFriendRequest, addFriend, sendToFriend,
+  fetchFriendsActivity, fetchFriendsSummary, acceptFriendRequest, declineFriendRequest, addFriend, sendToFriend,
   cheerActivity, ApiError,
   type FriendView, type LeaderboardEntry, type FriendRequestView, type ChallengeView,
   type FriendActivityView,
@@ -54,6 +54,7 @@ export default function FriendsScreen() {
   const [adding, setAdding] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [encouraged, setEncouraged] = useState<Record<string, boolean>>({});
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
@@ -68,12 +69,13 @@ export default function FriendsScreen() {
       setFriends(f);
       setBoard(b.entries);
       setRequests(r.received);
-      // Défis et fil sont secondaires : leur échec ne bloque pas l'écran.
-      const [ch, a] = await Promise.allSettled([fetchChallenges(), fetchFriendsActivity()]);
+      // Défis, fil et résumé (messages non lus) sont secondaires : leur échec ne bloque pas l'écran.
+      const [ch, a, s] = await Promise.allSettled([fetchChallenges(), fetchFriendsActivity(), fetchFriendsSummary()]);
       setChallenge(ch.status === 'fulfilled'
         ? ch.value.challenges.find((x) => x.status === 'active' && x.myStatus === 'accepted') ?? null
         : null);
       setFeed(a.status === 'fulfilled' ? a.value.activity.slice(0, 3) : []);
+      setUnreadMessages(s.status === 'fulfilled' ? s.value.unreadMessages : 0);
     } catch {
       setError(true);
     } finally {
@@ -201,6 +203,21 @@ export default function FriendsScreen() {
             <Feather name="chevron-left" size={20} color={T.text} />
           </Pressable>
           <Text style={[styles.title, { color: T.text }]}>{tr('friends.title')}</Text>
+          <Pressable
+            style={[styles.inboxBtn, { backgroundColor: T.selectorBg }]}
+            onPress={() => router.push('/(app)/friends-inbox')}
+            accessibilityLabel={tr('friends.inbox')}
+            hitSlop={8}
+          >
+            <Feather name="mail" size={18} color={T.text} />
+            {unreadMessages > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>
+                  {unreadMessages > 99 ? '99+' : unreadMessages}
+                </Text>
+              </View>
+            )}
+          </Pressable>
           <View style={[styles.countChip, { backgroundColor: T.selectorBg }]}>
             <Feather name="user" size={13} color={T.textSecondary} />
             <Text style={[styles.countText, { color: T.textSecondary }]}>{tr('friends.countChip', { n: friends.length })}</Text>
@@ -501,6 +518,12 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontFamily: 'Baloo2_800ExtraBold', fontSize: 28, lineHeight: 34 },
+  inboxBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  unreadBadge: {
+    position: 'absolute', top: 2, right: 2, minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#FFC531', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+  },
+  unreadBadgeText: { fontFamily: 'Nunito_900Black', fontSize: 10, color: '#1B2333', lineHeight: 12 },
   countChip: { height: 30, paddingHorizontal: 12, borderRadius: 15, flexDirection: 'row', alignItems: 'center', gap: 6 },
   countText: { fontFamily: 'Nunito_900Black', fontSize: 12.5 },
 
